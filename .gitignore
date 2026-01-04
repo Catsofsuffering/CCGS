@@ -1,0 +1,23 @@
+# Build outputs
+codeagent-wrapper/codeagent-wrapper
+codeagent-wrapper/*.exe
+*.exe
+
+# Logs
+*.log
+install.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+*.bak
+POST_DRAFT.md

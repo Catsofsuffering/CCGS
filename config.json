@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "name": "ccg",
+  "description": "CCG: Claude Code + Codex + Gemini 多模型协作系统",
+  "install_dir": "~/.claude",
+  "log_file": "install.log",
+  "modules": {
+    "core": {
+      "enabled": true,
+      "description": "核心工作流 - 多模型协作 (Codex + Gemini)",
+      "operations": [
+        {
+          "type": "copy_file",
+          "source": "memorys/CLAUDE.md",
+          "target": "CLAUDE.md",
+          "description": "安装核心工作流指令"
+        },
+        {
+          "type": "merge_dir",
+          "source": "commands",
+          "target": "commands",
+          "description": "安装 /ccg:xxx 命令 (11个斜杠命令)"
+        },
+        {
+          "type": "build_go",
+          "source": "codeagent-wrapper",
+          "binary": "codeagent-wrapper",
+          "description": "编译 codeagent-wrapper"
+        },
+        {
+          "type": "patch_auggie",
+          "source": "patches/augment-enhanced.mjs",
+          "description": "修补 Auggie MCP (启用 prompt-enhancer，自动备份)"
+        }
+      ]
+    },
+    "codex-only": {
+      "enabled": false,
+      "description": "仅 Codex 后端（无 Gemini）",
+      "operations": [
+        {
+          "type": "build_go",
+          "source": "codeagent-wrapper",
+          "binary": "codeagent-wrapper",
+          "description": "编译 codeagent-wrapper"
+        }
+      ]
+    },
+    "gemini-only": {
+      "enabled": false,
+      "description": "仅 Gemini 后端（无 Codex）",
+      "operations": [
+        {
+          "type": "build_go",
+          "source": "codeagent-wrapper",
+          "binary": "codeagent-wrapper",
+          "description": "编译 codeagent-wrapper"
+        }
+      ]
+    }
+  }
+}
