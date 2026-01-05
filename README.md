@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
 
-> **最新版本 v1.3.0**：MCP 动态选择系统 - 支持 ace-tool / auggie 双 MCP 方案
+> **最新版本 v1.3.0**：MCP 动态选择系统 - 安装时可选 ace-tool / auggie，命令模板自动适配
 
 </div>
 
@@ -17,11 +17,12 @@
 ## 🎉 最新更新
 
 ### v1.3.0 - MCP 动态选择系统 ⭐
-- ✅ **多 MCP 支持**：安装时可选 ace-tool（Prompt增强+代码检索）或 auggie（仅代码检索）
-- ✅ **交互式选择**：友好的 MCP 选择界面，对比功能差异
-- ✅ **配置驱动**：生成 `~/.ccg/config.toml`，命令模板自动适配
-- ✅ **简洁高效**：命令模板减少 50% 提示词，引用共享配置文档
-- ✅ **完全兼容**：11个命令模板支持动态 MCP 工具调用
+- ✅ **多 MCP 支持**：安装时可选 ace-tool（开箱即用Prompt增强+代码检索）或 auggie（官方原版，代码检索+可选Prompt增强）
+- ✅ **交互式选择**：友好的 MCP 选择界面，对比功能差异，支持跳过安装
+- ✅ **配置驱动**：生成 `~/.ccg/config.toml`，记录工具映射和参数名
+- ✅ **自包含模板**：命令模板减少 50% 提示词长度，直接读取配置无需外部文档
+- ✅ **完全兼容**：12个命令模板（dev, code, frontend, backend, review, analyze, enhance 等）支持动态 MCP 工具调用
+- ✅ **灵活配置**：auggie 可通过配置支持 Prompt 增强（参考 [配置教程](https://linux.do/t/topic/1280612)）
 
 ### v1.2.3 - 安装体验优化
 - ✅ **二进制验证**：安装后自动验证 `codeagent-wrapper` 可用性
@@ -93,7 +94,7 @@
 | **Claude Code 主导** | Claude Code CLI 作为编排者，Codex/Gemini/Claude 子进程协作 |
 | **三 CLI 协作** | 同时调用 Codex CLI + Gemini CLI + Claude CLI 进行交叉验证 |
 | **智能路由** | 前端任务 → Gemini，后端任务 → Codex，全栈整合 → Claude |
-| **Prompt 增强** | 支持 ace-tool / auggie MCP，可选 Prompt 自动优化 |
+| **MCP 动态选择** | 安装时可选 ace-tool / auggie，命令模板自动适配，支持 Prompt 增强（ace-tool）或纯代码检索（auggie） |
 | **6阶段工作流** | Prompt增强 → 上下文检索 → 三 CLI 分析 → 原型生成 → 代码实施 → 审计交付 |
 | **18个专家提示词** | Codex 6个 + Gemini 6个 + Claude 6个角色 |
 | **交互式安装** | npx 一键运行，图形化配置界面 |
@@ -155,10 +156,10 @@ pnpm start
 
 选择 **"初始化 CCG 配置"** 进行首次安装，会引导你：
 1. 选择语言（中文/English）
-2. **选择 MCP 代码检索工具**：
-   - **ace-tool**（推荐）：内置 Prompt 增强 + 代码检索
-   - **auggie**（官方原版）：仅代码检索，需查看[配置教程](https://linux.do/t/topic/1280612)
-   - **跳过**：稍后手动配置
+2. **选择 MCP 代码检索工具**：✨ NEW
+   - **[1] ace-tool**（推荐新手）：开箱即用，自动配置 Prompt 增强 + 代码检索
+   - **[2] auggie**（官方原版）：代码检索 + 可选 Prompt 增强（需额外配置，[查看教程](https://linux.do/t/topic/1280612)）
+   - **[0] 跳过**：稍后手动配置
 3. 配置前端模型（Gemini/Codex/Claude）
 4. 配置后端模型（Codex/Gemini/Claude）
 5. 选择协作模式（并行/智能/顺序）
@@ -339,8 +340,23 @@ pnpm start
 
 ```toml
 [general]
-version = "1.2.3"
+version = "1.3.0"
 language = "zh-CN"
+
+[mcp]
+provider = "ace-tool"  # ace-tool | auggie | none
+setup_url = "https://linux.do/t/topic/1280612"
+
+[mcp.tools]
+# 工具名称映射（配置驱动，命令模板自动适配）
+code_search_ace = "mcp__ace-tool__search_context"
+code_search_auggie = "mcp__auggie-mcp__codebase-retrieval"
+prompt_enhance_ace = "mcp__ace-tool__enhance_prompt"
+prompt_enhance_auggie = ""  # 留空表示未配置，按教程配置后填入工具名
+
+# 参数名映射
+query_param_ace = "query"
+query_param_auggie = "information_request"
 
 [routing]
 mode = "smart"  # smart | parallel | sequential

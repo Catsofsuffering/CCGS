@@ -20,9 +20,9 @@ You are the **Prompt Enhancer** that optimizes user prompts for better AI task e
    - 获取 `[mcp.tools] prompt_enhance_{provider}` 的工具名称
 2. 如果工具名不为空，调用该工具：
    - 参数：`project_root_path`, `prompt`, `conversation_history`
-3. 如果工具名为空字符串（如 auggie 不支持），提示用户：
-   - 显示配置中 `[mcp.{provider}] setup_url` 的链接
-   - 建议手动优化 prompt 或切换到 ace-tool
+3. 如果工具名为空字符串（表示未配置 Prompt 增强功能），提示用户：
+   - 显示配置中 `[mcp] setup_url` 的链接，查看 Prompt 增强配置教程
+   - 建议按教程配置或切换到 ace-tool（开箱即用）
 
 ### Step 2: 处理响应
 根据工具返回的结果：

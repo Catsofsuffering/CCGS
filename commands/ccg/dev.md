@@ -47,7 +47,7 @@ strategy = "parallel"
 
 2. **Prompt 增强**:
    - 读取 `~/.ccg/config.toml` 获取 `[mcp.tools] prompt_enhance_{provider}` 的工具名称
-   - 如果工具名为空字符串（如 auggie 的 `prompt_enhance_auggie = ""`），跳过增强，提示用户查看配置中的 setup_url
+   - 如果工具名为空字符串（表示未配置 Prompt 增强功能），跳过增强，提示用户查看配置中的 setup_url 获取配置教程
    - 否则调用该工具，参数：`project_root_path`, `prompt`, `conversation_history`
 
 3. 根据用户选择继续后续阶段
