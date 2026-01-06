@@ -8,6 +8,7 @@ import { join } from 'pathe'
 import { i18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, writeCcgConfig } from '../utils/config'
 import { getWorkflowConfigs, installAceTool, installWorkflows } from '../utils/installer'
+import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 
 export async function init(options: InitOptions = {}): Promise<void> {
   console.log()
@@ -241,6 +242,38 @@ export async function init(options: InitOptions = {}): Promise<void> {
   const spinner = ora(i18n.t('init:installing')).start()
 
   try {
+    // v1.4.0: Auto-migrate from old directory structure
+    if (await needsMigration()) {
+      spinner.text = 'Migrating from v1.3.x to v1.4.0...'
+      const migrationResult = await migrateToV1_4_0()
+
+      if (migrationResult.migratedFiles.length > 0) {
+        spinner.info(ansis.cyan('Migration completed:'))
+        console.log()
+        for (const file of migrationResult.migratedFiles) {
+          console.log(`  ${ansis.green('✓')} ${file}`)
+        }
+        if (migrationResult.skipped.length > 0) {
+          console.log()
+          console.log(ansis.gray('  Skipped:'))
+          for (const file of migrationResult.skipped) {
+            console.log(`  ${ansis.gray('○')} ${file}`)
+          }
+        }
+        console.log()
+        spinner.start(i18n.t('init:installing'))
+      }
+
+      if (migrationResult.errors.length > 0) {
+        spinner.warn(ansis.yellow('Migration completed with errors:'))
+        for (const error of migrationResult.errors) {
+          console.log(`  ${ansis.red('✗')} ${error}`)
+        }
+        console.log()
+        spinner.start(i18n.t('init:installing'))
+      }
+    }
+
     await ensureCcgDir()
 
     // Create config

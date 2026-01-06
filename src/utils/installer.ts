@@ -256,9 +256,11 @@ export async function installWorkflows(
   }
 
   const commandsDir = join(installDir, 'commands', 'ccg')
-  const promptsDir = join(installDir, 'prompts', 'ccg')
+  const ccgConfigDir = join(installDir, '.ccg') // v1.4.0: 配置目录
+  const promptsDir = join(ccgConfigDir, 'prompts') // v1.4.0: prompts 移到配置目录
 
   await fs.ensureDir(commandsDir)
+  await fs.ensureDir(ccgConfigDir)
   await fs.ensureDir(promptsDir)
 
   // Get template source directory (relative to this package)
@@ -306,12 +308,12 @@ ${workflow.description}
     }
   }
 
-  // Install _config.md (shared configuration)
-  const configSrcFile = join(templateDir, 'commands', '_config.md')
-  const configDestFile = join(commandsDir, '_config.md')
-  if (await fs.pathExists(configSrcFile)) {
-    if (force || !(await fs.pathExists(configDestFile))) {
-      await fs.copy(configSrcFile, configDestFile)
+  // Install shared-config.md to config directory (v1.4.0)
+  const sharedConfigSrcFile = join(templateDir, 'config', 'shared-config.md')
+  const sharedConfigDestFile = join(ccgConfigDir, 'shared-config.md')
+  if (await fs.pathExists(sharedConfigSrcFile)) {
+    if (force || !(await fs.pathExists(sharedConfigDestFile))) {
+      await fs.copy(sharedConfigSrcFile, sharedConfigDestFile)
     }
   }
 

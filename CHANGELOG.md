@@ -7,6 +7,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-01-06 ⚡ BREAKING CHANGES
+
+### 🏗️ 目录结构重构
+
+**重大变更**：统一配置目录到 `~/.claude/.ccg/`，提升组织性和减少目录污染。
+
+#### 变更详情
+
+**变更 1：配置目录迁移**
+```
+旧版本：~/.ccg/
+新版本：~/.claude/.ccg/
+```
+
+**变更 2：Prompts 目录迁移**
+```
+旧版本：~/.claude/prompts/ccg/
+新版本：~/.claude/.ccg/prompts/
+```
+
+**变更 3：共享配置文件**
+```
+旧版本：~/.claude/commands/ccg/_config.md  (会被 CC 误识别为命令)
+新版本：~/.claude/.ccg/shared-config.md     (不会被 CC 扫描)
+```
+
+#### 最终目录结构
+
+```
+~/.claude/
+├── commands/ccg/           # ✅ CC 读取的 slash commands
+│   ├── dev.md
+│   ├── code.md
+│   └── ...
+├── agents/ccg/             # ✅ CC 读取的 subagents
+│   ├── planner.md
+│   └── ...
+├── bin/                    # ✅ 二进制文件
+│   └── codeagent-wrapper
+└── .ccg/                   # ✅ CCG 配置目录（CC 不读取）
+    ├── config.toml         # 主配置文件
+    ├── shared-config.md    # 共享配置
+    ├── backup/             # 备份目录
+    └── prompts/            # 专家提示词
+        ├── codex/
+        ├── gemini/
+        └── claude/
+```
+
+#### 自动迁移
+
+✨ **无需手动操作**！运行 `npx ccg-workflow@latest init` 会自动：
+1. 检测旧版本配置
+2. 迁移所有文件到新位置
+3. 清理旧文件（安全检查后）
+4. 显示迁移报告
+
+示例输出：
+```
+ℹ Migration completed:
+  ✓ ~/.ccg/config.toml → ~/.claude/.ccg/config.toml
+  ✓ ~/.claude/prompts/ccg/ → ~/.claude/.ccg/prompts/
+  ✓ ~/.claude/commands/ccg/_config.md → ~/.claude/.ccg/shared-config.md
+  ✓ Removed old ~/.ccg/ directory
+  ○ Skipped: ~/.claude/prompts/ccg/ (already exists in new location)
+```
+
+#### 手动升级
+
+如果你有自定义配置，建议手动迁移：
+
+```bash
+# 1. 备份配置
+cp -r ~/.ccg ~/.ccg.backup
+cp -r ~/.claude/prompts/ccg ~/.claude/prompts/ccg.backup
+
+# 2. 运行升级
+npx ccg-workflow@latest init
+
+# 3. 验证配置
+cat ~/.claude/.ccg/config.toml
+ls -la ~/.claude/.ccg/prompts/
+```
+
+#### 不兼容性说明
+
+| 影响项 | 描述 | 解决方案 |
+|--------|------|----------|
+| **配置路径硬编码** | 如果你的脚本硬编码了 `~/.ccg/` 路径 | 改为 `~/.claude/.ccg/` |
+| **Prompts 引用** | 如果你的命令引用了 `~/.claude/prompts/ccg/` | 改为 `~/.claude/.ccg/prompts/` |
+| **_config.md** | 旧的 `_config.md` 已重命名 | 改为 `shared-config.md` |
+
+#### 修改位置
+
+- `src/utils/config.ts` - 配置路径定义
+- `src/utils/installer.ts` - 安装路径逻辑
+- `src/utils/migration.ts` - 自动迁移脚本（新增）
+- `src/commands/init.ts` - 集成迁移逻辑
+- `templates/` - 目录结构重组
+
+#### 优势
+
+- ✅ **更清晰**：所有 CCG 配置集中在 `~/.claude/.ccg/`
+- ✅ **减少污染**：不再占用 `~/.claude/` 顶层空间
+- ✅ **避免混淆**：`_config.md` 不会被 CC 误识别为命令
+- ✅ **符合规范**：遵循社区最佳实践（参考 ccline）
+
+---
+
 ## [1.3.7] - 2026-01-06 🐛
 
 ### 修复 1：ace-tool MCP 配置兼容性问题

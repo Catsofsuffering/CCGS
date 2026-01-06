@@ -4,7 +4,8 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { parse, stringify } from 'smol-toml'
 
-const CCG_DIR = join(homedir(), '.ccg')
+// v1.4.0: 配置目录统一到 ~/.claude/.ccg/
+const CCG_DIR = join(homedir(), '.claude', '.ccg')
 const CONFIG_FILE = join(CCG_DIR, 'config.toml')
 
 export function getCcgDir(): string {
@@ -46,7 +47,7 @@ export function createDefaultConfig(options: {
 }): CcgConfig {
   return {
     general: {
-      version: '1.3.5',
+      version: '1.4.0',
       language: options.language,
       createdAt: new Date().toISOString(),
     },
@@ -56,7 +57,7 @@ export function createDefaultConfig(options: {
     },
     paths: {
       commands: join(homedir(), '.claude', 'commands', 'ccg'),
-      prompts: join(homedir(), '.claude', 'prompts', 'ccg'),
+      prompts: join(CCG_DIR, 'prompts'), // v1.4.0: 移到配置目录
       backup: join(CCG_DIR, 'backup'),
     },
     mcp: {
