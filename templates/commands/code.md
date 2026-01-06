@@ -16,7 +16,7 @@ description: 三模型代码生成（Codex + Gemini + Claude 并行原型，集�
 
 ### Phase 1: 需求分析
 
-1. 调用 `mcp__ace-tool__search_context` 检索:
+1. 调用 `{{MCP_SEARCH_TOOL}}` 检索:
    - `project_root_path`: 项目根目录绝对路径
    - `query`: 功能需求的自然语言描述
    - 相关模块和文件结构
@@ -35,8 +35,8 @@ description: 三模型代码生成（Codex + Gemini + Claude 并行原型，集�
 
 ```bash
 # Codex 后端架构原型
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/architect.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md
 
 <TASK>
 生成原型: {{功能需求}}
@@ -49,8 +49,8 @@ EOF
 
 ```bash
 # Gemini 前端 UI 原型
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/frontend.md
+codeagent-wrapper --backend {{FRONTEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/frontend.md
 
 <TASK>
 生成原型: {{功能需求}}
@@ -122,8 +122,8 @@ API Contract:
 
 ```bash
 # Codex 安全性审查
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md
 
 <TASK>
 审查代码: {{实施的代码变更}}
@@ -136,8 +136,8 @@ EOF
 
 ```bash
 # Gemini 设计审查
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/reviewer.md
+codeagent-wrapper --backend {{FRONTEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md
 
 <TASK>
 审查代码: {{实施的代码变更}}

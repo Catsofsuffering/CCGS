@@ -90,7 +90,10 @@ async function performUpdate(fromVersion: string, toVersion: string): Promise<vo
     const workflows = config?.workflows?.installed || []
 
     const installDir = join(homedir(), '.claude')
-    const result = await installWorkflows(workflows, installDir, true) // force = true
+    const result = await installWorkflows(workflows, installDir, true, {
+      mcpProvider: config?.mcp?.provider || 'auggie',
+      routing: config?.routing,
+    }) // force = true
 
     if (result.success) {
       spinner.succeed('命令模板和提示词更新成功')

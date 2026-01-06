@@ -12,15 +12,6 @@ description: 后端/逻辑/算法任务，自动路由到配置的后端模型�
 - This command routes to your configured backend models.
 - Default authority for algorithms, APIs, and business logic.
 
-## 配置
-**首先读取 `~/.claude/.ccg/config.toml` 获取模型路由配置**:
-```toml
-[routing.backend]
-models = ["codex", "gemini"]  # 用户配置的后端模型列表
-primary = "codex"              # 主模型
-strategy = "parallel"          # 路由策略: parallel | fallback | round-robin
-```
-
 ## 你的角色
 You are the **Backend Orchestrator** specializing in server-side logic. You coordinate:
 1. **ace-tool** – for retrieving existing backend code and architecture
@@ -29,60 +20,28 @@ You are the **Backend Orchestrator** specializing in server-side logic. You coor
 
 ## 流程
 
-### Step 1: 读取配置
-1. Read `~/.claude/.ccg/config.toml` to get backend model configuration
-2. Identify which models to use based on `routing.backend.models`
-3. If config doesn't exist, default to `codex`
-
-### Step 2: 上下文检索
-1. Call `mcp__ace-tool__search_context` to understand existing architecture:
+### Step 1: 上下文检索
+1. Call `{{MCP_SEARCH_TOOL}}` to understand existing architecture:
    - `project_root_path`: Project root directory absolute path
    - `query`: Natural language description of the backend task
 2. Identify API patterns, data models, services, and dependencies
 
-### Step 3: 模型原型生成
+### Step 2: 调用后端模型生成原型
 
-**根据配置的 strategy 执行**:
-- **parallel**: 同时调用所有配置的后端模型，综合结果
-- **fallback**: 调用主模型，失败则调用次模型
-- **round-robin**: 轮询调用
-
-**调用方式**: 使用 `Bash` 工具调用 `codeagent-wrapper`
+使用配置的后端主模型 ({{BACKEND_PRIMARY}}) 生成后端原型：
 
 ```bash
-# Codex 后端原型示例
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/architect.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md
 
 <TASK>
 实现后端功能: {{后端任务描述}}
-Context: {{从 ace-tool 获取的 API 架构和数据模型}}
+Context: {{从 MCP 获取的 API 架构和数据模型}}
 </TASK>
 
 OUTPUT: Unified Diff Patch ONLY. Strictly prohibit any actual modifications.
 EOF
 ```
-
-```bash
-# Gemini 后端原型示例（如配置中包含）
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/analyzer.md
-
-<TASK>
-实现后端功能: {{后端任务描述}}
-Context: {{从 ace-tool 获取的 API 架构和数据模型}}
-</TASK>
-
-OUTPUT: Unified Diff Patch ONLY. Strictly prohibit any actual modifications.
-EOF
-```
-
-遍历 `routing.backend.models`，为每个模型动态生成上述调用：
-- **Codex**: 使用 `architect` 角色
-- **Gemini**: 使用 `analyzer` 角色（Gemini 无专门后端角色）
-
-**如果 strategy = parallel 且有多个模型**:
-使用 `run_in_background: true` 并行调用所有模型，然后用 `TaskOutput` 收集结果。
 
 ### Step 4: 重构与实施
 1. Review model prototype(s) as "dirty prototype"
@@ -107,6 +66,5 @@ Call configured backend model(s) to review the final implementation:
 ## 注意事项
 - Codex excels at complex logic and debugging
 - Codex uses read-only sandbox by default
-- Read `~/.claude/.ccg/config.toml` at start of execution
 - Always request Unified Diff Patch format
 - Use HEREDOC syntax (`<<'EOF'`) to avoid shell escaping issues

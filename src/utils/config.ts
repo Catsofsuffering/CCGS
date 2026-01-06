@@ -67,7 +67,7 @@ export function createDefaultConfig(options: {
         code_search_ace: 'mcp__ace-tool__search_context',
         code_search_auggie: 'mcp__auggie-mcp__codebase-retrieval',
         prompt_enhance_ace: 'mcp__ace-tool__enhance_prompt',
-        prompt_enhance_auggie: '',
+        prompt_enhance_auggie: 'mcp__auggie-mcp__enhance_prompt',
         query_param_ace: 'query',
         query_param_auggie: 'information_request',
       },

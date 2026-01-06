@@ -15,7 +15,7 @@ description: UltraThink 深度分析（双模型并行分析 + 综合见解）
 ## 流程
 
 ### Phase 1: 上下文收集
-1. 调用 `mcp__ace-tool__search_context` 检索相关代码:
+1. 调用 `{{MCP_SEARCH_TOOL}}` 检索相关代码:
    - `project_root_path`: 项目根目录绝对路径
    - `query`: 需要深度分析的问题描述
 2. 识别分析范围和关键组件
@@ -28,8 +28,8 @@ description: UltraThink 深度分析（双模型并行分析 + 综合见解）
 
 ```bash
 # Codex 后端/系统视角分析
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/analyzer.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md
 
 <TASK>
 深度分析: {{问题或场景}}
@@ -42,8 +42,8 @@ EOF
 
 ```bash
 # Gemini 前端/用户视角分析
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/analyzer.md
+codeagent-wrapper --backend {{FRONTEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md
 
 <TASK>
 深度分析: {{问题或场景}}

@@ -14,7 +14,7 @@ description: 多模型测试生成（Codex 后端测试 + Gemini 前端测试）
 ## 流程
 
 ### Phase 1: 测试分析
-1. 调用 `mcp__ace-tool__search_context` 检索:
+1. 调用 `{{MCP_SEARCH_TOOL}}` 检索:
    - `project_root_path`: 项目根目录绝对路径
    - `query`: 需要测试的代码/功能描述
    - 目标代码的完整实现
@@ -34,8 +34,8 @@ description: 多模型测试生成（Codex 后端测试 + Gemini 前端测试）
 
 ```bash
 # Codex 后端测试生成
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/tester.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/tester.md
 
 <TASK>
 生成测试: {{需要测试的代码}}
@@ -48,8 +48,8 @@ EOF
 
 ```bash
 # Gemini 前端测试生成
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/tester.md
+codeagent-wrapper --backend {{FRONTEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/tester.md
 
 <TASK>
 生成测试: {{需要测试的代码}}

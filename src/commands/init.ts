@@ -289,7 +289,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
     // Install workflows and commands
     const installDir = options.installDir || join(homedir(), '.claude')
-    const result = await installWorkflows(selectedWorkflows, installDir, options.force)
+    const result = await installWorkflows(selectedWorkflows, installDir, options.force, {
+      mcpProvider,
+      routing,
+    })
 
     // Install ace-tool MCP if baseUrl or token was provided
     if (aceToolBaseUrl || aceToolToken) {

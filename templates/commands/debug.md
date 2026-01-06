@@ -16,7 +16,7 @@ description: UltraThink 多模型调试（Codex 后端诊断 + Gemini 前端诊�
 
 ### Phase 1: 上下文检索
 
-1. 调用 `mcp__ace-tool__search_context` 检索相关代码:
+1. 调用 `{{MCP_SEARCH_TOOL}}` 检索相关代码:
    - `project_root_path`: 项目根目录绝对路径
    - `query`: 问题的自然语言描述
 2. 收集错误日志、堆栈信息、复现步骤
@@ -30,8 +30,8 @@ description: UltraThink 多模型调试（Codex 后端诊断 + Gemini 前端诊�
 
 ```bash
 # Codex 后端诊断
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/debugger.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md
 
 <TASK>
 诊断问题: {{问题描述}}
@@ -44,8 +44,8 @@ EOF
 
 ```bash
 # Gemini 前端诊断
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/debugger.md
+codeagent-wrapper --backend {{FRONTEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md
 
 <TASK>
 诊断问题: {{问题描述}}

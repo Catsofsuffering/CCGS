@@ -1,5 +1,5 @@
 ---
-description: 多模型代码审查（根据配置并行），无参数时自动审查 git diff
+description: 多模型代码审查（并行执行），无参数时自动审查 git diff
 ---
 
 > 调用语法见 `_config.md`
@@ -11,14 +11,6 @@ description: 多模型代码审查（根据配置并行），无参数时自动�
 - Arguments: $ARGUMENTS
 - This command triggers multi-model code review based on your configuration.
 - Configured models review simultaneously for comprehensive feedback.
-
-## 配置
-**首先读取 `~/.claude/.ccg/config.toml` 获取审查模型配置**:
-```toml
-[routing.review]
-models = ["codex", "gemini"]  # 用户配置的审查模型列表
-strategy = "parallel"          # 始终并行执行
-```
 
 ## 行为
 - **No arguments**: Automatically review current git changes (staged + unstaged)
@@ -32,10 +24,7 @@ You are the **Code Review Coordinator** orchestrating multi-model review. You di
 
 ## 流程
 
-### Step 1: 读取配置 + 获取待审查代码
-
-1. **读取 `~/.claude/.ccg/config.toml`** 获取 `routing.review.models`
-2. 如果配置不存在，默认使用 `["codex", "gemini"]`
+### Step 1: 获取待审查代码
 
 **If no arguments provided**, run git commands to get current changes:
 ```bash
@@ -46,7 +35,7 @@ git status --short
 
 **If arguments provided**, use the specified code/description.
 
-Then call `mcp__ace-tool__search_context` to get related context:
+Then call `{{MCP_SEARCH_TOOL}}` to get related context:
    - `project_root_path`: Project root directory absolute path
    - `query`: Description of code/files to review
 
@@ -58,8 +47,8 @@ Then call `mcp__ace-tool__search_context` to get related context:
 
 ```bash
 # Codex 代码审查示例
-codeagent-wrapper --backend codex - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md
+codeagent-wrapper --backend {{BACKEND_PRIMARY}} - $PROJECT_DIR <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md
 
 <TASK>
 审查代码: {{待审查的代码变更}}
@@ -70,21 +59,28 @@ OUTPUT: Review comments only. No code modifications.
 EOF
 ```
 
+```
+
+**并行调用所有配置的审查模型**（使用 `run_in_background: true`）：
+
+遍历 {{REVIEW_MODELS}} 中的每个模型进行代码审查：
+
 ```bash
-# Gemini 代码审查示例
-codeagent-wrapper --backend gemini - $PROJECT_DIR <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/reviewer.md
+# 遍历审查模型列表（默认: codex, gemini）
+for model in $(echo '{{REVIEW_MODELS}}' | jq -r '.[]'); do
+  codeagent-wrapper --backend $model - $PROJECT_DIR <<'EOF' &
+ROLE_FILE: ~/.claude/.ccg/prompts/$model/reviewer.md
 
 <TASK>
 审查代码: {{待审查的代码变更}}
-关注点: 可访问性、响应式设计、设计一致性
+关注点: 安全性、性能、错误处理、可访问性、响应式设计、设计一致性
 </TASK>
 
 OUTPUT: Review comments only. No code modifications.
 EOF
+done
+wait  # 等待所有后台任务完成
 ```
-
-遍历 `routing.review.models`，为每个模型动态生成上述调用，使用 `reviewer` 角色。
 
 ### Step 3: 综合反馈
 使用 `TaskOutput` 获取所有任务的结果，然后：
@@ -107,7 +103,7 @@ Provide unified review report to user with recommendations.
 7. **Recommended Actions** – prioritized fix list
 
 ## 注意事项
-- **首先读取 `~/.claude/.ccg/config.toml` 获取审查模型配置**
+- **审查模型已在安装时注入**: {{REVIEW_MODELS}}
 - **No arguments** = auto-review git changes (`git diff HEAD`)
 - **With arguments** = review specified content
 - **Use `run_in_background: true` for parallel execution** to avoid blocking

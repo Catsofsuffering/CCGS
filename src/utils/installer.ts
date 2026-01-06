@@ -213,17 +213,6 @@ const WORKFLOW_CONFIGS: WorkflowConfig[] = [
     descriptionEn: 'Initialize project AI context, generate/update root and module level CLAUDE.md index',
   },
   {
-    id: 'scan',
-    name: '智能仓库扫描',
-    nameEn: 'Smart Repository Scan',
-    category: 'planning',
-    commands: ['scan'],
-    defaultSelected: true,
-    order: 31,
-    description: '智能仓库扫描 - 生成项目上下文报告（技术栈、API、数据模型、组件结构）',
-    descriptionEn: 'Smart repository scan - generate project context report (tech stack, APIs, data models, components)',
-  },
-  {
     id: 'feat',
     name: '智能功能开发',
     nameEn: 'Smart Feature Development',
@@ -242,6 +231,62 @@ export function getWorkflowConfigs(): WorkflowConfig[] {
 
 export function getWorkflowById(id: string): WorkflowConfig | undefined {
   return WORKFLOW_CONFIGS.find(w => w.id === id)
+}
+
+/**
+ * Replace template variables in content based on user configuration
+ * This injects MCP tools, model routing, and other configs at install time
+ */
+function injectConfigVariables(content: string, config: {
+  mcpProvider: string
+  routing?: {
+    mode?: string
+    frontend?: { models?: string[], primary?: string }
+    backend?: { models?: string[], primary?: string }
+    review?: { models?: string[] }
+  }
+}): string {
+  let processed = content
+
+  // 1. MCP tool name injection
+  if (config.mcpProvider === 'ace-tool') {
+    processed = processed.replace(/\{\{MCP_SEARCH_TOOL\}\}/g, 'mcp__ace-tool__search_context')
+    processed = processed.replace(/\{\{MCP_ENHANCE_TOOL\}\}/g, 'mcp__ace-tool__enhance_prompt')
+    processed = processed.replace(/\{\{MCP_SEARCH_PARAM\}\}/g, 'query')
+    processed = processed.replace(/\{\{MCP_ENHANCE_PARAM\}\}/g, 'prompt')
+  }
+  else {
+    // Default to auggie
+    processed = processed.replace(/\{\{MCP_SEARCH_TOOL\}\}/g, 'mcp__auggie-mcp__codebase-retrieval')
+    processed = processed.replace(/\{\{MCP_ENHANCE_TOOL\}\}/g, 'mcp__auggie-mcp__enhance_prompt')
+    processed = processed.replace(/\{\{MCP_SEARCH_PARAM\}\}/g, 'information_request')
+    processed = processed.replace(/\{\{MCP_ENHANCE_PARAM\}\}/g, 'prompt')
+  }
+
+  // 2. Model routing injection
+  const routing = config.routing || {}
+
+  // Frontend models
+  const frontendModels = routing.frontend?.models || ['gemini']
+  const frontendPrimary = routing.frontend?.primary || 'gemini'
+  processed = processed.replace(/\{\{FRONTEND_MODELS\}\}/g, JSON.stringify(frontendModels))
+  processed = processed.replace(/\{\{FRONTEND_PRIMARY\}\}/g, frontendPrimary)
+
+  // Backend models
+  const backendModels = routing.backend?.models || ['codex']
+  const backendPrimary = routing.backend?.primary || 'codex'
+  processed = processed.replace(/\{\{BACKEND_MODELS\}\}/g, JSON.stringify(backendModels))
+  processed = processed.replace(/\{\{BACKEND_PRIMARY\}\}/g, backendPrimary)
+
+  // Review models
+  const reviewModels = routing.review?.models || ['codex', 'gemini']
+  processed = processed.replace(/\{\{REVIEW_MODELS\}\}/g, JSON.stringify(reviewModels))
+
+  // Routing mode
+  const routingMode = routing.mode || 'smart'
+  processed = processed.replace(/\{\{ROUTING_MODE\}\}/g, routingMode)
+
+  return processed
 }
 
 /**
@@ -266,7 +311,26 @@ export async function installWorkflows(
   workflowIds: string[],
   installDir: string,
   force = false,
+  config?: {
+    mcpProvider?: string
+    routing?: {
+      mode?: string
+      frontend?: { models?: string[], primary?: string }
+      backend?: { models?: string[], primary?: string }
+      review?: { models?: string[] }
+    }
+  },
 ): Promise<InstallResult> {
+  // Default config
+  const installConfig = {
+    mcpProvider: config?.mcpProvider || 'auggie',
+    routing: config?.routing || {
+      mode: 'smart',
+      frontend: { models: ['gemini'], primary: 'gemini' },
+      backend: { models: ['codex'], primary: 'codex' },
+      review: { models: ['codex', 'gemini'] },
+    },
+  }
   const result: InstallResult = {
     success: true,
     installedCommands: [],
@@ -301,8 +365,9 @@ export async function installWorkflows(
       try {
         if (await fs.pathExists(srcFile)) {
           if (force || !(await fs.pathExists(destFile))) {
-            // Read template content, replace ~ paths, then write
-            const templateContent = await fs.readFile(srcFile, 'utf-8')
+            // Read template content, inject config variables, replace ~ paths, then write
+            let templateContent = await fs.readFile(srcFile, 'utf-8')
+            templateContent = injectConfigVariables(templateContent, installConfig)
             const processedContent = replaceHomePathsInTemplate(templateContent, installDir)
             await fs.writeFile(destFile, processedContent, 'utf-8')
             result.installedCommands.push(cmd)
@@ -336,8 +401,9 @@ ${workflow.description}
   const sharedConfigDestFile = join(ccgConfigDir, 'shared-config.md')
   if (await fs.pathExists(sharedConfigSrcFile)) {
     if (force || !(await fs.pathExists(sharedConfigDestFile))) {
-      // Read template content, replace ~ paths, then write
-      const templateContent = await fs.readFile(sharedConfigSrcFile, 'utf-8')
+      // Read template content, inject config variables, replace ~ paths, then write
+      let templateContent = await fs.readFile(sharedConfigSrcFile, 'utf-8')
+      templateContent = injectConfigVariables(templateContent, installConfig)
       const processedContent = replaceHomePathsInTemplate(templateContent, installDir)
       await fs.writeFile(sharedConfigDestFile, processedContent, 'utf-8')
     }
@@ -355,8 +421,9 @@ ${workflow.description}
           const srcFile = join(agentsSrcDir, file)
           const destFile = join(agentsDestDir, file)
           if (force || !(await fs.pathExists(destFile))) {
-            // Read template content, replace ~ paths, then write
-            const templateContent = await fs.readFile(srcFile, 'utf-8')
+            // Read template content, inject config variables, replace ~ paths, then write
+            let templateContent = await fs.readFile(srcFile, 'utf-8')
+            templateContent = injectConfigVariables(templateContent, installConfig)
             const processedContent = replaceHomePathsInTemplate(templateContent, installDir)
             await fs.writeFile(destFile, processedContent, 'utf-8')
           }
