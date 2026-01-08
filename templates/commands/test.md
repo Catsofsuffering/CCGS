@@ -6,16 +6,6 @@ description: '多模型测试生成：智能路由 Codex 后端测试 / Gemini �
 
 根据代码类型智能路由，生成高质量测试用例。
 
-## 多模型调用语法
-
-**必须使用 heredoc 语法调用 codeagent-wrapper**：
-
-```bash
-~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - [工作目录] <<'EOF'
-<任务内容>
-EOF
-```
-
 ## 使用方法
 
 ```bash
@@ -37,18 +27,48 @@ EOF
 
 ---
 
+## 多模型调用规范
+
+**调用语法**（并行用 `run_in_background: true`）：
+
+```
+Bash({
+  command: "~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - \"$PWD\" <<'EOF'
+<TASK>
+需求：为以下代码生成测试
+<代码内容>
+需求描述：<增强后的需求（如未增强则用 $ARGUMENTS）>
+要求：
+1. 使用项目现有测试框架
+2. 覆盖正常路径、边界条件、异常处理
+</TASK>
+OUTPUT: 完整测试代码
+EOF",
+  run_in_background: true,
+  timeout: 3600000,
+  description: "简短描述"
+})
+```
+
+**智能路由**：
+
+| 代码类型 | 路由 |
+|---------|------|
+| 后端 | Codex |
+| 前端 | Gemini |
+| 全栈 | 并行执行两者 |
+
+**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
+
+---
+
 ## 执行工作流
 
 **测试目标**：$ARGUMENTS
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - 增强测试需求
-
-**如果 ace-tool MCP 可用**，调用 `mcp__ace-tool__enhance_prompt`：
-- 输入原始测试目标
-- 获取增强后的详细测试需求
-- 用增强后的需求替代原始 $ARGUMENTS
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
 
 ### 🔍 阶段 1：测试分析
 
@@ -63,60 +83,12 @@ EOF
 
 `[模式：生成]`
 
-| 代码类型 | 路由 | 角色 |
-|---------|------|------|
-| 后端 | Codex | `tester.md` |
-| 前端 | Gemini | `tester.md` |
-| 全栈 | 并行执行 | 两者 |
+**根据代码类型路由**：
+- 后端代码：调用 Codex 生成测试
+- 前端代码：调用 Gemini 生成测试
+- 全栈代码：并行调用两者（`run_in_background: true`）
 
-**全栈代码并行调用**：
-
-**执行步骤**：
-1. 使用 **Bash 工具的 `run_in_background: true` 参数**启动两个后台进程：
-
-**Codex 测试生成进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-你是后端测试专家，角色提示词见 ~/.claude/.ccg/prompts/codex/tester.md
-
-任务：为以下代码生成单元测试
-<代码内容>
-
-要求：
-1. 使用项目现有测试框架
-2. 覆盖正常路径、边界条件、异常处理
-3. 输出完整测试代码
-EOF_CODEX",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Codex 后端测试生成"
-})
-```
-
-**Gemini 测试生成进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend gemini - \"$PWD\" <<'EOF_GEMINI'
-你是前端测试专家，角色提示词见 ~/.claude/.ccg/prompts/gemini/tester.md
-
-任务：为以下组件生成测试
-<组件代码>
-
-要求：
-1. 使用项目现有测试框架
-2. 测试渲染、交互、状态变化
-3. 输出完整测试代码
-EOF_GEMINI",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Gemini 前端测试生成"
-})
-```
-
-2. 使用 `TaskOutput` 监控并获取 2 个模型的测试代码。
-
-**⚠️ 强制规则：必须等待 TaskOutput 返回两个模型的完整结果后才能进入下一阶段，禁止跳过或提前继续！**
+用 `TaskOutput` 等待模型返回测试代码。
 
 ### 🔀 阶段 3：测试整合
 
@@ -168,5 +140,4 @@ EOF_GEMINI",
 1. **测试行为，不测试实现** – 关注输入输出
 2. **智能路由** – 后端测试用 Codex，前端测试用 Gemini
 3. **复用现有模式** – 遵循项目已有的测试风格
-4. **使用 Bash 工具的 `run_in_background: true` 参数 + `TaskOutput` 获取结果**
-5. **必须等待所有模型返回** – 禁止提前进入下一步
+4. 外部模型对文件系统**零写入权限**

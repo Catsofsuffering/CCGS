@@ -6,22 +6,6 @@ description: '多模型调试：Codex 后端诊断 + Gemini 前端诊断，交�
 
 双模型并行诊断，交叉验证快速定位问题根因。
 
-## 多模型调用语法
-
-**⚠️ 必须使用 heredoc 语法调用外部模型**：
-
-```bash
-~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - "$PWD" <<'EOF'
-<任务内容>
-EOF
-```
-
-- `--backend codex` – 后端/逻辑问题诊断
-- `--backend gemini` – 前端/UI 问题诊断
-- `$PWD` – 当前工作目录
-
----
-
 ## 使用方法
 
 ```bash
@@ -37,18 +21,36 @@ EOF
 
 ---
 
+## 多模型调用规范
+
+**调用语法**（并行用 `run_in_background: true`）：
+
+```
+Bash({
+  command: "~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - \"$PWD\" <<'EOF'
+<TASK>
+需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
+上下文：<错误日志、堆栈信息、复现步骤等>
+</TASK>
+OUTPUT: 诊断假设（按可能性排序）
+EOF",
+  run_in_background: true,
+  timeout: 3600000,
+  description: "简短描述"
+})
+```
+
+**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
+
+---
+
 ## 执行工作流
 
 **问题描述**：$ARGUMENTS
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - 增强问题描述
-
-**如果 ace-tool MCP 可用**，调用 `mcp__ace-tool__enhance_prompt`：
-- 输入原始问题描述
-- 获取增强后的详细问题分析
-- 用增强后的描述替代原始 $ARGUMENTS
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
 
 ### 🔍 阶段 1：上下文收集
 
@@ -62,52 +64,11 @@ EOF
 
 `[模式：诊断]`
 
-**并行调用 Codex + Gemini**：
+**并行调用**（`run_in_background: true`）：
+- Codex：分析逻辑错误、数据流、异常处理、API、数据库
+- Gemini：分析 UI 渲染、状态管理、事件绑定、组件生命周期
 
-**执行步骤**：
-1. 使用 **Bash 工具的 `run_in_background: true` 参数**启动两个后台进程：
-
-**Codex 诊断进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-角色：后端调试专家
-
-问题：$ARGUMENTS
-
-任务：
-1. 分析逻辑错误、数据流、异常处理
-2. 检查 API、数据库、服务间通信
-3. 输出诊断假设（按可能性排序）
-EOF_CODEX",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Codex 后端诊断"
-})
-```
-
-**Gemini 诊断进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend gemini - \"$PWD\" <<'EOF_GEMINI'
-角色：前端调试专家
-
-问题：$ARGUMENTS
-
-任务：
-1. 分析 UI 渲染、状态管理、事件绑定
-2. 检查组件生命周期、样式冲突
-3. 输出诊断假设（按可能性排序）
-EOF_GEMINI",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Gemini 前端诊断"
-})
-```
-
-2. 使用 `TaskOutput` 监控并获取 2 个模型的诊断结果。
-
-**⚠️ 强制规则：必须等待 TaskOutput 返回两个模型的完整结果后才能进入下一阶段，禁止跳过或提前继续！**
+用 `TaskOutput` 等待两个模型的诊断结果。
 
 ### 🔀 阶段 3：假设整合
 
@@ -147,14 +108,11 @@ EOF_GEMINI",
 用户确认后：
 1. 根据诊断实施修复
 2. 运行测试验证修复
-3. **可选**：并行调用 Codex + Gemini 审查修复
 
 ---
 
 ## 关键规则
 
-1. **heredoc 语法** – 外部模型调用必须使用 heredoc
-2. **使用 Bash 工具的 `run_in_background: true` 参数 + `TaskOutput` 获取结果**
-3. **必须等待所有模型返回完整结果后才能进入下一阶段**，禁止跳过或提前继续
-4. **用户确认** – 修复前必须获得确认
-5. **信任规则** – 后端问题以 Codex 为准，前端问题以 Gemini 为准
+1. **用户确认** – 修复前必须获得确认
+2. **信任规则** – 后端问题以 Codex 为准，前端问题以 Gemini 为准
+3. 外部模型对文件系统**零写入权限**

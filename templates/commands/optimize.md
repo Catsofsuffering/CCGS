@@ -6,20 +6,6 @@ description: '多模型性能优化：Codex 后端优化 + Gemini 前端优化'
 
 双模型并行分析性能瓶颈，按性价比排序优化建议。
 
-## 多模型调用语法
-
-**必须使用 heredoc 语法调用外部模型**：
-
-```bash
-~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - $PWD <<'EOF'
-<任务内容>
-EOF
-```
-
-> ⚠️ 禁止使用 `echo | codeagent-wrapper` 管道语法，会导致多行内容截断。
-
----
-
 ## 使用方法
 
 ```bash
@@ -41,18 +27,36 @@ EOF
 
 ---
 
+## 多模型调用规范
+
+**调用语法**（并行用 `run_in_background: true`）：
+
+```
+Bash({
+  command: "~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - \"$PWD\" <<'EOF'
+<TASK>
+需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
+上下文：<目标代码、现有性能指标等>
+</TASK>
+OUTPUT: 性能瓶颈列表、优化方案、预期收益
+EOF",
+  run_in_background: true,
+  timeout: 3600000,
+  description: "简短描述"
+})
+```
+
+**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
+
+---
+
 ## 执行工作流
 
 **优化目标**：$ARGUMENTS
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - 增强任务描述
-
-**如果 ace-tool MCP 可用**，调用 `mcp__ace-tool__enhance_prompt`：
-- 输入原始优化目标
-- 获取增强后的详细需求
-- 用增强后的需求替代原始 $ARGUMENTS
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
 
 ### 🔍 阶段 1：性能基线
 
@@ -66,54 +70,11 @@ EOF
 
 `[模式：分析]`
 
-**并行调用两个模型**：
+**并行调用**（`run_in_background: true`）：
+- Codex：分析后端性能问题，输出瓶颈列表、优化方案、预期收益
+- Gemini：分析前端性能问题（Core Web Vitals），输出瓶颈列表、优化方案、预期收益
 
-**执行步骤**：
-1. 使用 **Bash 工具的 `run_in_background: true` 参数**启动两个后台进程：
-
-**Codex 性能分析进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-[角色] 你是后端性能优化专家
-
-[任务] 分析以下代码的后端性能问题：
-$ARGUMENTS
-
-[输出格式]
-1. 性能瓶颈列表（按严重程度排序）
-2. 每个问题的优化方案（含代码 Diff）
-3. 预期收益评估
-EOF_CODEX",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Codex 后端性能分析"
-})
-```
-
-**Gemini 性能分析进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend gemini - \"$PWD\" <<'EOF_GEMINI'
-[角色] 你是前端性能优化专家
-
-[任务] 分析以下代码的前端性能问题：
-$ARGUMENTS
-
-[输出格式]
-1. Core Web Vitals 问题列表
-2. 每个问题的优化方案（含代码 Diff）
-3. 预期收益评估
-EOF_GEMINI",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Gemini 前端性能分析"
-})
-```
-
-2. 使用 `TaskOutput` 监控并获取 2 个模型的分析结果。
-
-**⚠️ 强制规则：必须等待 TaskOutput 返回两个模型的完整结果后才能进入下一阶段，禁止跳过或提前继续！**
+用 `TaskOutput` 等待两个模型的完整结果。
 
 ### 🔀 阶段 3：优化整合
 
@@ -161,5 +122,3 @@ EOF_GEMINI",
 2. **性价比优先** – 高影响 + 低难度优先
 3. **不破坏功能** – 优化不能引入 bug
 4. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
-5. **使用 Bash 工具的 `run_in_background: true` 参数 + `TaskOutput` 获取结果**
-6. **必须等待所有模型返回** – 禁止提前进入下一步

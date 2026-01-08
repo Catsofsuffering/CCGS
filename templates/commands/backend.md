@@ -25,28 +25,44 @@ description: '后端专项工作流（研究→构思→计划→执行→优化
 - **Gemini** – 前端视角（**后端意见仅供参考**）
 - **Claude (自己)** – 编排、计划、执行、交付
 
-[沟通守则]
+---
 
-1. 响应以模式标签 `[模式：X]` 开始，初始为 `[模式：研究]`
-2. 严格按 `研究 → 构思 → 计划 → 执行 → 优化 → 评审` 顺序流转
+## 多模型调用规范
+
+**调用语法**：
+
+```
+Bash({
+  command: "~/.claude/bin/codeagent-wrapper --backend codex [--resume <SESSION_ID>] - \"$PWD\" <<'EOF'
+ROLE_FILE: <角色提示词路径>
+<TASK>
+需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
+上下文：<前序阶段收集的项目上下文、分析结果等>
+</TASK>
+OUTPUT: 期望输出格式
+EOF",
+  run_in_background: false,
+  timeout: 3600000,
+  description: "简短描述"
+})
+```
+
+**角色提示词**：
+
+| 阶段 | Codex |
+|------|-------|
+| 分析 | `~/.claude/.ccg/prompts/codex/analyzer.md` |
+| 规划 | `~/.claude/.ccg/prompts/codex/architect.md` |
+| 审查 | `~/.claude/.ccg/prompts/codex/reviewer.md` |
+
+**会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `--resume xxx` 复用上下文。阶段 2 保存 `CODEX_SESSION`，阶段 3 和 5 使用 `--resume` 复用。
 
 ---
 
-## 多模型调用语法
+## 沟通守则
 
-```bash
-# Codex 调用（后端主力）
-~/.claude/bin/codeagent-wrapper --backend codex - "$PWD" <<'EOF'
-[角色提示词内容]
-
-[任务内容]
-EOF
-
-# Gemini 调用（前端参考）
-~/.claude/bin/codeagent-wrapper --backend gemini - "$PWD" <<'EOF'
-[任务内容]
-EOF
-```
+1. 响应以模式标签 `[模式：X]` 开始，初始为 `[模式：研究]`
+2. 严格按 `研究 → 构思 → 计划 → 执行 → 优化 → 评审` 顺序流转
 
 ---
 
@@ -54,12 +70,7 @@ EOF
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - 增强任务描述
-
-**如果 ace-tool MCP 可用**，调用 `mcp__ace-tool__enhance_prompt`：
-- 输入原始任务描述
-- 获取增强后的详细需求
-- 用增强后的需求替代原始 $ARGUMENTS
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex 时传入增强后的需求**
 
 ### 🔍 阶段 1：研究
 
@@ -72,32 +83,9 @@ EOF
 
 `[模式：构思]` - Codex 主导分析
 
-**调用示例**：
+调用 Codex，使用分析提示词，输出技术可行性、推荐方案、风险点。
 
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/analyzer.md
-
-<TASK>
-分析以下后端需求，提供设计方案：
-- API 接口设计
-- 数据模型结构
-- 性能与安全考虑
-- 错误处理策略
-
-需求：[具体任务描述]
-</TASK>
-
-OUTPUT: 技术可行性、推荐方案、风险点
-EOF_CODEX",
-  run_in_background: false,
-  timeout: 3600000,
-  description: "Codex 后端分析"
-})
-```
-
-**⚠️ 等待 Codex 返回后继续**
+**📌 保存 SESSION_ID**（`CODEX_SESSION`）。
 
 输出方案（至少 2 个），等待用户选择。
 
@@ -105,27 +93,7 @@ EOF_CODEX",
 
 `[模式：计划]` - Codex 主导规划
 
-**调用示例**：
-
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/architect.md
-
-<TASK>
-规划需求: [具体任务描述]
-Context: [项目上下文]
-</TASK>
-
-OUTPUT: 文件结构、函数/类设计、依赖
-EOF_CODEX",
-  run_in_background: false,
-  timeout: 3600000,
-  description: "Codex 后端架构规划"
-})
-```
-
-**⚠️ 等待 Codex 返回后继续**
+调用 Codex（`--resume $CODEX_SESSION`），使用规划提示词，输出文件结构、函数/类设计、依赖。
 
 Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
 
@@ -141,27 +109,7 @@ Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
 
 `[模式：优化]` - Codex 主导审查
 
-**调用示例**：
-
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md
-
-<TASK>
-审查代码: [实施的代码变更]
-关注点: 安全性、性能、错误处理、API规范
-</TASK>
-
-OUTPUT: 审查意见
-EOF_CODEX",
-  run_in_background: false,
-  timeout: 3600000,
-  description: "Codex 后端代码审查"
-})
-```
-
-**⚠️ 等待 Codex 返回后继续**
+调用 Codex，使用审查提示词，关注安全性、性能、错误处理、API规范。
 
 整合审查意见，用户确认后执行优化。
 

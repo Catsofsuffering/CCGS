@@ -12,20 +12,6 @@ description: '多模型技术分析（并行执行）：Codex 后端视角 + Gem
 /analyze <分析问题或任务>
 ```
 
-## 多模型调用语法
-
-**必须使用 heredoc 语法调用外部模型**：
-
-```bash
-codeagent-wrapper --backend <codex|gemini> - $PWD <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/<model>/<role>.md
-<TASK>
-任务描述
-</TASK>
-OUTPUT: 期望输出格式
-EOF
-```
-
 ## 你的角色
 
 你是**分析协调者**，编排多模型分析流程：
@@ -36,9 +22,44 @@ EOF
 
 ---
 
+## 多模型调用规范
+
+**调用语法**（并行用 `run_in_background: true`）：
+
+```
+Bash({
+  command: "~/.claude/bin/codeagent-wrapper --backend <codex|gemini> - \"$PWD\" <<'EOF'
+ROLE_FILE: <角色提示词路径>
+<TASK>
+需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
+上下文：<前序阶段检索到的代码上下文>
+</TASK>
+OUTPUT: 期望输出格式
+EOF",
+  run_in_background: true,
+  timeout: 3600000,
+  description: "简短描述"
+})
+```
+
+**角色提示词**：
+
+| 模型 | 提示词 |
+|------|--------|
+| Codex | `~/.claude/.ccg/prompts/codex/analyzer.md` |
+| Gemini | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
+
+**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
+
+---
+
 ## 执行工作流
 
 **分析任务**：$ARGUMENTS
+
+### 🔍 阶段 0：Prompt 增强（可选）
+
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
 
 ### 🔍 阶段 1：上下文检索
 
@@ -52,48 +73,11 @@ EOF
 
 `[模式：分析]`
 
-**并行调用两个模型**：
+**并行调用**（`run_in_background: true`）：
+- Codex：使用分析提示词，输出技术可行性、架构影响、性能考量
+- Gemini：使用分析提示词，输出 UI/UX 影响、用户体验、视觉设计考量
 
-**执行步骤**：
-1. 使用 **Bash 工具的 `run_in_background: true` 参数**启动两个后台进程：
-
-**Codex 分析进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend codex - \"$PWD\" <<'EOF_CODEX'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/analyzer.md
-<TASK>
-分析需求: $ARGUMENTS
-Context: <阶段1检索到的上下文>
-</TASK>
-OUTPUT: 技术可行性、架构影响、性能考量
-EOF_CODEX",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Codex 技术分析"
-})
-```
-
-**Gemini 分析进程**：
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper --backend gemini - \"$PWD\" <<'EOF_GEMINI'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/analyzer.md
-<TASK>
-分析需求: $ARGUMENTS
-Context: <阶段1检索到的上下文>
-</TASK>
-OUTPUT: UI/UX 影响、用户体验、视觉设计考量
-EOF_GEMINI",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Gemini UI 分析"
-})
-```
-
-2. 使用 `TaskOutput` 监控并获取 2 个模型的分析结果。
-
-**⚠️ 强制规则：必须等待 TaskOutput 返回两个模型的完整结果后才能进入下一阶段，禁止跳过或提前继续！**
+用 `TaskOutput` 等待两个模型的完整结果。
 
 ### 🔀 阶段 3：交叉验证
 
@@ -145,6 +129,5 @@ EOF_GEMINI",
 ## 关键规则
 
 1. **仅分析不修改** – 本命令不执行任何代码变更
-2. **使用 Bash 工具的 `run_in_background: true` 参数 + `TaskOutput` 获取结果**
-3. **必须等待所有模型返回完整结果后才能进入下一阶段**，禁止跳过或提前继续
-4. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+2. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+3. 外部模型对文件系统**零写入权限**
