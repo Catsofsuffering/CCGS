@@ -168,7 +168,7 @@ npx ccg-workflow
 ~/.claude/
 ├── commands/ccg/          # 14 个斜杠命令
 ├── agents/ccg/            # 4 个子智能体
-├── skills/                # 1 个 skill
+├── skills/                # 暂无
 ├── bin/
 │   └── codeagent-wrapper  # Go 多后端调用工具
 └── .ccg/
