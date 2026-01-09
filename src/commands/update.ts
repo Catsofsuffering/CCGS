@@ -176,7 +176,10 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   spinner = ora('正在更新工作流和 codeagent-wrapper 二进制...').start()
 
   try {
-    const workflows = config?.workflows?.installed || []
+    // IMPORTANT: Use getAllCommandIds() to install ALL commands (including newly added ones)
+    // Don't use config?.workflows?.installed as it may not include new commands
+    const { getAllCommandIds } = await import('../utils/installer')
+    const workflows = getAllCommandIds()
 
     const installDir = join(homedir(), '.claude')
     const result = await installWorkflows(workflows, installDir, true, {
@@ -192,9 +195,12 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
         console.log(`  ${ansis.gray('•')} /ccg:${cmd}`)
       }
 
-      // Update config version
+      // Update config version and installed workflows list
       if (config) {
         config.general.version = toVersion
+        config.workflows = {
+          installed: workflows, // Update to include all current commands
+        }
         await writeCcgConfig(config)
       }
     }
