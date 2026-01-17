@@ -34,6 +34,7 @@ description: '多模型性能优化：Codex 后端优化 + Gemini 前端优化'
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> - \"$PWD\" <<'EOF'
+ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
 上下文：<目标代码、现有性能指标等>
@@ -45,6 +46,13 @@ EOF",
   description: "简短描述"
 })
 ```
+
+**角色提示词**：
+
+| 模型 | 提示词 |
+|------|--------|
+| Codex | `~/.claude/.ccg/prompts/codex/optimizer.md` |
+| Gemini | `~/.claude/.ccg/prompts/gemini/optimizer.md` |
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -90,10 +98,12 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
 1. **Codex 后端分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/optimizer.md`
    - 需求：分析后端性能问题（$ARGUMENTS）
    - OUTPUT：性能瓶颈列表、优化方案、预期收益
 
 2. **Gemini 前端分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/optimizer.md`
    - 需求：分析前端性能问题（Core Web Vitals）
    - OUTPUT：性能瓶颈列表、优化方案、预期收益
 

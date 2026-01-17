@@ -34,6 +34,7 @@ description: '多模型测试生成：智能路由 Codex 后端测试 / Gemini �
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> - \"$PWD\" <<'EOF'
+ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：为以下代码生成测试
 <代码内容>
@@ -49,6 +50,13 @@ EOF",
   description: "简短描述"
 })
 ```
+
+**角色提示词**：
+
+| 模型 | 提示词 |
+|------|--------|
+| Codex | `~/.claude/.ccg/prompts/codex/tester.md` |
+| Gemini | `~/.claude/.ccg/prompts/gemini/tester.md` |
 
 **智能路由**：
 
@@ -97,10 +105,14 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 **⚠️ 根据代码类型必须调用对应模型**（参照上方调用规范）：
 
 - **后端代码** → `Bash({ command: "...--backend codex...", run_in_background: false })`
+  - ROLE_FILE: `~/.claude/.ccg/prompts/codex/tester.md`
 - **前端代码** → `Bash({ command: "...--backend gemini...", run_in_background: false })`
+  - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/tester.md`
 - **全栈代码** → 并行调用两者：
   1. `Bash({ command: "...--backend codex...", run_in_background: true })`
+     - ROLE_FILE: `~/.claude/.ccg/prompts/codex/tester.md`
   2. `Bash({ command: "...--backend gemini...", run_in_background: true })`
+     - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/tester.md`
   用 `TaskOutput` 等待结果
 
 OUTPUT：完整测试代码（使用项目现有测试框架，覆盖正常路径、边界条件、异常处理）
