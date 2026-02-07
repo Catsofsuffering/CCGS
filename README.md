@@ -118,14 +118,10 @@ v1.7.39 新增 `/ccg:plan` 和 `/ccg:execute` 命令，将规划与执行解耦�
     "CODEAGENT_POST_MESSAGE_DELAY": "1",
     "CODEX_TIMEOUT": "7200",
     "BASH_DEFAULT_TIMEOUT_MS": "600000",
-    "BASH_MAX_TIMEOUT_MS": "3600000",
-    "GEMINI_API_KEY": "your-gemini-api-key",
-    "GOOGLE_API_KEY": "your-google-api-key"
+    "BASH_MAX_TIMEOUT_MS": "3600000"
   }
 }
 ```
-
-> **VSCode 插件用户注意**：VSCode 启动的子进程不会继承终端环境变量，必须在 `settings.json` 中配置 API 密钥，否则 Gemini 会报退出码 41（授权失败）。
 
 ### MCP 配置
 
