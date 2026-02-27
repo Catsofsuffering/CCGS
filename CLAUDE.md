@@ -2,13 +2,16 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-02-10 (v1.7.60)
+**Last Updated**: 2026-02-27 (v1.7.62)
 
 ---
 
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-02-27 (v1.7.62)
+- 🔄 **Gemini 模型升级**：`gemini-3-pro-preview` → `gemini-3.1-pro-preview`（PR #65 by @23q3）
 
 ### 2026-02-10 (v1.7.60)
 - ✨ **Agent Teams 系列**：新增 4 个独立命令（`team-research`/`team-plan`/`team-exec`/`team-review`）

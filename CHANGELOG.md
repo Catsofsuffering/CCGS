@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.62] - 2026-02-27
+
+### 🔄 变更
+
+- Gemini 模型升级：`gemini-3-pro-preview` → `gemini-3.1-pro-preview`（PR #65 by @23q3）
+
+---
+
 ## [1.7.61] - 2026-02-10
 
 ### 🐛 修复
