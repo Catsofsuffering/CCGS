@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.65] - 2026-03-01
+
+### 🐛 修复
+
+- **MCP skip 模式修复**：当用户选择跳过 MCP 配置时，正确处理模板中的 `{{MCP_SEARCH_TOOL}}` 引用，替换为 Glob + Grep fallback 提示（PR #68 by @ymdvsymd）
+- **team-plan.md 修复**：将硬编码的 `mcp__ace-tool__search_context` 改为模板变量
+
+### ✨ 新功能
+
+- **测试框架**：新增 vitest 测试配置 + 39 个单元/集成测试
+
+---
+
 ## [1.7.64] - 2026-03-01
 
 ### 🔄 变更
