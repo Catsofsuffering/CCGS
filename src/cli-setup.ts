@@ -20,9 +20,9 @@ function customizeHelp(sections: any[]): any[] {
     body: [
       `  ${ansis.cyan('ccg')}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
       `  ${ansis.cyan('ccg init')} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
-      `  ${ansis.cyan('ccg config mcp')}   配置 ace-tool MCP Token`,
-      `  ${ansis.cyan('ccg diagnose-mcp')} 诊断 MCP 配置问题`,
-      `  ${ansis.cyan('ccg fix-mcp')}      修复 Windows MCP 配置`,
+      `  ${ansis.cyan('ccg config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
+      `  ${ansis.cyan('ccg diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
+      `  ${ansis.cyan('ccg fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
       '',
       ansis.gray(`  ${i18n.t('cli:help.shortcuts')}`),
       `  ${ansis.cyan('ccg i')}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
@@ -81,8 +81,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
 
   // Default command - show menu
   cli
-    .command('', '显示交互式菜单（默认）')
-    .option('--lang, -l <lang>', '显示语言 (zh-CN, en)')
+    .command('', i18n.t('cli:help.commandDescriptions.showMenu'))
+    .option('--lang, -l <lang>', `${i18n.t('cli:help.optionDescriptions.displayLanguage')} (zh-CN, en)`)
     .action(async (options: CliOptions) => {
       if (options.lang) {
         await initI18n(options.lang)
@@ -92,17 +92,17 @@ export async function setupCommands(cli: CAC): Promise<void> {
 
   // Init command
   cli
-    .command('init', '初始化 CCG 多模型协作系统')
+    .command('init', i18n.t('cli:help.commandDescriptions.initConfig'))
     .alias('i')
-    .option('--lang, -l <lang>', '显示语言 (zh-CN, en)')
-    .option('--force, -f', '强制覆盖现有配置')
-    .option('--skip-prompt, -s', '跳过所有交互式提示（非交互模式）')
-    .option('--skip-mcp', '跳过 MCP 配置（更新时使用）')
-    .option('--frontend, -F <models>', '前端模型（逗号分隔: gemini,codex,claude）')
-    .option('--backend, -B <models>', '后端模型（逗号分隔: codex,gemini,claude）')
-    .option('--mode, -m <mode>', '协作模式 (parallel, smart, sequential)')
-    .option('--workflows, -w <workflows>', '要安装的工作流（逗号分隔或 "all"）')
-    .option('--install-dir, -d <path>', '安装目录（默认: ~/.claude）')
+    .option('--lang, -l <lang>', `${i18n.t('cli:help.optionDescriptions.displayLanguage')} (zh-CN, en)`)
+    .option('--force, -f', i18n.t('cli:help.optionDescriptions.forceOverwrite'))
+    .option('--skip-prompt, -s', i18n.t('cli:help.optionDescriptions.skipAllPrompts'))
+    .option('--skip-mcp', 'Skip MCP configuration (used during update)')
+    .option('--frontend, -F <models>', i18n.t('cli:help.optionDescriptions.frontendModels'))
+    .option('--backend, -B <models>', i18n.t('cli:help.optionDescriptions.backendModels'))
+    .option('--mode, -m <mode>', i18n.t('cli:help.optionDescriptions.collaborationMode'))
+    .option('--workflows, -w <workflows>', i18n.t('cli:help.optionDescriptions.workflows'))
+    .option('--install-dir, -d <path>', i18n.t('cli:help.optionDescriptions.installDir'))
     .action(async (options: CliOptions) => {
       if (options.lang) {
         await initI18n(options.lang)
@@ -112,28 +112,28 @@ export async function setupCommands(cli: CAC): Promise<void> {
 
   // Diagnose MCP command
   cli
-    .command('diagnose-mcp', '诊断 MCP 配置问题')
+    .command('diagnose-mcp', i18n.t('cli:help.commandDescriptions.diagnoseMcp'))
     .action(async () => {
       await diagnoseMcp()
     })
 
   // Fix MCP command (Windows only)
   cli
-    .command('fix-mcp', '修复 Windows MCP 配置问题')
+    .command('fix-mcp', i18n.t('cli:help.commandDescriptions.fixMcp'))
     .action(async () => {
       await fixMcp()
     })
 
   // Config MCP command
   cli
-    .command('config <subcommand>', '配置 CCG 设置')
+    .command('config <subcommand>', i18n.t('cli:help.commandDescriptions.configMcp'))
     .action(async (subcommand: string) => {
       if (subcommand === 'mcp') {
         await configMcp()
       }
       else {
-        console.log(ansis.red(`未知子命令: ${subcommand}`))
-        console.log(ansis.gray('可用子命令: mcp'))
+        console.log(ansis.red(i18n.t('common:unknownSubcommand', { subcommand })))
+        console.log(ansis.gray(i18n.t('common:availableSubcommands', { list: 'mcp' })))
       }
     })
 

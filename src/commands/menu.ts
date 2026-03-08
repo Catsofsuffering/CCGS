@@ -29,11 +29,11 @@ export async function showMainMenu(): Promise<void> {
       choices: [
         { name: `${ansis.green('➜')} ${i18n.t('menu:options.init')}`, value: 'init' },
         { name: `${ansis.blue('➜')} ${i18n.t('menu:options.update')}`, value: 'update' },
-        { name: `${ansis.cyan('⚙')} 配置 MCP`, value: 'config-mcp' },
-        { name: `${ansis.cyan('🔑')} 配置 API`, value: 'config-api' },
-        { name: `${ansis.magenta('🎭')} 配置输出风格`, value: 'config-style' },
-        { name: `${ansis.yellow('🔧')} 实用工具`, value: 'tools' },
-        { name: `${ansis.blue('📦')} 安装 Claude Code`, value: 'install-claude' },
+        { name: `${ansis.cyan('⚙')} ${i18n.t('menu:options.configMcp')}`, value: 'config-mcp' },
+        { name: `${ansis.cyan('🔑')} ${i18n.t('menu:options.configApi')}`, value: 'config-api' },
+        { name: `${ansis.magenta('🎭')} ${i18n.t('menu:options.configStyle')}`, value: 'config-style' },
+        { name: `${ansis.yellow('🔧')} ${i18n.t('menu:options.tools')}`, value: 'tools' },
+        { name: `${ansis.blue('📦')} ${i18n.t('menu:options.installClaude')}`, value: 'install-claude' },
         { name: `${ansis.magenta('➜')} ${i18n.t('menu:options.uninstall')}`, value: 'uninstall' },
         { name: `${ansis.yellow('?')} ${i18n.t('menu:options.help')}`, value: 'help' },
         new inquirer.Separator(),
@@ -70,16 +70,16 @@ export async function showMainMenu(): Promise<void> {
         showHelp()
         break
       case 'exit':
-        console.log(ansis.gray('再见！'))
-        return // 退出循环和函数
+        console.log(ansis.gray(i18n.t('common:goodbye')))
+        return
     }
 
-    // 操作完成后暂停，让用户看到结果
+    // Pause after action so user can see results
     console.log()
     await inquirer.prompt([{
       type: 'input',
       name: 'continue',
-      message: ansis.gray('按 Enter 返回主菜单...'),
+      message: ansis.gray(i18n.t('common:pressEnterToReturn')),
     }])
   }
 }
@@ -90,51 +90,51 @@ function showHelp(): void {
   console.log()
 
   // Development Workflows
-  console.log(ansis.yellow.bold('  开发工作流:'))
-  console.log(`  ${ansis.green('/ccg:workflow')}    完整6阶段开发工作流`)
-  console.log(`  ${ansis.green('/ccg:plan')}        多模型协作规划（Phase 1-2）`)
-  console.log(`  ${ansis.green('/ccg:execute')}     多模型协作执行（Phase 3-5）`)
+  console.log(ansis.yellow.bold(`  ${i18n.t('menu:help.sections.devWorkflow')}`))
+  console.log(`  ${ansis.green('/ccg:workflow')}    ${i18n.t('menu:help.descriptions.workflow')}`)
+  console.log(`  ${ansis.green('/ccg:plan')}        ${i18n.t('menu:help.descriptions.plan')}`)
+  console.log(`  ${ansis.green('/ccg:execute')}     ${i18n.t('menu:help.descriptions.execute')}`)
   console.log(`  ${ansis.green('/ccg:frontend')}    ${i18n.t('menu:help.descriptions.frontend')}`)
   console.log(`  ${ansis.green('/ccg:backend')}     ${i18n.t('menu:help.descriptions.backend')}`)
-  console.log(`  ${ansis.green('/ccg:feat')}        智能功能开发`)
+  console.log(`  ${ansis.green('/ccg:feat')}        ${i18n.t('menu:help.descriptions.feat')}`)
   console.log(`  ${ansis.green('/ccg:analyze')}     ${i18n.t('menu:help.descriptions.analyze')}`)
-  console.log(`  ${ansis.green('/ccg:debug')}       问题诊断 + 修复`)
-  console.log(`  ${ansis.green('/ccg:optimize')}    性能优化`)
-  console.log(`  ${ansis.green('/ccg:test')}        测试生成`)
+  console.log(`  ${ansis.green('/ccg:debug')}       ${i18n.t('menu:help.descriptions.debug')}`)
+  console.log(`  ${ansis.green('/ccg:optimize')}    ${i18n.t('menu:help.descriptions.optimize')}`)
+  console.log(`  ${ansis.green('/ccg:test')}        ${i18n.t('menu:help.descriptions.test')}`)
   console.log(`  ${ansis.green('/ccg:review')}      ${i18n.t('menu:help.descriptions.review')}`)
   console.log()
 
   // OpenSpec Workflows
-  console.log(ansis.yellow.bold('  OpenSpec 规范驱动:'))
-  console.log(`  ${ansis.green('/ccg:spec-init')}      初始化 OpenSpec 环境`)
-  console.log(`  ${ansis.green('/ccg:spec-research')} 需求研究 → 约束集`)
-  console.log(`  ${ansis.green('/ccg:spec-plan')}     多模型分析 → 零决策计划`)
-  console.log(`  ${ansis.green('/ccg:spec-impl')}     规范驱动实现`)
-  console.log(`  ${ansis.green('/ccg:spec-review')}   归档前双模型审查`)
+  console.log(ansis.yellow.bold(`  ${i18n.t('menu:help.sections.opsx')}`))
+  console.log(`  ${ansis.green('/ccg:spec-init')}      ${i18n.t('menu:help.descriptions.specInit')}`)
+  console.log(`  ${ansis.green('/ccg:spec-research')} ${i18n.t('menu:help.descriptions.specResearch')}`)
+  console.log(`  ${ansis.green('/ccg:spec-plan')}     ${i18n.t('menu:help.descriptions.specPlan')}`)
+  console.log(`  ${ansis.green('/ccg:spec-impl')}     ${i18n.t('menu:help.descriptions.specImpl')}`)
+  console.log(`  ${ansis.green('/ccg:spec-review')}   ${i18n.t('menu:help.descriptions.specReview')}`)
   console.log()
 
   // Git Tools
-  console.log(ansis.yellow.bold('  Git 工具:'))
+  console.log(ansis.yellow.bold(`  ${i18n.t('menu:help.sections.gitTools')}`))
   console.log(`  ${ansis.green('/ccg:commit')}      ${i18n.t('menu:help.descriptions.commit')}`)
   console.log(`  ${ansis.green('/ccg:rollback')}    ${i18n.t('menu:help.descriptions.rollback')}`)
-  console.log(`  ${ansis.green('/ccg:clean-branches')} 清理已合并分支`)
-  console.log(`  ${ansis.green('/ccg:worktree')}    Git Worktree 管理`)
+  console.log(`  ${ansis.green('/ccg:clean-branches')} ${i18n.t('menu:help.descriptions.cleanBranches')}`)
+  console.log(`  ${ansis.green('/ccg:worktree')}    ${i18n.t('menu:help.descriptions.worktree')}`)
   console.log()
 
   // Project Init
-  console.log(ansis.yellow.bold('  项目管理:'))
-  console.log(`  ${ansis.green('/ccg:init')}        初始化项目 CLAUDE.md`)
+  console.log(ansis.yellow.bold(`  ${i18n.t('menu:help.sections.projectMgmt')}`))
+  console.log(`  ${ansis.green('/ccg:init')}        ${i18n.t('menu:help.descriptions.init')}`)
   console.log()
 
   console.log(ansis.gray(i18n.t('menu:help.hint')))
   console.log()
 }
 
-// ============ API 配置 ============
+// ============ API Configuration ============
 
 async function configApi(): Promise<void> {
   console.log()
-  console.log(ansis.cyan.bold('  配置 Claude Code API'))
+  console.log(ansis.cyan.bold(`  ${i18n.t('menu:api.title')}`))
   console.log()
 
   const settingsPath = join(homedir(), '.claude', 'settings.json')
@@ -148,7 +148,7 @@ async function configApi(): Promise<void> {
   const currentUrl = settings.env?.ANTHROPIC_BASE_URL
   const currentKey = settings.env?.ANTHROPIC_API_KEY || settings.env?.ANTHROPIC_AUTH_TOKEN
   if (currentUrl || currentKey) {
-    console.log(ansis.gray('  当前配置:'))
+    console.log(ansis.gray(`  ${i18n.t('menu:api.currentConfig')}`))
     if (currentUrl)
       console.log(ansis.gray(`    URL: ${currentUrl}`))
     if (currentKey)
@@ -160,19 +160,19 @@ async function configApi(): Promise<void> {
     {
       type: 'input',
       name: 'url',
-      message: `API URL ${ansis.gray('(留空使用官方)')}`,
+      message: `${i18n.t('menu:api.urlPrompt')} ${ansis.gray(`(${i18n.t('menu:api.leaveEmptyOfficial')})`)}`,
       default: currentUrl || '',
     },
     {
       type: 'password',
       name: 'key',
-      message: `API Key ${ansis.gray('(留空跳过)')}`,
+      message: `${i18n.t('menu:api.keyPrompt')} ${ansis.gray(`(${i18n.t('menu:api.leaveEmptySkip')})`)}`,
       mask: '*',
     },
   ])
 
   if (!answers.url && !answers.key) {
-    console.log(ansis.gray('未修改配置'))
+    console.log(ansis.gray(i18n.t('common:configNotModified')))
     return
   }
 
@@ -189,14 +189,14 @@ async function configApi(): Promise<void> {
     delete settings.env.ANTHROPIC_AUTH_TOKEN
   }
 
-  // 默认优化配置
+  // Default optimization config
   settings.env.DISABLE_TELEMETRY = '1'
   settings.env.DISABLE_ERROR_REPORTING = '1'
   settings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
   settings.env.CLAUDE_CODE_ATTRIBUTION_HEADER = '0'
   settings.env.MCP_TIMEOUT = '60000'
 
-  // codeagent-wrapper 权限白名单
+  // codeagent-wrapper permission allowlist
   if (!settings.permissions)
     settings.permissions = {}
   if (!settings.permissions.allow)
@@ -214,27 +214,24 @@ async function configApi(): Promise<void> {
   await fs.writeJson(settingsPath, settings, { spaces: 2 })
 
   console.log()
-  console.log(ansis.green('✓ API 配置已保存'))
-  console.log(ansis.gray(`  配置文件: ${settingsPath}`))
+  console.log(ansis.green(`✓ ${i18n.t('menu:api.saved')}`))
+  console.log(ansis.gray(`  ${i18n.t('common:configFile')}: ${settingsPath}`))
 }
 
-// ============ 配置输出风格 ============
+// ============ Output Style Configuration ============
 
-// 风格来源：
-// - abyss-cultivator: https://github.com/telagod/code-abyss
-// - engineer-professional, nekomata-engineer, laowang-engineer, ojousama-engineer: https://github.com/UfoMiao/zcf
 const OUTPUT_STYLES = [
-  { id: 'default', name: '默认', desc: 'Claude Code 原生风格' },
-  { id: 'engineer-professional', name: '专业工程师', desc: '简洁专业的技术风格' },
-  { id: 'nekomata-engineer', name: '猫娘工程师', desc: '可爱猫娘语气喵~' },
-  { id: 'laowang-engineer', name: '老王工程师', desc: '接地气的老王风格' },
-  { id: 'ojousama-engineer', name: '大小姐工程师', desc: '优雅大小姐语气' },
-  { id: 'abyss-cultivator', name: '邪修风格', desc: '宿命深渊·道语标签' },
+  { id: 'default', nameKey: 'menu:style.default', descKey: 'menu:style.defaultDesc' },
+  { id: 'engineer-professional', nameKey: 'menu:style.engineerPro', descKey: 'menu:style.engineerProDesc' },
+  { id: 'nekomata-engineer', nameKey: 'menu:style.nekomata', descKey: 'menu:style.nekomataDesc' },
+  { id: 'laowang-engineer', nameKey: 'menu:style.laowang', descKey: 'menu:style.laowangDesc' },
+  { id: 'ojousama-engineer', nameKey: 'menu:style.ojousama', descKey: 'menu:style.ojousamaDesc' },
+  { id: 'abyss-cultivator', nameKey: 'menu:style.abyss', descKey: 'menu:style.abyssDesc' },
 ]
 
 async function configOutputStyle(): Promise<void> {
   console.log()
-  console.log(ansis.cyan.bold('  配置输出风格'))
+  console.log(ansis.cyan.bold(`  ${i18n.t('menu:style.title')}`))
   console.log()
 
   const settingsPath = join(homedir(), '.claude', 'settings.json')
@@ -244,48 +241,46 @@ async function configOutputStyle(): Promise<void> {
   }
 
   const currentStyle = settings.outputStyle || 'default'
-  console.log(ansis.gray(`  当前风格: ${currentStyle}`))
+  console.log(ansis.gray(`  ${i18n.t('menu:style.currentStyle')}: ${currentStyle}`))
   console.log()
 
   const { style } = await inquirer.prompt([{
     type: 'list',
     name: 'style',
-    message: '选择输出风格',
+    message: i18n.t('menu:style.selectStyle'),
     choices: OUTPUT_STYLES.map(s => ({
-      name: `${s.name} ${ansis.gray(`- ${s.desc}`)}`,
+      name: `${i18n.t(s.nameKey)} ${ansis.gray(`- ${i18n.t(s.descKey)}`)}`,
       value: s.id,
     })),
     default: currentStyle,
   }])
 
   if (style === currentStyle) {
-    console.log(ansis.gray('风格未变更'))
+    console.log(ansis.gray(i18n.t('menu:style.notChanged')))
     return
   }
 
-  // 如果选择自定义风格，需要复制文件
+  // Copy style file if not default
   if (style !== 'default') {
     const outputStylesDir = join(homedir(), '.claude', 'output-styles')
     await fs.ensureDir(outputStylesDir)
 
-    // 从模板复制风格文件
     const __filename = fileURLToPath(import.meta.url)
     const __dirname = dirname(__filename)
-    // 从 dist/shared 或 src/commands 回到包根目录
     let pkgRoot = dirname(dirname(__dirname))
     if (!await fs.pathExists(join(pkgRoot, 'templates'))) {
-      pkgRoot = dirname(pkgRoot) // 再上一级
+      pkgRoot = dirname(pkgRoot)
     }
     const templatePath = join(pkgRoot, 'templates', 'output-styles', `${style}.md`)
     const destPath = join(outputStylesDir, `${style}.md`)
 
     if (await fs.pathExists(templatePath)) {
       await fs.copy(templatePath, destPath)
-      console.log(ansis.green(`✓ 已安装风格文件: ${style}.md`))
+      console.log(ansis.green(`✓ ${i18n.t('menu:style.installed', { style })}`))
     }
   }
 
-  // 更新 settings.json
+  // Update settings.json
   if (style === 'default') {
     delete settings.outputStyle
   }
@@ -296,18 +291,18 @@ async function configOutputStyle(): Promise<void> {
   await fs.writeJson(settingsPath, settings, { spaces: 2 })
 
   console.log()
-  console.log(ansis.green(`✓ 输出风格已设置为: ${style}`))
-  console.log(ansis.gray('  重启 Claude Code CLI 使配置生效'))
+  console.log(ansis.green(`✓ ${i18n.t('menu:style.set', { style })}`))
+  console.log(ansis.gray(`  ${i18n.t('common:restartToApply')}`))
 }
 
-// ============ 安装 Claude Code ============
+// ============ Install Claude Code ============
 
 async function handleInstallClaude(): Promise<void> {
   console.log()
-  console.log(ansis.cyan.bold('  安装/重装 Claude Code'))
+  console.log(ansis.cyan.bold(`  ${i18n.t('menu:claude.title')}`))
   console.log()
 
-  // 检查是否已安装
+  // Check if already installed
   let isInstalled = false
   try {
     await execAsync('claude --version', { timeout: 5000 })
@@ -318,51 +313,51 @@ async function handleInstallClaude(): Promise<void> {
   }
 
   if (isInstalled) {
-    console.log(ansis.yellow('⚠ 检测到已安装 Claude Code'))
+    console.log(ansis.yellow(`⚠ ${i18n.t('menu:claude.alreadyInstalled')}`))
     const { confirm } = await inquirer.prompt([{
       type: 'confirm',
       name: 'confirm',
-      message: '是否卸载后重新安装？',
+      message: i18n.t('menu:claude.reinstallPrompt'),
       default: false,
     }])
 
     if (!confirm) {
-      console.log(ansis.gray('已取消'))
+      console.log(ansis.gray(i18n.t('common:cancelled')))
       return
     }
 
-    // 卸载
+    // Uninstall
     console.log()
-    console.log(ansis.yellow('⏳ 正在卸载 Claude Code...'))
+    console.log(ansis.yellow(`⏳ ${i18n.t('menu:claude.uninstalling')}`))
     try {
       const uninstallCmd = isWindows() ? 'npm uninstall -g @anthropic-ai/claude-code' : 'sudo npm uninstall -g @anthropic-ai/claude-code'
       await execAsync(uninstallCmd, { timeout: 60000 })
-      console.log(ansis.green('✓ 卸载成功'))
+      console.log(ansis.green(`✓ ${i18n.t('menu:claude.uninstallSuccess')}`))
     }
     catch (e) {
-      console.log(ansis.red(`✗ 卸载失败: ${e}`))
+      console.log(ansis.red(`✗ ${i18n.t('menu:claude.uninstallFailed', { error: String(e) })}`))
       return
     }
   }
 
-  // 选择安装方式
+  // Select installation method
   const isMac = process.platform === 'darwin'
   const isLinux = process.platform === 'linux'
 
   const { method } = await inquirer.prompt([{
     type: 'list',
     name: 'method',
-    message: '选择安装方式',
+    message: i18n.t('menu:claude.selectMethod'),
     choices: [
-      { name: `npm ${ansis.green('(推荐)')} ${ansis.gray('- 全局安装')}`, value: 'npm' },
+      { name: `npm ${ansis.green(`(${i18n.t('menu:claude.npmRecommended')})`)} ${ansis.gray('- npm install -g')}`, value: 'npm' },
       ...((isMac || isLinux) ? [{ name: `homebrew ${ansis.gray('- brew install')}`, value: 'homebrew' }] : []),
-      ...((isMac || isLinux) ? [{ name: `curl ${ansis.gray('- 官方脚本')}`, value: 'curl' }] : []),
+      ...((isMac || isLinux) ? [{ name: `curl ${ansis.gray('- official script')}`, value: 'curl' }] : []),
       ...(isWindows() ? [
-        { name: `powershell ${ansis.gray('- Windows 官方')}`, value: 'powershell' },
-        { name: `cmd ${ansis.gray('- 命令提示符')}`, value: 'cmd' },
+        { name: `powershell ${ansis.gray('- Windows official')}`, value: 'powershell' },
+        { name: `cmd ${ansis.gray('- Command Prompt')}`, value: 'cmd' },
       ] : []),
       new inquirer.Separator(),
-      { name: `${ansis.gray('取消')}`, value: 'cancel' },
+      { name: `${ansis.gray(i18n.t('common:cancel'))}`, value: 'cancel' },
     ],
   }])
 
@@ -370,7 +365,7 @@ async function handleInstallClaude(): Promise<void> {
     return
 
   console.log()
-  console.log(ansis.yellow('⏳ 正在安装 Claude Code...'))
+  console.log(ansis.yellow(`⏳ ${i18n.t('menu:claude.installing')}`))
 
   try {
     if (method === 'npm') {
@@ -390,12 +385,12 @@ async function handleInstallClaude(): Promise<void> {
       await execAsync('cmd /c "curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd"', { timeout: 300000 })
     }
 
-    console.log(ansis.green('✓ Claude Code 安装成功'))
+    console.log(ansis.green(`✓ ${i18n.t('menu:claude.installSuccess')}`))
     console.log()
-    console.log(ansis.cyan('💡 提示：运行 claude 命令启动'))
+    console.log(ansis.cyan(`💡 ${i18n.t('menu:claude.runHint')}`))
   }
   catch (e) {
-    console.log(ansis.red(`✗ 安装失败: ${e}`))
+    console.log(ansis.red(`✗ ${i18n.t('menu:claude.installFailed', { error: String(e) })}`))
   }
 }
 
@@ -419,11 +414,11 @@ async function uninstall(): Promise<void> {
   const isGlobalInstall = await checkIfGlobalInstall()
 
   if (isGlobalInstall) {
-    console.log(ansis.yellow('⚠️  检测到你是通过 npm 全局安装的'))
+    console.log(ansis.yellow(`⚠️  ${i18n.t('menu:uninstall.globalDetected')}`))
     console.log()
-    console.log('完整卸载需要两步：')
-    console.log(`  ${ansis.cyan('1. 移除工作流文件')} (即将执行)`)
-    console.log(`  ${ansis.cyan('2. 卸载 npm 全局包')} (需要手动执行)`)
+    console.log(i18n.t('menu:uninstall.twoSteps'))
+    console.log(`  ${ansis.cyan(`1. ${i18n.t('menu:uninstall.step1')}`)} (${i18n.t('menu:uninstall.step1Hint')})`)
+    console.log(`  ${ansis.cyan(`2. ${i18n.t('menu:uninstall.step2')}`)} (${i18n.t('menu:uninstall.step2Hint')})`)
     console.log()
   }
 
@@ -431,7 +426,7 @@ async function uninstall(): Promise<void> {
   const { confirm } = await inquirer.prompt([{
     type: 'confirm',
     name: 'confirm',
-    message: isGlobalInstall ? '继续卸载工作流文件？' : i18n.t('menu:uninstall.confirm'),
+    message: isGlobalInstall ? i18n.t('menu:uninstall.continuePrompt') : i18n.t('menu:uninstall.confirm'),
     default: false,
   }])
 
@@ -448,7 +443,7 @@ async function uninstall(): Promise<void> {
   const result = await uninstallWorkflows(installDir)
 
   if (result.success) {
-    console.log(ansis.green('✅ 工作流文件已移除'))
+    console.log(ansis.green(`✅ ${i18n.t('menu:uninstall.success')}`))
 
     if (result.removedCommands.length > 0) {
       console.log()
@@ -460,7 +455,7 @@ async function uninstall(): Promise<void> {
 
     if (result.removedAgents.length > 0) {
       console.log()
-      console.log(ansis.cyan('已移除子智能体:'))
+      console.log(ansis.cyan(i18n.t('menu:uninstall.removedAgents')))
       for (const agent of result.removedAgents) {
         console.log(`  ${ansis.gray('•')} ${agent}`)
       }
@@ -468,26 +463,26 @@ async function uninstall(): Promise<void> {
 
     if (result.removedSkills.length > 0) {
       console.log()
-      console.log(ansis.cyan('已移除 Skills:'))
+      console.log(ansis.cyan(i18n.t('menu:uninstall.removedSkills')))
       console.log(`  ${ansis.gray('•')} multi-model-collaboration`)
     }
 
     if (result.removedBin) {
       console.log()
-      console.log(ansis.cyan('已移除二进制文件:'))
+      console.log(ansis.cyan(i18n.t('menu:uninstall.removedBin')))
       console.log(`  ${ansis.gray('•')} codeagent-wrapper`)
     }
 
     // If globally installed, show instructions to uninstall npm package
     if (isGlobalInstall) {
       console.log()
-      console.log(ansis.yellow.bold('🔸 最后一步：卸载 npm 全局包'))
+      console.log(ansis.yellow.bold(`🔸 ${i18n.t('menu:uninstall.lastStep')}`))
       console.log()
-      console.log('请在新的终端窗口中运行：')
+      console.log(i18n.t('menu:uninstall.runInNewTerminal'))
       console.log()
       console.log(ansis.cyan.bold('  npm uninstall -g ccg-workflow'))
       console.log()
-      console.log(ansis.gray('(完成后 ccg 命令将彻底移除)'))
+      console.log(ansis.gray(`(${i18n.t('menu:uninstall.afterDone')})`))
     }
   }
   else {
@@ -500,7 +495,7 @@ async function uninstall(): Promise<void> {
   console.log()
 }
 
-// ============ 实用工具 ============
+// ============ Tools ============
 
 async function handleTools(): Promise<void> {
   console.log()
@@ -508,12 +503,12 @@ async function handleTools(): Promise<void> {
   const { tool } = await inquirer.prompt([{
     type: 'list',
     name: 'tool',
-    message: '选择工具',
+    message: i18n.t('menu:tools.title'),
     choices: [
-      { name: `${ansis.green('📊')} ccusage ${ansis.gray('- Claude Code 用量分析')}`, value: 'ccusage' },
-      { name: `${ansis.blue('📟')} CCometixLine ${ansis.gray('- 状态栏工具（Git + 用量）')}`, value: 'ccline' },
+      { name: `${ansis.green('📊')} ccusage ${ansis.gray(`- ${i18n.t('menu:tools.ccusage')}`)}`, value: 'ccusage' },
+      { name: `${ansis.blue('📟')} CCometixLine ${ansis.gray(`- ${i18n.t('menu:tools.ccline')}`)}`, value: 'ccline' },
       new inquirer.Separator(),
-      { name: `${ansis.gray('返回')}`, value: 'cancel' },
+      { name: `${ansis.gray(i18n.t('common:back'))}`, value: 'cancel' },
     ],
   }])
 
@@ -530,7 +525,7 @@ async function handleTools(): Promise<void> {
 
 async function runCcusage(): Promise<void> {
   console.log()
-  console.log(ansis.cyan('📊 运行 ccusage...'))
+  console.log(ansis.cyan(`📊 ${i18n.t('menu:tools.runningCcusage')}`))
   console.log(ansis.gray('$ npx ccusage@latest'))
   console.log()
 
@@ -550,12 +545,12 @@ async function handleCCometixLine(): Promise<void> {
   const { action } = await inquirer.prompt([{
     type: 'list',
     name: 'action',
-    message: 'CCometixLine 操作',
+    message: i18n.t('menu:tools.cclineAction'),
     choices: [
-      { name: `${ansis.green('➜')} 安装/更新`, value: 'install' },
-      { name: `${ansis.red('✕')} 卸载`, value: 'uninstall' },
+      { name: `${ansis.green('➜')} ${i18n.t('menu:tools.cclineInstall')}`, value: 'install' },
+      { name: `${ansis.red('✕')} ${i18n.t('menu:tools.cclineUninstall')}`, value: 'uninstall' },
       new inquirer.Separator(),
-      { name: `${ansis.gray('返回')}`, value: 'cancel' },
+      { name: `${ansis.gray(i18n.t('common:back'))}`, value: 'cancel' },
     ],
   }])
 
@@ -572,13 +567,13 @@ async function handleCCometixLine(): Promise<void> {
 
 async function installCCometixLine(): Promise<void> {
   console.log()
-  console.log(ansis.yellow('⏳ 正在安装 CCometixLine...'))
+  console.log(ansis.yellow(`⏳ ${i18n.t('menu:tools.cclineInstalling')}`))
 
   try {
     // 1. Install npm package globally
     const installCmd = isWindows() ? 'npm install -g @cometix/ccline' : 'sudo npm install -g @cometix/ccline'
     await execAsync(installCmd, { timeout: 120000 })
-    console.log(ansis.green('✓ @cometix/ccline 安装成功'))
+    console.log(ansis.green(`✓ ${i18n.t('menu:tools.cclineInstallSuccess')}`))
 
     // 2. Configure Claude Code statusLine
     const settingsPath = join(homedir(), '.claude', 'settings.json')
@@ -598,19 +593,19 @@ async function installCCometixLine(): Promise<void> {
 
     await fs.ensureDir(join(homedir(), '.claude'))
     await fs.writeJson(settingsPath, settings, { spaces: 2 })
-    console.log(ansis.green('✓ Claude Code statusLine 已配置'))
+    console.log(ansis.green(`✓ ${i18n.t('menu:tools.cclineConfigured')}`))
 
     console.log()
-    console.log(ansis.cyan('💡 提示：重启 Claude Code CLI 使配置生效'))
+    console.log(ansis.cyan(`💡 ${i18n.t('common:restartToApply')}`))
   }
   catch (error) {
-    console.log(ansis.red(`✗ 安装失败: ${error}`))
+    console.log(ansis.red(`✗ ${i18n.t('menu:tools.cclineInstallFailed', { error: String(error) })}`))
   }
 }
 
 async function uninstallCCometixLine(): Promise<void> {
   console.log()
-  console.log(ansis.yellow('⏳ 正在卸载 CCometixLine...'))
+  console.log(ansis.yellow(`⏳ ${i18n.t('menu:tools.cclineUninstalling')}`))
 
   try {
     // 1. Remove statusLine config
@@ -619,15 +614,15 @@ async function uninstallCCometixLine(): Promise<void> {
       const settings = await fs.readJson(settingsPath)
       delete settings.statusLine
       await fs.writeJson(settingsPath, settings, { spaces: 2 })
-      console.log(ansis.green('✓ statusLine 配置已移除'))
+      console.log(ansis.green(`✓ ${i18n.t('menu:tools.cclineConfigRemoved')}`))
     }
 
     // 2. Uninstall npm package
     const uninstallCmd = isWindows() ? 'npm uninstall -g @cometix/ccline' : 'sudo npm uninstall -g @cometix/ccline'
     await execAsync(uninstallCmd, { timeout: 60000 })
-    console.log(ansis.green('✓ @cometix/ccline 已卸载'))
+    console.log(ansis.green(`✓ ${i18n.t('menu:tools.cclineUninstalled')}`))
   }
   catch (error) {
-    console.log(ansis.red(`✗ 卸载失败: ${error}`))
+    console.log(ansis.red(`✗ ${i18n.t('menu:tools.cclineUninstallFailed', { error: String(error) })}`))
   }
 }

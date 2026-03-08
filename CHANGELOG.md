@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.69] - 2026-03-09
+
+### ✨ 新功能
+
+- **国际化 (i18n)**：首次安装时提示选择语言（简体中文 / English），所有 CLI 交互文本通过 i18n 系统输出
+- **codeagent-wrapper Hook 自动授权**：安装时自动写入 `settings.json` Hook 配置，解决部分用户 `permissions.allow` 不生效的问题。需要系统安装 `jq`，安装时自动检测并提示
+- **英文 README**：README.md 改为英文版，原中文版移至 README.zh-CN.md，双语互链
+
+### 🔄 变更
+
+- `init.ts` / `menu.ts` / `update.ts` / `cli-setup.ts` 全面 i18n 化，消除 100+ 处硬编码中文字符串
+- `i18n/index.ts` 扩展至 800+ 行，涵盖 CLI、init、menu、update 所有命名空间的 zh-CN / en 完整翻译
+
+---
+
 ## [1.7.68] - 2026-03-09
 
 ### 🐛 修复

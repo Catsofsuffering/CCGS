@@ -1,7 +1,7 @@
 {
   "name": "ccg-workflow",
-  "version": "1.7.68",
-  "description": "Claude-Codex-Gemini 多模型协作系统 - 智能路由多模型开发工作流",
+  "version": "1.7.69",
+  "description": "Claude + Codex + Gemini multi-model collaboration system - smart routing development workflow",
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "author": {
