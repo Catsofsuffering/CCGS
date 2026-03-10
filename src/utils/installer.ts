@@ -730,12 +730,29 @@ ${workflow.description}
     }
   }
 
-  // Install skills (quality gates, multi-agent orchestration, etc. → ~/.claude/skills/)
-  // Uses recursive copy to handle nested directory structures (tools/verify-*/scripts/*.js)
+  // Install skills (quality gates, multi-agent orchestration, etc. → ~/.claude/skills/ccg/)
+  // Uses 'ccg' namespace to avoid clobbering user's own skills on uninstall
   const skillsTemplateDir = join(templateDir, 'skills')
-  const skillsDestDir = join(installDir, 'skills')
+  const skillsDestDir = join(installDir, 'skills', 'ccg')
   if (await fs.pathExists(skillsTemplateDir)) {
     try {
+      // Migration: move old v1.7.73 layout (skills/{tools,orchestration,SKILL.md,run_skill.js})
+      // into skills/ccg/ namespace, preserving user's own skills in skills/
+      const oldSkillsRoot = join(installDir, 'skills')
+      const ccgLegacyItems = ['tools', 'orchestration', 'SKILL.md', 'run_skill.js']
+      const needsMigration = !await fs.pathExists(skillsDestDir)
+        && await fs.pathExists(join(oldSkillsRoot, 'tools'))
+      if (needsMigration) {
+        await fs.ensureDir(skillsDestDir)
+        for (const item of ccgLegacyItems) {
+          const oldPath = join(oldSkillsRoot, item)
+          const newPath = join(skillsDestDir, item)
+          if (await fs.pathExists(oldPath)) {
+            await fs.move(oldPath, newPath, { overwrite: true })
+          }
+        }
+      }
+
       // Recursive copy: preserves full directory tree (tools/lib, tools/*/scripts/, orchestration/*)
       await fs.copy(skillsTemplateDir, skillsDestDir, {
         overwrite: force,
@@ -865,7 +882,7 @@ export async function uninstallWorkflows(installDir: string): Promise<UninstallR
   const commandsDir = join(installDir, 'commands', 'ccg')
   const promptsDir = join(installDir, '.ccg', 'prompts')
   const agentsDir = join(installDir, 'agents', 'ccg')
-  const skillsDir = join(installDir, 'skills')
+  const skillsDir = join(installDir, 'skills', 'ccg')
   const binDir = join(installDir, 'bin')
   const ccgConfigDir = join(installDir, '.ccg')
 
@@ -907,7 +924,7 @@ export async function uninstallWorkflows(installDir: string): Promise<UninstallR
     }
   }
 
-  // Remove CCG skills directory (recursive — matches new install pattern)
+  // Remove CCG skills directory only (skills/ccg/) — preserves user's own skills in skills/
   if (await fs.pathExists(skillsDir)) {
     try {
       // Collect skill names for reporting (SKILL.md files, excluding root)

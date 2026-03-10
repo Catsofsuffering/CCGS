@@ -22,13 +22,17 @@ description: '按规范执行 + 多模型协作 + 归档'
    - Confirm with user which change ID to implement.
    - Run `openspec status --change "<change_id>" --json` to review tasks.
 
-2. **Apply OPSX Change**
+2. **Apply OPSX Change (Pre-flight Check)**
    - Call `/opsx:apply` internally to enter implementation mode:
      ```
      /opsx:apply
      ```
    - This will load the change context and guide you through the tasks defined in `tasks.md`.
    - **Note**: This is an internal call. If this step fails, guide the user to re-run `/ccg:spec-impl`.
+   - **HARD GATE**: Check the returned `state` field:
+     - If `state: "blocked"` → STOP immediately. Inform the user which artifacts are missing and suggest: "Run `/ccg:spec-plan` to generate missing artifacts first."
+     - If `progress.total === 0` → STOP immediately. Inform: "tasks.md has no parseable tasks. Run `/ccg:spec-plan` to regenerate."
+     - Only proceed to Step 3 when `state: "ready"` and `progress.total > 0`.
 
 3. **Identify Minimal Verifiable Phase**
    - Review `tasks.md` and identify the **smallest verifiable phase**.

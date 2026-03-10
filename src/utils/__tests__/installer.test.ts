@@ -331,3 +331,85 @@ describe('installWorkflows — prompts installation', () => {
     expect(geminiFiles.length).toBeGreaterThanOrEqual(5)
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// H. Skills namespace isolation (skills/ccg/)
+// ─────────────────────────────────────────────────────────────
+describe('skills namespace isolation', () => {
+  const tmpDir = join(tmpdir(), `ccg-test-skills-${Date.now()}`)
+
+  afterAll(async () => {
+    await fs.remove(tmpDir)
+  })
+
+  it('installs skills under skills/ccg/ namespace', async () => {
+    const result = await installWorkflows(['workflow'], tmpDir, true, {
+      mcpProvider: 'skip',
+    })
+    expect(result.success).toBe(true)
+    expect(result.installedSkills).toBeGreaterThanOrEqual(6)
+
+    // Skills must be under skills/ccg/, not skills/ root
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'tools'))).toBe(true)
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'orchestration'))).toBe(true)
+  })
+
+  it('uninstall only removes skills/ccg/, preserves user skills', async () => {
+    // Simulate a user-created skill at skills/my-custom-skill/SKILL.md
+    const userSkillDir = join(tmpDir, 'skills', 'my-custom-skill')
+    await fs.ensureDir(userSkillDir)
+    await fs.writeFile(join(userSkillDir, 'SKILL.md'), '# My Custom Skill')
+
+    // Uninstall CCG
+    const result = await uninstallWorkflows(tmpDir)
+    expect(result.success).toBe(true)
+    expect(result.removedSkills.length).toBeGreaterThan(0)
+
+    // CCG skills gone
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg'))).toBe(false)
+
+    // User skill preserved!
+    expect(fs.existsSync(join(userSkillDir, 'SKILL.md'))).toBe(true)
+
+    // Cleanup
+    await fs.remove(userSkillDir)
+  })
+
+  it('migrates old v1.7.73 layout to skills/ccg/', async () => {
+    const migrateDir = join(tmpdir(), `ccg-test-migrate-${Date.now()}`)
+
+    // Simulate old layout: skills/{tools,orchestration,SKILL.md,run_skill.js}
+    const oldSkills = join(migrateDir, 'skills')
+    await fs.ensureDir(join(oldSkills, 'tools', 'verify-security'))
+    await fs.ensureDir(join(oldSkills, 'orchestration', 'multi-agent'))
+    await fs.writeFile(join(oldSkills, 'SKILL.md'), '# Old Root')
+    await fs.writeFile(join(oldSkills, 'run_skill.js'), '// old')
+    await fs.writeFile(join(oldSkills, 'tools', 'verify-security', 'SKILL.md'), '# Old Security')
+    await fs.writeFile(join(oldSkills, 'orchestration', 'multi-agent', 'SKILL.md'), '# Old Multi-Agent')
+
+    // Also add a user skill that should NOT be migrated
+    await fs.ensureDir(join(oldSkills, 'brainstorming'))
+    await fs.writeFile(join(oldSkills, 'brainstorming', 'SKILL.md'), '# User Brainstorming')
+
+    // Install triggers migration
+    const result = await installWorkflows(['workflow'], migrateDir, true, {
+      mcpProvider: 'skip',
+    })
+    expect(result.success).toBe(true)
+
+    // CCG skills moved to skills/ccg/
+    expect(fs.existsSync(join(migrateDir, 'skills', 'ccg', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(migrateDir, 'skills', 'ccg', 'tools'))).toBe(true)
+    expect(fs.existsSync(join(migrateDir, 'skills', 'ccg', 'orchestration'))).toBe(true)
+
+    // User skill untouched at original location
+    expect(fs.existsSync(join(migrateDir, 'skills', 'brainstorming', 'SKILL.md'))).toBe(true)
+
+    // Old CCG items no longer at root level
+    expect(fs.existsSync(join(migrateDir, 'skills', 'tools'))).toBe(false)
+    expect(fs.existsSync(join(migrateDir, 'skills', 'orchestration'))).toBe(false)
+
+    await fs.remove(migrateDir)
+  })
+})

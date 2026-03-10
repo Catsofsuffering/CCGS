@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.75] - 2026-03-10
+
+### 🐛 修复
+
+- **Skills 命名空间隔离**：安装路径从 `~/.claude/skills/` 改为 `~/.claude/skills/ccg/`，卸载时不再误删用户自建 skill（如 `brainstorming`、`changelog-generator` 等）
+- **旧版迁移**：升级时自动将 v1.7.73-74 散落在 `skills/` 根目录的 CCG 文件迁移到 `skills/ccg/`，用户 skill 原地不动
+
+---
+
 ## [1.7.74] - 2026-03-09
 
 ### 🔄 变更
