@@ -39,18 +39,28 @@ async function installHook(settingsPath: string): Promise<void> {
   if (!settings.hooks.PreToolUse)
     settings.hooks.PreToolUse = []
 
+  const newCommand = `jq -r '.tool_input.command' 2>/dev/null | grep -q 'codeagent-wrapper' && echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "codeagent-wrapper auto-approved"}}' || true`
+
   // Check if hook already exists
-  const existingHook = settings.hooks.PreToolUse.find(
+  const existingIdx = settings.hooks.PreToolUse.findIndex(
     (h: any) => h.matcher === 'Bash' && h.hooks?.some((hh: any) => hh.command?.includes('codeagent-wrapper')),
   )
 
-  if (!existingHook) {
+  if (existingIdx >= 0) {
+    // Migrate: replace old "|| exit 1" hook with fixed "|| true" version
+    const oldCmd = settings.hooks.PreToolUse[existingIdx]?.hooks?.[0]?.command || ''
+    if (oldCmd.includes('exit 1')) {
+      settings.hooks.PreToolUse[existingIdx].hooks[0].command = newCommand
+      await fs.writeJSON(settingsPath, settings, { spaces: 2 })
+    }
+  }
+  else {
     settings.hooks.PreToolUse.push({
       matcher: 'Bash',
       hooks: [
         {
           type: 'command',
-          command: `jq -r '.tool_input.command' | grep -q 'codeagent-wrapper' && echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "codeagent-wrapper auto-approved"}}' || exit 1`,
+          command: newCommand,
           timeout: 1,
         },
       ],
