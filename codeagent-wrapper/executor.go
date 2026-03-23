@@ -825,6 +825,7 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 		SessionID: taskSpec.SessionID,
 		WorkDir:   taskSpec.WorkDir,
 		Backend:   defaultBackendName,
+		Progress:  taskSpec.Progress,
 	}
 
 	commandName := codexCommand
@@ -1057,6 +1058,13 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 		}
 	}
 
+	var onProgressCallback func(line string)
+	if cfg.Progress {
+		onProgressCallback = func(line string) {
+			fmt.Fprintln(os.Stderr, line)
+		}
+	}
+
 	go func() {
 		msg, tid := parseJSONStreamInternalWithContent(stdoutReader, logWarnFn, logInfoFn, func() {
 			select {
@@ -1072,7 +1080,7 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 			if globalWebServer != nil && webSessionID != "" {
 				globalWebServer.EndSession(webSessionID, cfg.Backend)
 			}
-		}, onContentCallback)
+		}, onContentCallback, onProgressCallback)
 		select {
 		case completeSeen <- struct{}{}:
 		default:
