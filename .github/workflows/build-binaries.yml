@@ -38,7 +38,7 @@ jobs:
             IFS=':' read -r os arch ext <<< "$target"
             output="codeagent-wrapper-${os}-${arch}${ext}"
             echo "::group::Building ${output}"
-            GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "../artifacts/${output}" .
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "../artifacts/${output}" .
             echo "::endgroup::"
           done
 
