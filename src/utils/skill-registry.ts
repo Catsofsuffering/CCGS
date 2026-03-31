@@ -280,8 +280,10 @@ export async function installSkillCommands(
   skillsInstallDir: string,
   commandsDir: string,
   existingCommandNames: Set<string>,
+  skipCategories: SkillCategory[] = [],
 ): Promise<string[]> {
   const invocableSkills = collectInvocableSkills(skillsTemplateDir)
+    .filter(s => !skipCategories.includes(s.category))
   const generated: string[] = []
 
   await fs.ensureDir(commandsDir)

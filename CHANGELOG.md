@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.11] - 2026-03-31
+
+### 🐛 修复
+
+- **更新后 MCP 提示词显示未配置**（#124）：`update` 无条件传 `--skip-mcp` 导致 `mcpProvider` 被覆盖为 `skip`，已配置 MCP 的用户更新后提示词回退为"未配置"。修复：从已有 `config.toml` 恢复 `mcp.provider`，仅在无历史配置时才 fallback
+
+### ✨ 新功能
+
+- **Impeccable 命令可选安装**（#125）：init Step 4/4 新增 confirm 提示，20 个前端设计命令（polish/audit/animate 等）默认不安装，需要的用户自行勾选。update 时保留已有选择
+- **X (Twitter) 社区入口**：README header 加 `@CCG_Workflow` 徽章 + 架构图下方 demo 推文链接 + Contact 区 Twitter 入口
+
+---
+
 ## [2.1.1] - 2026-03-31
 
 ### 🐛 修复

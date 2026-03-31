@@ -46,6 +46,7 @@ export function createDefaultConfig(options: {
   installedWorkflows: string[]
   mcpProvider?: string
   liteMode?: boolean
+  skipImpeccable?: boolean
 }): CcgConfig {
   return {
     general: {
@@ -68,6 +69,7 @@ export function createDefaultConfig(options: {
     },
     performance: {
       liteMode: options.liteMode || false,
+      skipImpeccable: options.skipImpeccable || false,
     },
   }
 }

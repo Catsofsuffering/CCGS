@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
 [![Tests](https://img.shields.io/badge/Tests-134%20passed-brightgreen.svg)]()
+[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
 
 简体中文 | [English](./README.md)
 
@@ -36,6 +37,8 @@ Codex   Gemini
 ```
 
 外部模型无写入权限，仅返回 Patch，由 Claude 审核后应用。
+
+> **🎬 [查看 CCG 实战演示 →](https://x.com/CCG_Workflow/status/2038923720610463876)** — X 上的多模型协作真实案例
 
 ## 快速开始
 
@@ -349,6 +352,7 @@ npm uninstall -g ccg-workflow  # npm 全局用户需额外执行
 
 ## 联系方式
 
+- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow) — 更新动态、实战演示、使用技巧
 - **邮箱**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com) — 赞助、合作洽谈、开发交流
 - **Issues**: [GitHub Issues](https://github.com/fengshao1227/ccg-workflow/issues) — Bug 反馈与功能建议
 - **讨论区**: [GitHub Discussions](https://github.com/fengshao1227/ccg-workflow/discussions) — 问题咨询与社区交流
@@ -359,4 +363,4 @@ MIT
 
 ---
 
-v1.7.86 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [参与贡献](./CONTRIBUTING.md)
+v2.1.11 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [参与贡献](./CONTRIBUTING.md)

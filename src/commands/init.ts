@@ -210,6 +210,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
   // Performance mode selection
   let liteMode = false
+  let skipImpeccable = false
 
   // MCP Tool Selection
   let mcpProvider = 'ace-tool'
@@ -339,7 +340,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Step 3/4: MCP Tools (checkbox multi-select)
   // ═══════════════════════════════════════════════════════
   if (options.skipMcp) {
-    mcpProvider = 'skip'
+    // Fix #124: preserve existing MCP provider from config during update
+    // instead of unconditionally setting to 'skip'
+    const existingConfig = await readCcgConfig()
+    mcpProvider = existingConfig?.mcp?.provider || 'skip'
   }
   else if (!options.skipPrompt) {
     console.log()
@@ -522,12 +526,24 @@ export async function init(options: InitOptions = {}): Promise<void> {
     }])
 
     liteMode = perfMode === 'lite'
+
+    // Impeccable frontend design commands (optional, default: not installed)
+    const { includeImpeccable } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'includeImpeccable',
+      message: i18n.t('init:commands.includeImpeccable'),
+      default: false,
+    }])
+    skipImpeccable = !includeImpeccable
   }
   else {
-    // In non-interactive mode (update), preserve existing liteMode setting
+    // In non-interactive mode (update), preserve existing settings
     const existingConfig = await readCcgConfig()
     if (existingConfig?.performance?.liteMode !== undefined) {
       liteMode = existingConfig.performance.liteMode
+    }
+    if (existingConfig?.performance?.skipImpeccable !== undefined) {
+      skipImpeccable = existingConfig.performance.skipImpeccable
     }
   }
 
@@ -634,6 +650,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       installedWorkflows: selectedWorkflows,
       mcpProvider,
       liteMode,
+      skipImpeccable,
     })
 
     // Save config FIRST - ensure it's created even if installation fails
@@ -645,6 +662,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       routing,
       liteMode,
       mcpProvider,
+      skipImpeccable,
     })
 
     // Install selected MCP tools (multiple can be installed)

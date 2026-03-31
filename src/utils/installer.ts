@@ -74,6 +74,7 @@ interface InstallConfig {
   }
   liteMode: boolean
   mcpProvider: string
+  skipImpeccable?: boolean
 }
 
 interface InstallContext {
@@ -451,11 +452,17 @@ async function installSkillGeneratedCommands(ctx: InstallContext): Promise<void>
       }
     }
 
+    const skipCategories: import('./skill-registry').SkillCategory[] = []
+    if (ctx.config.skipImpeccable) {
+      skipCategories.push('impeccable')
+    }
+
     const generated = await installSkillCommands(
       skillsTemplateDir,
       skillsInstallDir,
       commandsDir,
       existingCommandNames,
+      skipCategories,
     )
 
     if (generated.length > 0) {
@@ -662,6 +669,7 @@ export async function installWorkflows(
     }
     liteMode?: boolean
     mcpProvider?: string
+    skipImpeccable?: boolean
   },
 ): Promise<InstallResult> {
   const ctx: InstallContext = {
@@ -676,6 +684,7 @@ export async function installWorkflows(
       },
       liteMode: config?.liteMode || false,
       mcpProvider: config?.mcpProvider || 'ace-tool',
+      skipImpeccable: config?.skipImpeccable || false,
     },
     templateDir: join(PACKAGE_ROOT, 'templates'),
     result: {

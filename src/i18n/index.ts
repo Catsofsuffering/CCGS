@@ -208,6 +208,9 @@ const zhCN = {
       standardOption: '标准模式（含 Web UI 实时监控）',
       liteOption: '轻量模式（无 Web UI，响应更快）',
     },
+    commands: {
+      includeImpeccable: '安装 Impeccable 前端设计工具？（20 个 UI/UX 命令：polish/audit/animate 等）',
+    },
     hooks: {
       title: 'codeagent-wrapper 自动授权',
       description: '使用 Hook 自动授权 codeagent-wrapper 命令',
@@ -681,6 +684,9 @@ const en: typeof zhCN = {
       selectMode: 'Select performance mode',
       standardOption: 'Standard (with Web UI real-time monitoring)',
       liteOption: 'Lite (no Web UI, faster response)',
+    },
+    commands: {
+      includeImpeccable: 'Install Impeccable frontend design tools? (20 UI/UX commands: polish/audit/animate etc.)',
     },
     hooks: {
       title: 'codeagent-wrapper auto-authorization',

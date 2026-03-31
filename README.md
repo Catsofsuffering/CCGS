@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
 [![Tests](https://img.shields.io/badge/Tests-134%20passed-brightgreen.svg)]()
+[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
 
 [简体中文](./README.zh-CN.md) | English
 
@@ -36,6 +37,8 @@ Codex   Gemini
 ```
 
 External models have no write access — they only return patches, which Claude reviews before applying.
+
+> **🎬 [See CCG in action →](https://x.com/CCG_Workflow/status/2038923720610463876)** — Real multi-model collaboration demo on X
 
 ## Quick Start
 
@@ -349,6 +352,7 @@ Looking for a place to start? Check out issues labeled [`good first issue`](http
 
 ## Contact
 
+- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow) — Updates, demos, and tips
 - **Email**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com) — Sponsorship, collaboration, or development ideas
 - **Issues**: [GitHub Issues](https://github.com/fengshao1227/ccg-workflow/issues) — Bug reports and feature requests
 - **Discussions**: [GitHub Discussions](https://github.com/fengshao1227/ccg-workflow/discussions) — Questions and community chat
@@ -359,4 +363,4 @@ MIT
 
 ---
 
-v1.7.86 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v2.1.11 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
