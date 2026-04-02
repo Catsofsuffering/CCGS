@@ -46,9 +46,8 @@ linux-do-post-update.md
 # Test directories
 ceshi/
 
-# Local spec workflows (OpenSpec 本地数据)
+# Local spec workflow cache
 .spec-workflow/
-openspec/
 AGENTS.md
 
 # VitePress build output
