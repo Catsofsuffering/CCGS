@@ -9,7 +9,7 @@ description: '按规范执行 + 多模型协作 + 归档'
 - Minimize documentation—prefer self-explanatory code over comments.
 
 **Guardrails**
-- **NEVER** apply Codex/Gemini prototypes directly—all outputs are reference only.
+- **NEVER** apply 后端/前端模型 prototypes directly—all outputs are reference only.
 - **MANDATORY**: Request `unified diff patch` format from external models; they have zero write permission.
 - Keep implementation strictly within `tasks.md` scope—no scope creep.
 - Refer to `openspec/config.yaml` for conventions.
@@ -40,8 +40,8 @@ description: '按规范执行 + 多模型协作 + 归档'
    - Announce: "Implementing Phase X: [task group name]"
 
 4. **Route Tasks to Appropriate Model**
-   - **Route A: Gemini** — Frontend/UI/styling (CSS, React, Vue, HTML, components)
-   - **Route B: Codex** — Backend/logic/algorithm (API, data processing, business logic)
+   - **Route A: {{FRONTEND_PRIMARY}}** — Frontend/UI/styling (CSS, React, Vue, HTML, components)
+   - **Route B: {{BACKEND_PRIMARY}}** — Backend/logic/algorithm (API, data processing, business logic)
 
    **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
 
@@ -55,7 +55,7 @@ description: '按规范执行 + 多模型协作 + 归档'
    EOF
    ```
 
-   **会话复用**：保存返回的 `SESSION_ID:`（Codex → `CODEX_PROTO_SESSION`，Gemini → `GEMINI_PROTO_SESSION`），Step 7 审查时复用。
+   **会话复用**：保存返回的 `SESSION_ID:`（{{BACKEND_PRIMARY}} → `CODEX_PROTO_SESSION`，{{FRONTEND_PRIMARY}} → `GEMINI_PROTO_SESSION`），Step 7 审查时复用。
 
 5. **Rewrite Prototype to Production Code**
    Upon receiving diff patch, **NEVER apply directly**. Rewrite by:
@@ -75,7 +75,7 @@ description: '按规范执行 + 多模型协作 + 归档'
    If issues found, make targeted corrections.
 
 7. **Multi-Model Review (PARALLEL)**
-   - **CRITICAL**: You MUST launch BOTH Codex AND Gemini in a SINGLE message with TWO Bash tool calls.
+   - **CRITICAL**: You MUST launch BOTH {{BACKEND_PRIMARY}} AND {{FRONTEND_PRIMARY}} in a SINGLE message with TWO Bash tool calls.
    - **DO NOT** call one model first and wait. Launch BOTH simultaneously with `run_in_background: true`.
 
    **Step 7.1**: In ONE message, make TWO parallel Bash calls:
@@ -106,8 +106,8 @@ description: '按规范执行 + 多模型协作 + 归档'
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
    Address any critical findings before proceeding.
 

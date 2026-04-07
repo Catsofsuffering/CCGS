@@ -102,9 +102,9 @@ REVIEW_EOF",
 
 **角色提示词**：
 
-| 阶段 | Codex | Gemini |
+| 阶段 | 后端 | 前端 |
 |------|-------|--------|
-| 审查 | `~/.claude/.ccg/prompts/codex/reviewer.md` | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 审查 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
 **等待后台任务**（最大超时 600000ms = 10 分钟）：
 
@@ -116,8 +116,8 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 - 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时
 - 若 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
 - 若因等待时间过长跳过了等待，**必须调用 `AskUserQuestion` 询问用户选择继续等待还是 Kill Task**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
+- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
+- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -296,7 +296,7 @@ FIXEOF",
 
 `[模式：审核]`
 
-**并行调用 Codex + Gemini 交叉审查**（多模型协同不变）：
+**并行调用 {{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}} 交叉审查**（多模型协同不变）：
 
 1. **获取变更 diff**：
 
@@ -307,19 +307,19 @@ FIXEOF",
 2. **并行调用**（`run_in_background: true`）：
 
    - **{{BACKEND_PRIMARY}} 审查**：
-     - ROLE_FILE: `~/.claude/.ccg/prompts/codex/reviewer.md`
+     - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md`
      - 输入：变更 Diff + 计划文件内容
      - 关注：安全性、性能、错误处理、逻辑正确性
 
    - **{{FRONTEND_PRIMARY}} 审查**：
-     - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/reviewer.md`
+     - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md`
      - 输入：变更 Diff + 计划文件内容
      - 关注：代码可读性、设计一致性、可维护性
 
    用 `TaskOutput` 等待两个模型的完整审查结果。
 
 3. **整合审查意见**：
-   - 按信任规则：后端问题以 Codex 为准，前端问题以 Gemini 为准
+   - 按信任规则：后端问题以 {{BACKEND_PRIMARY}} 为准，前端问题以 {{FRONTEND_PRIMARY}} 为准
    - **Critical** → 必须修复（Claude 直接修或再派 Codex）
    - **Warning** → 建议修复，报告给用户决定
    - **Info** → 记录不处理
@@ -372,7 +372,7 @@ FIXEOF",
 1. **Claude 极简原则** — Claude 不调用 MCP、不做代码检索。只读计划、指挥 Codex、审核结果。
 2. **{{BACKEND_PRIMARY}} 全权执行** — MCP 搜索、文档查询、代码检索、实现、测试全由 {{BACKEND_PRIMARY}} 完成。
 3. **多模型审核不变** — 审核阶段仍然 Codex ∥ Gemini 交叉审查，保证质量。
-4. **信任规则** — 后端以 Codex 为准，前端以 Gemini 为准。
+4. **信任规则** — 后端以 {{BACKEND_PRIMARY}} 为准，前端以 {{FRONTEND_PRIMARY}} 为准。
 5. **一次性下发** — 尽量一次给 Codex 完整指令 + 完整计划，减少来回通信。
 6. **最多 2 轮返工** — 超过 2 轮 Claude 直接接管，避免无限循环。
 7. **计划对齐** — Codex 实现必须在计划范围内，超出范围的变更视为违规。

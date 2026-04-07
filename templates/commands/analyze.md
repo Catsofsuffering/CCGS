@@ -51,8 +51,8 @@ EOF",
 
 | 模型 | 提示词 |
 |------|--------|
-| Codex | `~/.claude/.ccg/prompts/codex/analyzer.md` |
-| Gemini | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
+| 后端 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` |
+| 前端 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -66,8 +66,8 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 - 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时。
 如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**。
 - 若因等待时间过长跳过了等待 TaskOutput 结果，则**必须调用 `AskUserQuestion` 工具询问用户选择继续等待还是 Kill Task。禁止直接 Kill Task。**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
+- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
+- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -77,7 +77,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
+`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用后端/前端模型 时传入增强后的需求**
 
 ### 🔍 阶段 1：上下文检索
 
@@ -94,11 +94,11 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
 1. **{{BACKEND_PRIMARY}} 后端分析**：`Bash({ command: "...--backend {{BACKEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md`
    - OUTPUT：技术可行性、架构影响、性能考量
 
 2. **{{FRONTEND_PRIMARY}} 前端分析**：`Bash({ command: "...--backend {{FRONTEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
    - OUTPUT：UI/UX 影响、用户体验、视觉设计考量
 
 用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。
@@ -114,7 +114,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
    - **一致观点**（强信号）
    - **分歧点**（需权衡）
    - **互补见解**（各自领域洞察）
-3. 按信任规则权衡：后端以 Codex 为准，前端以 Gemini 为准
+3. 按信任规则权衡：后端以 {{BACKEND_PRIMARY}} 为准，前端以 {{FRONTEND_PRIMARY}} 为准
 
 ### 📊 阶段 4：综合输出
 
@@ -127,7 +127,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 1. <双方都认同的点>
 
 ### 分歧点（需权衡）
-| 议题 | Codex 观点 | Gemini 观点 | 建议 |
+| 议题 | 后端观点 | 前端观点 | 建议 |
 |------|------------|-------------|------|
 
 ### 核心结论
@@ -155,5 +155,5 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ## 关键规则
 
 1. **仅分析不修改** – 本命令不执行任何代码变更
-2. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+2. **信任规则** – 后端以 {{BACKEND_PRIMARY}} 为准，前端以 {{FRONTEND_PRIMARY}} 为准
 3. 外部模型对文件系统**零写入权限**

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.14] - 2026-04-07
+
+### 🐛 修复
+
+- **模型路由硬编码导致非默认配置失效**：21 个模板文件中 ROLE_FILE 路径、表头、执行指令硬编码了 `codex/` 和 `gemini/`，导致用户配置 `Frontend: codex` 后 Claude 仍尝试调用 Gemini（exit code 127）。全量替换为 `{{BACKEND_PRIMARY}}/` 和 `{{FRONTEND_PRIMARY}}/` 模板变量，安装时按路由配置动态生成
+
+---
+
 ## [2.1.13] - 2026-04-05
 
 ### 🐛 修复

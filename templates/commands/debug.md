@@ -33,7 +33,7 @@ description: '多模型调试：{{BACKEND_PRIMARY}} 后端诊断 + {{FRONTEND_PR
 **{{BACKEND_PRIMARY}} 后端诊断**：
 ```bash
 ~/.claude/bin/codeagent-wrapper --progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- "$(pwd)" <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/codex/debugger.md
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md
 <TASK>
 需求：<增强后的需求>
 上下文：<错误日志、堆栈信息、复现步骤>
@@ -45,7 +45,7 @@ EOF
 **{{FRONTEND_PRIMARY}} 前端诊断**：
 ```bash
 ~/.claude/bin/codeagent-wrapper --progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- "$(pwd)" <<'EOF'
-ROLE_FILE: ~/.claude/.ccg/prompts/gemini/debugger.md
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md
 <TASK>
 需求：<增强后的需求>
 上下文：<错误日志、堆栈信息、复现步骤>
@@ -58,20 +58,20 @@ EOF
 
 | 模型 | 提示词 |
 |------|--------|
-| Codex | `~/.claude/.ccg/prompts/codex/debugger.md` |
-| Gemini | `~/.claude/.ccg/prompts/gemini/debugger.md` |
+| 后端 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md` |
+| 前端 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md` |
 
 **并行调用**：
 1. 使用 `Bash` 工具，设置 `run_in_background: true` 和 `timeout: 600000`（10 分钟）
-2. 同时发起两个后台任务（Codex + Gemini）
+2. 同时发起两个后台任务（{{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}}）
 3. 使用 `TaskOutput` 等待结果：`TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })`
 
 **重要**：
 - 必须指定 `timeout: 600000`，否则默认 30 秒会超时
 - 如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
 - 若等待时间过长，**必须用 `AskUserQuestion` 询问用户是否继续等待，禁止直接 Kill**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
+- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
+- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -81,7 +81,7 @@ EOF
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
+`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用后端/前端模型 时传入增强后的需求**
 
 ### 🔍 阶段 1：上下文收集
 
@@ -98,11 +98,11 @@ EOF
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
 1. **{{BACKEND_PRIMARY}} 后端诊断**：`Bash({ command: "...--backend {{BACKEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/debugger.md`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md`
    - OUTPUT：诊断假设（按可能性排序），每个假设包含原因、证据、修复建议
 
 2. **{{FRONTEND_PRIMARY}} 前端诊断**：`Bash({ command: "...--backend {{FRONTEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/debugger.md`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md`
    - OUTPUT：诊断假设（按可能性排序），每个假设包含原因、证据、修复建议
 
 用 `TaskOutput` 等待两个模型的诊断结果。**必须等所有模型返回后才能进入下一阶段**。
@@ -124,10 +124,10 @@ EOF
 ```markdown
 ## 🔍 诊断结果
 
-### Codex 分析（后端视角）
+### {{BACKEND_PRIMARY}} 分析（后端视角）
 <诊断摘要>
 
-### Gemini 分析（前端视角）
+### {{FRONTEND_PRIMARY}} 分析（前端视角）
 <诊断摘要>
 
 ### 综合诊断
@@ -153,5 +153,5 @@ EOF
 ## 关键规则
 
 1. **用户确认** – 修复前必须获得确认
-2. **信任规则** – 后端问题以 Codex 为准，前端问题以 Gemini 为准
+2. **信任规则** – 后端问题以 {{BACKEND_PRIMARY}} 为准，前端问题以 {{FRONTEND_PRIMARY}} 为准
 3. 外部模型对文件系统**零写入权限**

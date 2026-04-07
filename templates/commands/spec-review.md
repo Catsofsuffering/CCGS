@@ -9,7 +9,7 @@ description: '双模型交叉审查（独立工具，随时可用）'
 - This is an independent review tool—can be used anytime, not tied to archive workflow.
 
 **Guardrails**
-- **MANDATORY**: Both Codex AND Gemini must complete review before synthesis.
+- **MANDATORY**: Both {{BACKEND_PRIMARY}} AND {{FRONTEND_PRIMARY}} must complete review before synthesis.
 - Review scope is strictly limited to the proposal's changes—no scope creep.
 - Refer to `openspec/config.yaml` for project conventions when reviewing OpenSpec proposals.
 
@@ -25,7 +25,7 @@ description: '双模型交叉审查（独立工具，随时可用）'
    - Load relevant spec constraints and PBT properties from `openspec/changes/<id>/specs/`.
 
 3. **Multi-Model Review (PARALLEL)**
-   - **CRITICAL**: You MUST launch BOTH Codex AND Gemini in a SINGLE message with TWO Bash tool calls.
+   - **CRITICAL**: You MUST launch BOTH {{BACKEND_PRIMARY}} AND {{FRONTEND_PRIMARY}} in a SINGLE message with TWO Bash tool calls.
    - **DO NOT** call one model first and wait. Launch BOTH simultaneously with `run_in_background: true`.
    - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
 
@@ -57,8 +57,8 @@ description: '双模型交叉审查（独立工具，随时可用）'
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
 4. **Synthesize Findings**
    - Merge findings from both models.
@@ -100,7 +100,7 @@ description: '双模型交叉审查（独立工具，随时可用）'
 
 7. **Optional: Inline Fix Mode**
    - If user chooses "Fix now" for Critical issues:
-     * Route each fix to appropriate model (backend→Codex, frontend→Gemini).
+     * Route each fix to appropriate model (backend→{{BACKEND_PRIMARY}}, frontend→{{FRONTEND_PRIMARY}}).
      * Apply fix using unified diff patch pattern.
      * Re-run affected review dimension.
      * Repeat until Critical = 0.
@@ -111,7 +111,7 @@ description: '双模型交叉审查（独立工具，随时可用）'
 
 **Exit Criteria**
 Review is complete when:
-- [ ] Both Codex and Gemini reviews completed
+- [ ] Both {{BACKEND_PRIMARY}} and {{FRONTEND_PRIMARY}} reviews completed
 - [ ] All findings synthesized and classified
 - [ ] Zero Critical issues remain (fixed or user-acknowledged)
 - [ ] User decision captured (archive / return to impl / defer)

@@ -8,7 +8,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
 - 审查范围严格限于 team-exec 的变更，不扩大范围。
 
 **Guardrails**
-- **MANDATORY**: Codex 和 Gemini 必须都完成审查后才能综合。
+- **MANDATORY**: {{BACKEND_PRIMARY}} 和 {{FRONTEND_PRIMARY}} 必须都完成审查后才能综合。
 - 审查范围限于 `git diff` 的变更，不做范围蔓延。
 - Lead 可以直接修复 Critical 问题（审查阶段允许写代码）。
 
@@ -25,7 +25,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    **FIRST Bash call ({{BACKEND_PRIMARY}})**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"logic|security|performance|error_handling\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"logic|security|performance|error_handling\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
      description: "{{BACKEND_PRIMARY}} 后端审查"
@@ -35,7 +35,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/gemini/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"patterns|maintainability|accessibility|ux|frontend_security\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"patterns|maintainability|accessibility|ux|frontend_security\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
      description: "{{FRONTEND_PRIMARY}} 前端审查"
@@ -48,8 +48,8 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
 3. **综合发现**
    - 合并两个模型的发现。
@@ -81,7 +81,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
 5. **决策门**
    - **Critical > 0**:
      * 展示发现，用 `AskUserQuestion` 询问："立即修复 / 跳过"
-     * 选择修复 → Lead 直接修复（后端问题参考 Codex 建议，前端参考 Gemini 建议）
+     * 选择修复 → Lead 直接修复（后端问题参考 {{BACKEND_PRIMARY}} 建议，前端参考 {{FRONTEND_PRIMARY}} 建议）
      * 修复后重新运行受影响的审查维度
      * 重复直到 Critical = 0
    - **Critical = 0**:
@@ -91,7 +91,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    - 报告当前上下文使用量。
 
 **Exit Criteria**
-- [ ] Codex + Gemini 审查完成
+- [ ] {{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}} 审查完成
 - [ ] 所有发现已综合分级
 - [ ] Critical = 0（已修复或用户确认跳过）
 - [ ] 审查报告已输出

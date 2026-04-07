@@ -73,11 +73,11 @@ EOF",
 
 **角色提示词**：
 
-| 阶段 | Codex | Gemini |
+| 阶段 | 后端 | 前端 |
 |------|-------|--------|
-| 分析 | `~/.claude/.ccg/prompts/codex/analyzer.md` | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/codex/architect.md` | `~/.claude/.ccg/prompts/gemini/architect.md` |
-| 审查 | `~/.claude/.ccg/prompts/codex/reviewer.md` | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 分析 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
+| 规划 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
+| 审查 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文（注意：是 `resume`，不是 `--resume`）。
 
@@ -93,8 +93,8 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 - 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时。
 如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**。
 - 若因等待时间过长跳过了等待 TaskOutput 结果，则**必须调用 `AskUserQuestion` 工具询问用户选择继续等待还是 Kill Task。禁止直接 Kill Task。**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
+- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
+- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -116,7 +116,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 `[模式：研究]` - 理解需求并收集上下文：
 
-1. **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
+1. **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用后端/前端模型 时传入增强后的需求**
 2. **上下文检索**：调用 `{{MCP_SEARCH_TOOL}}`
 3. **需求完整性评分**（0-10 分）：
    - 目标明确性（0-3）、预期结果（0-3）、边界范围（0-2）、约束条件（0-2）
@@ -127,8 +127,8 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 `[模式：构思]` - 多模型并行分析：
 
 **并行调用**（`run_in_background: true`）：
-- Codex：使用分析提示词，输出技术可行性、方案、风险
-- Gemini：使用分析提示词，输出 UI 可行性、方案、体验
+- {{BACKEND_PRIMARY}}：使用分析提示词，输出技术可行性、方案、风险
+- {{FRONTEND_PRIMARY}}：使用分析提示词，输出 UI 可行性、方案、体验
 
 用 `TaskOutput` 等待结果。**📌 保存 SESSION_ID**（`CODEX_SESSION` 和 `GEMINI_SESSION`）。
 
@@ -141,14 +141,14 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 `[模式：计划]` - 多模型协作规划：
 
 **并行调用**（复用会话）：
-- Codex：使用规划提示词 + `resume $CODEX_SESSION`，输出后端架构
-- Gemini：使用规划提示词 + `resume $GEMINI_SESSION`，输出前端架构
+- {{BACKEND_PRIMARY}}：使用规划提示词 + `resume $CODEX_SESSION`，输出后端架构
+- {{FRONTEND_PRIMARY}}：使用规划提示词 + `resume $GEMINI_SESSION`，输出前端架构
 
 用 `TaskOutput` 等待结果。
 
 **务必遵循上方 `多模型调用规范` 的 `重要` 指示**
 
-**Claude 综合规划**：采纳 Codex 后端规划 + Gemini 前端规划，用户批准后存入 `.claude/plan/任务名.md`
+**Claude 综合规划**：采纳 {{BACKEND_PRIMARY}} 后端规划 + {{FRONTEND_PRIMARY}} 前端规划，用户批准后存入 `.claude/plan/任务名.md`
 
 ### ⚡ 阶段 4：实施
 
@@ -163,8 +163,8 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 `[模式：优化]` - 多模型并行审查：
 
 **并行调用**：
-- Codex：使用审查提示词，关注安全、性能、错误处理
-- Gemini：使用审查提示词，关注可访问性、设计一致性
+- {{BACKEND_PRIMARY}}：使用审查提示词，关注安全、性能、错误处理
+- {{FRONTEND_PRIMARY}}：使用审查提示词，关注可访问性、设计一致性
 
 用 `TaskOutput` 等待结果。整合审查意见，用户确认后执行优化。
 

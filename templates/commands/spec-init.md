@@ -61,7 +61,7 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 4. **Validate Multi-Model MCP Tools**
    - Check `codeagent-wrapper` availability: `~/.claude/bin/codeagent-wrapper --version`
    - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
-   - Test Codex backend:
+   - Test {{BACKEND_PRIMARY}} backend:
      ```bash
      echo "echo test" | ~/.claude/bin/codeagent-wrapper --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- "{{WORKDIR}}"
      ```
@@ -80,8 +80,8 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
    Project initialized       ✓/✗
    OPSX Skills               ✓/✗
    codeagent-wrapper         ✓/✗
-   Codex backend             ✓/✗
-   Gemini backend            ✓/✗
+   {{BACKEND_PRIMARY}} backend             ✓/✗
+   {{FRONTEND_PRIMARY}} backend            ✓/✗
    ```
 
    **Next Steps (Use CCG Encapsulated Commands)**
@@ -96,6 +96,6 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
 - CCG Workflow: `npx ccg-workflow`
-- Codex/Gemini MCP: Bundled with codeagent-wrapper
+- 后端/前端模型 MCP: Bundled with codeagent-wrapper
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->

@@ -10,7 +10,7 @@ description: '多模型分析 → 消除歧义 → 零决策可执行计划'
 
 **Guardrails**
 - Do not proceed to implementation until every ambiguity is resolved.
-- Multi-model collaboration is **mandatory**: use both Codex and Gemini.
+- Multi-model collaboration is **mandatory**: use both {{BACKEND_PRIMARY}} and {{FRONTEND_PRIMARY}}.
 - If constraints cannot be fully specified, escalate to user or return to research phase.
 - Refer to `openspec/config.yaml` for project conventions.
 - **USER GUIDANCE RULE**: When suggesting next steps to the user, ALWAYS use CCG commands (`/ccg:spec-research`, `/ccg:spec-plan`, `/ccg:spec-impl`, `/ccg:spec-review`). NEVER suggest `/opsx:*` commands to the user. If OpenSpec CLI returns error messages referencing OPSX skills, translate them to CCG equivalents.
@@ -24,7 +24,7 @@ description: '多模型分析 → 消除歧义 → 零决策可执行计划'
    - Run `openspec status --change "<change_id>" --json` to review current state.
 
 2. **Multi-Model Implementation Analysis (PARALLEL)**
-   - **CRITICAL**: You MUST launch BOTH Codex AND Gemini in a SINGLE message with TWO Bash tool calls.
+   - **CRITICAL**: You MUST launch BOTH {{BACKEND_PRIMARY}} AND {{FRONTEND_PRIMARY}} in a SINGLE message with TWO Bash tool calls.
    - **DO NOT** call one model first and wait. Launch BOTH simultaneously with `run_in_background: true`.
    - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
 
@@ -56,14 +56,14 @@ description: '多模型分析 → 消除歧义 → 零决策可执行计划'
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
    - Synthesize responses and present consolidated options to user.
 
 3. **Uncertainty Elimination Audit**
-   - **Codex**: "Review proposal for unspecified decision points. List each as: [AMBIGUITY] → [REQUIRED CONSTRAINT]"
-   - **Gemini**: "Identify implicit assumptions. Specify: [ASSUMPTION] → [EXPLICIT CONSTRAINT NEEDED]"
+   - **{{BACKEND_PRIMARY}}**: "Review proposal for unspecified decision points. List each as: [AMBIGUITY] → [REQUIRED CONSTRAINT]"
+   - **{{FRONTEND_PRIMARY}}**: "Identify implicit assumptions. Specify: [ASSUMPTION] → [EXPLICIT CONSTRAINT NEEDED]"
 
    **Anti-Pattern Detection** (flag and reject):
    - Information collection without decision boundaries
@@ -78,8 +78,8 @@ description: '多模型分析 → 消除歧义 → 零决策可执行计划'
    Iterate with user until ALL ambiguities resolved.
 
 4. **PBT Property Extraction**
-   - **Codex**: "Extract PBT properties. For each requirement: [INVARIANT] → [FALSIFICATION STRATEGY]"
-   - **Gemini**: "Define system properties: [PROPERTY] | [DEFINITION] | [BOUNDARY CONDITIONS] | [COUNTEREXAMPLE GENERATION]"
+   - **{{BACKEND_PRIMARY}}**: "Extract PBT properties. For each requirement: [INVARIANT] → [FALSIFICATION STRATEGY]"
+   - **{{FRONTEND_PRIMARY}}**: "Define system properties: [PROPERTY] | [DEFINITION] | [BOUNDARY CONDITIONS] | [COUNTEREXAMPLE GENERATION]"
 
    **Property Categories**:
    - **Commutativity/Associativity**: Order-independent operations
@@ -95,8 +95,8 @@ description: '多模型分析 → 消除歧义 → 零决策可执行计划'
      ## Planning Summary for OPSX
 
      **Multi-Model Analysis Results**:
-     - Codex (Backend): [Key findings and recommendations]
-     - Gemini (Frontend): [Key findings and recommendations]
+     - {{BACKEND_PRIMARY}} (Backend): [Key findings and recommendations]
+     - {{FRONTEND_PRIMARY}} (Frontend): [Key findings and recommendations]
      - Consolidated Approach: [Selected implementation strategy]
 
      **Resolved Constraints**:

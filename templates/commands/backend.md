@@ -70,15 +70,15 @@ EOF",
 
 **角色提示词**：
 
-| 阶段 | Codex |
+| 阶段 | 后端 |
 |------|-------|
-| 分析 | `~/.claude/.ccg/prompts/codex/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/codex/architect.md` |
-| 审查 | `~/.claude/.ccg/prompts/codex/reviewer.md` |
+| 分析 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` |
+| 规划 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md` |
+| 审查 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `CODEX_SESSION`，阶段 3 和 5 使用 `resume` 复用。
 
-⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。若调用超时，继续等待，禁止跳过或提前终止。
+⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。若调用超时，继续等待，禁止跳过或提前终止。
 
 ---
 
@@ -94,7 +94,7 @@ EOF",
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Codex 时传入增强后的需求**
+`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 {{BACKEND_PRIMARY}} 时传入增强后的需求**
 
 ### 🔍 阶段 1：研究
 
@@ -107,8 +107,8 @@ EOF",
 
 `[模式：构思]` - {{BACKEND_PRIMARY}} 主导分析
 
-**⚠️ 必须调用 Codex**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
+**⚠️ 必须调用 {{BACKEND_PRIMARY}}**（参照上方调用规范）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md`
 - 需求：增强后的需求（如未增强则用 $ARGUMENTS）
 - 上下文：阶段 1 收集的项目上下文
 - OUTPUT: 技术可行性分析、推荐方案（至少 2 个）、风险点评估
@@ -121,8 +121,8 @@ EOF",
 
 `[模式：计划]` - {{BACKEND_PRIMARY}} 主导规划
 
-**⚠️ 必须调用 Codex**（使用 `resume <CODEX_SESSION>` 复用会话）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/codex/architect.md`
+**⚠️ 必须调用 {{BACKEND_PRIMARY}}**（使用 `resume <CODEX_SESSION>` 复用会话）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md`
 - 需求：用户选择的方案
 - 上下文：阶段 2 的分析结果
 - OUTPUT: 文件结构、函数/类设计、依赖关系
@@ -141,8 +141,8 @@ Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
 
 `[模式：优化]` - {{BACKEND_PRIMARY}} 主导审查
 
-**⚠️ 必须调用 Codex**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/codex/reviewer.md`
+**⚠️ 必须调用 {{BACKEND_PRIMARY}}**（参照上方调用规范）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md`
 - 需求：审查以下后端代码变更
 - 上下文：git diff 或代码内容
 - OUTPUT: 安全性、性能、错误处理、API 规范问题列表

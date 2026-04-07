@@ -70,15 +70,15 @@ EOF",
 
 **角色提示词**：
 
-| 阶段 | Gemini |
+| 阶段 | 前端 |
 |------|--------|
-| 分析 | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/gemini/architect.md` |
-| 审查 | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 分析 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
+| 规划 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
+| 审查 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `GEMINI_SESSION`，阶段 3 和 5 使用 `resume` 复用。
 
-⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才报告错误并终止。
+⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才报告错误并终止。
 
 ---
 
@@ -94,7 +94,7 @@ EOF",
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Gemini 时传入增强后的需求**
+`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 {{FRONTEND_PRIMARY}} 时传入增强后的需求**
 
 ### 🔍 阶段 1：研究
 
@@ -107,8 +107,8 @@ EOF",
 
 `[模式：构思]` - {{FRONTEND_PRIMARY}} 主导分析
 
-**⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
+**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（参照上方调用规范）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
 - 需求：增强后的需求（如未增强则用 $ARGUMENTS）
 - 上下文：阶段 1 收集的项目上下文
 - OUTPUT: UI 可行性分析、推荐方案（至少 2 个）、用户体验评估
@@ -121,8 +121,8 @@ EOF",
 
 `[模式：计划]` - {{FRONTEND_PRIMARY}} 主导规划
 
-**⚠️ 必须调用 Gemini**（使用 `resume <GEMINI_SESSION>` 复用会话）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
+**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（使用 `resume <GEMINI_SESSION>` 复用会话）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md`
 - 需求：用户选择的方案
 - 上下文：阶段 2 的分析结果
 - OUTPUT: 组件结构、UI 流程、样式方案
@@ -141,8 +141,8 @@ Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
 
 `[模式：优化]` - {{FRONTEND_PRIMARY}} 主导审查
 
-**⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/reviewer.md`
+**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（参照上方调用规范）：
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md`
 - 需求：审查以下前端代码变更
 - 上下文：git diff 或代码内容
 - OUTPUT: 可访问性、响应式、性能、设计一致性问题列表
