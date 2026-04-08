@@ -14,7 +14,7 @@
 
 </div>
 
-CCGS is evolving into a Codex-orchestrated spec collaboration workflow. The extra `S` stands for `Spec`, highlighting that OpenSpec is the backbone of the maintained path. The primary path is now:
+CCGS is a Codex-orchestrated spec collaboration workflow. The extra `S` stands for `Spec`, highlighting that OpenSpec is the backbone of the maintained path. The primary path is:
 
 1. Codex creates and advances OpenSpec change artifacts.
 2. Codex prepares an execution handoff for Claude.
@@ -22,13 +22,6 @@ CCGS is evolving into a Codex-orchestrated spec collaboration workflow. The extr
 4. Codex reviews, tests, accepts, and archives.
 
 MCP, skills, and Gemini still exist, but they are optional integrations rather than default requirements for the main path.
-
-## Current Transition Status
-
-- The product narrative and primary command path are Codex-led.
-- Claude remains the preferred execution layer for Agent Teams.
-- Legacy multi-model commands are still shipped as compatibility flows.
-- Commands still install into `~/.claude/` during this migration phase so existing installs do not break.
 
 ## Primary Workflow
 
@@ -73,11 +66,11 @@ Claude slash commands still exist, but they are now the compatibility surface ra
 
 ## Compatibility Flows
 
-These commands remain available while the repository transitions away from the older Claude-first story:
+These commands remain available as compatibility or secondary surfaces:
 
 | Command | Status | Notes |
 |---------|--------|-------|
-| `/ccg:workflow` | Compatibility flow | Legacy full workflow surface kept for migration |
+| `/ccg:workflow` | Compatibility flow | Legacy full workflow surface |
 | `/ccg:plan` | Compatibility flow | Legacy multi-model planning path |
 | `/ccg:execute` | Compatibility flow | Legacy execution path for existing plans |
 | `/ccg:team-research` | Compatibility flow | Older research-first Team flow |
@@ -122,7 +115,7 @@ These commands remain available while the repository transitions away from the o
 - Claude is used where it adds the most value: execution, especially Agent Teams.
 - OpenSpec remains the backbone for proposal, design, tasks, review, and archive.
 - Optional integrations stay available without defining the default user journey.
-- Existing assets are preserved long enough to migrate safely instead of forcing a rewrite.
+- Compatibility surfaces remain available without redefining the main workflow.
 
 ## Architecture
 
@@ -160,11 +153,9 @@ graph TD
 npx ccg-workflow
 ```
 
-Step 2 of `npx ccg-workflow init` now asks **“Who orchestrates this workspace?”** before you pick frontend/backend execution models. Codex remains the recommended default, but you can switch back to a Claude-led compatibility path and the choice is saved into `~/.claude/.ccg/config.toml`.
+Step 2 of `npx ccg-workflow init` asks **“Who orchestrates this workspace?”** before you pick frontend/backend execution models. Codex remains the recommended default, but you can switch to a Claude-led compatibility path and the choice is saved into `~/.claude/.ccg/config.toml`.
 
-During the current migration phase, CCGS still installs slash commands into Claude-compatible directories so existing setups continue to work.
-
-At the same time, the installer now creates Codex workflow skills under `~/.codex/skills/` so the primary path can start from Codex instead of requiring Claude as the host shell.
+The installer creates Claude-compatible slash commands under `~/.claude/` and Codex workflow skills under `~/.codex/skills/`, so the primary path can start from Codex while compatibility surfaces remain available.
 
 ## Optional Integrations
 
@@ -205,7 +196,7 @@ Gemini remains available for secondary frontend-heavy or comparison workflows, b
 
 ## Contributing
 
-This fork is still in the middle of the CCGS Codex-orchestrated migration. The safest contribution pattern is:
+The safest contribution pattern is:
 
 1. Open or continue an OpenSpec change.
 2. Update proposal, design, specs, and tasks first.
