@@ -1,143 +1,97 @@
 ---
-description: '按规范执行 + 多模型协作 + 归档'
+description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
 ---
 <!-- CCG:SPEC:IMPL:START -->
 **Core Philosophy**
-- Implementation is pure mechanical execution—all decisions were made in Plan phase.
-- External model outputs are prototypes only; must be rewritten to production-grade code.
-- Keep changes tightly scoped; enforce side-effect review before any modification.
-- Minimize documentation—prefer self-explanatory code over comments.
+- Codex 负责推进 change、分发执行、回收结果、测试验收、决定 archive。
+- Claude 负责执行，不负责最终验收，不负责最终归档决策。
+- 验收失败时，必须形成明确 rework packet 并打回执行层。
 
 **Guardrails**
-- **NEVER** apply Codex/Gemini prototypes directly—all outputs are reference only.
-- **MANDATORY**: Request `unified diff patch` format from external models; they have zero write permission.
-- Keep implementation strictly within `tasks.md` scope—no scope creep.
-- Refer to `openspec/config.yaml` for conventions.
-- **USER GUIDANCE RULE**: When suggesting next steps to the user, ALWAYS use CCG commands (`/ccg:spec-research`, `/ccg:spec-plan`, `/ccg:spec-impl`, `/ccg:spec-review`). NEVER suggest `/opsx:*` commands to the user. If OpenSpec CLI returns error messages referencing OPSX skills, translate them to CCG equivalents.
-- **TASKS FORMAT RULE**: When generating or modifying `tasks.md`, ALL tasks MUST use checkbox format (`- [ ] X.Y description`). Heading+bullet format will cause OpenSpec CLI to parse 0 tasks and block the workflow.
+- 不直接把外部模型输出当成最终实现。
+- 不在验收通过前 archive。
+- 当建议下一步时，始终使用 `/ccg:*` 命令。
+- `tasks.md` 必须持续保持 checkbox 格式。
 
 **Steps**
-1. **Select Change**
-   - Run `openspec list --json` to inspect Active Changes.
-   - Confirm with user which change ID to implement.
-   - Run `openspec status --change "<change_id>" --json` to review tasks.
+1. 选择 change
+   - 运行 `openspec list --json`。
+   - 确认 change id。
+   - 运行 `openspec status --change "<change_id>" --json`。
 
-2. **Apply OPSX Change (Pre-flight Check)**
-   - Call `/opsx:apply` internally to enter implementation mode:
-     ```
-     /opsx:apply
-     ```
-   - This will load the change context and guide you through the tasks defined in `tasks.md`.
-   - **Note**: This is an internal call. If this step fails, guide the user to re-run `/ccg:spec-impl`.
-   - **HARD GATE**: Check the returned `state` field:
-     - If `state: "blocked"` → STOP immediately. Inform the user which artifacts are missing and suggest: "Run `/ccg:spec-plan` to generate missing artifacts first."
-     - If `progress.total === 0` → STOP immediately. Inform: "tasks.md has no parseable tasks. Run `/ccg:spec-plan` to regenerate."
-     - Only proceed to Step 3 when `state: "ready"` and `progress.total > 0`.
+2. 进入实现前检查
+   - 内部调用 `/opsx:apply` 进入实现上下文。
+   - 若 state 为 `blocked` 或 tasks 不可解析，停止并提示重新运行 `/ccg:spec-plan`。
 
-3. **Identify Minimal Verifiable Phase**
-   - Review `tasks.md` and identify the **smallest verifiable phase**.
-   - Do NOT complete all tasks at once—control context window.
-   - Announce: "Implementing Phase X: [task group name]"
+3. 读取执行契约
+   - 读取 `proposal.md`、`design.md`、`tasks.md`、`specs/**/*.md`。
+   - 从 `design.md` 中提取 `Execution Handoff Contract`。
+   - 明确：
+     - allowed/protected surface
+     - work packages
+     - required verification
+     - rework triggers
 
-4. **Route Tasks to Appropriate Model**
-   - **Route A: Gemini** — Frontend/UI/styling (CSS, React, Vue, HTML, components)
-   - **Route B: Codex** — Backend/logic/algorithm (API, data processing, business logic)
+4. 调度 Claude 执行
+   - 如果还没有执行计划，先运行 `/ccg:team-plan`，基于 handoff contract 生成 Claude Agent Teams 计划。
+   - 然后运行 `/ccg:team-exec` 让 Claude Agent Teams 干活。
+   - Claude 返回后，必须回收一份 return packet，至少包含：
+     - changed files
+     - tests run
+     - unresolved issues
+     - suggested accept/rework
 
-   **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
+5. Codex 进行验收
+   - 基于 return packet、自身代码审查和本地验证做验收。
+   - 运行 handoff contract 里要求的测试/检查。
+   - 必要时运行 `/ccg:spec-review` 作为独立验收门禁。
 
-   For each task:
-   ```
-   codeagent-wrapper --progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- "{{WORKDIR}}" <<'EOF'
-   TASK: <task description from tasks.md>
-   CONTEXT: <relevant code context>
-   CONSTRAINTS: <constraints from spec>
-   OUTPUT: Unified Diff Patch format ONLY
-   EOF
-   ```
+6. 失败时打回
+   - 若出现任一情况，必须打回执行层：
+     - 规格不满足
+     - 测试失败
+     - 变更越界
+     - 缺少验证证据
+   - 输出 `Rework Packet`，至少包含：
+     - failed checks
+     - violated constraints
+     - files requiring rework
+     - specific return conditions
+   - 指示下一步：`/ccg:team-exec` 或 `/ccg:spec-impl`
 
-   **会话复用**：保存返回的 `SESSION_ID:`（Codex → `CODEX_PROTO_SESSION`，Gemini → `GEMINI_PROTO_SESSION`），Step 7 审查时复用。
+7. 通过时归档
+   - 仅当 Codex 验收通过时，才允许 archive。
+   - 归档前确保 `tasks.md` 已全部完成。
+   - 内部调用 `/opsx:archive` 完成归档。
 
-5. **Rewrite Prototype to Production Code**
-   Upon receiving diff patch, **NEVER apply directly**. Rewrite by:
-   - Removing redundancy
-   - Ensuring clear naming and simple structure
-   - Aligning with project style
-   - Eliminating unnecessary comments
-   - Verifying no new dependencies introduced
+**Output Shape**
+成功时：
 
-6. **Side-Effect Review** (Mandatory before apply)
-   Verify the change:
-   - [ ] Does not exceed `tasks.md` scope
-   - [ ] Does not affect unrelated modules
-   - [ ] Does not introduce new dependencies
-   - [ ] Does not break existing interfaces
+```md
+## Acceptance Passed
 
-   If issues found, make targeted corrections.
+- change: <change_id>
+- verification: passed
+- archive: approved
+```
 
-7. **Multi-Model Review (PARALLEL)**
-   - **CRITICAL**: You MUST launch BOTH Codex AND Gemini in a SINGLE message with TWO Bash tool calls.
-   - **DO NOT** call one model first and wait. Launch BOTH simultaneously with `run_in_background: true`.
+失败时：
 
-   **Step 7.1**: In ONE message, make TWO parallel Bash calls:
+```md
+## Acceptance Failed
 
-   **FIRST Bash call ({{BACKEND_PRIMARY}})**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <CODEX_PROTO_SESSION> - \"{{WORKDIR}}\" <<'EOF'\nReview the implementation changes:\n- Correctness: logic errors, edge cases\n- Security: injection, auth issues\n- Spec compliance: constraints satisfied\nOUTPUT: JSON with findings\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{BACKEND_PRIMARY}}: correctness/security review"
-   })
-   ```
+### Rework Packet
+- failed check: ...
+- violated constraint: ...
+- file scope: ...
+- required fix: ...
 
-   **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <GEMINI_PROTO_SESSION> - \"{{WORKDIR}}\" <<'EOF'\nReview the implementation changes:\n- Maintainability: readability, complexity\n- Patterns: consistency with project style\n- Integration: cross-module impacts\nOUTPUT: JSON with findings\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{FRONTEND_PRIMARY}}: maintainability/patterns review"
-   })
-   ```
-
-   **Step 7.2**: After BOTH Bash calls return task IDs, wait for results with TWO TaskOutput calls:
-   ```
-   TaskOutput({ task_id: "<codex_task_id>", block: true, timeout: 600000 })
-   TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
-   ```
-
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
-
-   Address any critical findings before proceeding.
-
-8. **Update Task Status**
-   - Mark completed task in `tasks.md`: `- [x] Task description`
-   - Commit changes if appropriate.
-
-9. **Context Checkpoint**
-   - After completing a phase, report context usage.
-   - If below 80K: Ask user "Continue to next phase?"
-   - If approaching 80K: Suggest "Run `/clear` and resume with `/ccg:spec:impl`"
-
-10. **Archive on Completion**
-    - When ALL tasks in `tasks.md` are marked `[x]`:
-    - Call `/opsx:archive` internally to archive the change:
-      ```
-      /opsx:archive
-      ```
-    - This merges spec deltas to `openspec/specs/` and moves change to archive.
-    - **Note**: This is an internal call. If archiving fails, guide the user to re-run `/ccg:spec-impl`.
-
-**Reference**
-- Check task status: `openspec status --change "<id>" --json`
-- View active changes: `openspec list --json`
-- Search existing patterns: `rg -n "function|class" <file>`
+Next: /ccg:team-exec
+```
 
 **Exit Criteria**
-Implementation is complete when:
-- [ ] All tasks in `tasks.md` marked `[x]`
-- [ ] All multi-model reviews passed
-- [ ] Side-effect review confirmed no regressions
-- [ ] Change archived successfully
+- [ ] Claude 执行结果已回流给 Codex
+- [ ] Codex 已完成必需验证
+- [ ] 失败时已形成 rework packet 并打回
+- [ ] 通过时 change 已 archive
 <!-- CCG:SPEC:IMPL:END -->

@@ -12,7 +12,7 @@ import { readCcgConfig } from './utils/config'
 function customizeHelp(sections: any[]): any[] {
   sections.unshift({
     title: '',
-    body: ansis.cyan.bold(`CCG - Claude + Codex + Gemini v${version}`),
+    body: ansis.cyan.bold(`CCG - Codex Orchestrates, Claude Executes v${version}`),
   })
 
   sections.push({

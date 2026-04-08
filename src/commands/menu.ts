@@ -1,4 +1,4 @@
-import ansis from 'ansis'
+﻿import ansis from 'ansis'
 import inquirer from 'inquirer'
 import ora from 'ora'
 import { exec, spawn } from 'node:child_process'
@@ -12,7 +12,7 @@ import { version } from '../../package.json'
 import { configMcp } from './config-mcp'
 import { i18n } from '../i18n'
 import { uninstallWorkflows } from '../utils/installer'
-import { readCcgConfig, writeCcgConfig } from '../utils/config'
+import { getConfigPath, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { init } from './init'
 import { update } from './update'
 import { isWindows } from '../utils/platform'
@@ -101,8 +101,8 @@ function drawHeader(statusParts: string[]): void {
     console.log(boxRow(centerLine(ansis.bold.white(line), INNER_W)))
   }
   console.log(empty)
-  console.log(boxRow(centerLine(ansis.gray('Claude + Codex + Gemini'), INNER_W)))
-  console.log(boxRow(centerLine(ansis.gray('Multi-Model Collaboration'), INNER_W)))
+  console.log(boxRow(centerLine(ansis.gray('Codex Orchestrates, Claude Executes'), INNER_W)))
+  console.log(boxRow(centerLine(ansis.gray('Primary Workflow Owner: Codex'), INNER_W)))
   console.log(empty)
   if (statusParts.length > 0) {
     const statusLine = statusParts.join(ansis.gray('  |  '))
@@ -249,17 +249,17 @@ function showHelp(): void {
 
   // Development Workflows
   section(i18n.t('menu:help.sections.devWorkflow'))
-  cmd('/ccg:workflow', i18n.t('menu:help.descriptions.workflow'))
-  cmd('/ccg:plan', i18n.t('menu:help.descriptions.plan'))
-  cmd('/ccg:execute', i18n.t('menu:help.descriptions.execute'))
-  cmd('/ccg:frontend', i18n.t('menu:help.descriptions.frontend'))
-  cmd('/ccg:backend', i18n.t('menu:help.descriptions.backend'))
+  cmd('/ccg:workflow', isZh ? '兼容流：完整 6 阶段开发工作流' : 'Compatibility flow: full 6-phase development workflow')
+  cmd('/ccg:plan', isZh ? '兼容流：多模型协作规划（Phase 1-2）' : 'Compatibility flow: multi-model planning (Phase 1-2)')
+  cmd('/ccg:execute', isZh ? '兼容流：多模型协作执行（Phase 3-5）' : 'Compatibility flow: multi-model execution (Phase 3-5)')
+  cmd('/ccg:frontend', isZh ? '次级快流：前端任务，按配置的前端模型执行' : 'Secondary quick flow: frontend tasks using the configured frontend model')
+  cmd('/ccg:backend', isZh ? '后端任务，Codex 默认负责' : 'Backend tasks led by Codex')
   cmd('/ccg:feat', i18n.t('menu:help.descriptions.feat'))
-  cmd('/ccg:analyze', i18n.t('menu:help.descriptions.analyze'))
+  cmd('/ccg:analyze', isZh ? 'Codex 主导技术分析' : 'Codex-led technical analysis')
   cmd('/ccg:debug', i18n.t('menu:help.descriptions.debug'))
   cmd('/ccg:optimize', i18n.t('menu:help.descriptions.optimize'))
   cmd('/ccg:test', i18n.t('menu:help.descriptions.test'))
-  cmd('/ccg:review', i18n.t('menu:help.descriptions.review'))
+  cmd('/ccg:review', isZh ? 'Codex 主导代码审查' : 'Codex-led code review')
   console.log()
 
   // Agent Teams
@@ -274,9 +274,9 @@ function showHelp(): void {
   section(i18n.t('menu:help.sections.opsx'))
   cmd('/ccg:spec-init', i18n.t('menu:help.descriptions.specInit'))
   cmd('/ccg:spec-research', i18n.t('menu:help.descriptions.specResearch'))
-  cmd('/ccg:spec-plan', i18n.t('menu:help.descriptions.specPlan'))
-  cmd('/ccg:spec-impl', i18n.t('menu:help.descriptions.specImpl'))
-  cmd('/ccg:spec-review', i18n.t('menu:help.descriptions.specReview'))
+  cmd('/ccg:spec-plan', isZh ? 'Codex 收敛 proposal 并生成执行交接契约' : 'Codex refines proposal and creates the execution handoff')
+  cmd('/ccg:spec-impl', isZh ? 'Codex 调度 Claude 执行并决定验收/归档' : 'Codex dispatches Claude execution and decides acceptance/archive')
+  cmd('/ccg:spec-review', isZh ? 'Codex 最终验收门禁' : 'Codex final acceptance gate')
   console.log()
 
   // Git Tools
@@ -302,7 +302,7 @@ function showHelp(): void {
  */
 function readCcgConfigSync(): any {
   try {
-    const configPath = join(homedir(), '.claude', '.ccg', 'config.toml')
+    const configPath = getConfigPath()
     if (fs.pathExistsSync(configPath)) {
       return parseTOML(fs.readFileSync(configPath, 'utf-8'))
     }
@@ -396,6 +396,7 @@ async function configApi(): Promise<void> {
   if (!settings.permissions.allow)
     settings.permissions.allow = []
   const wrapperPerms = [
+    'Bash(~/.claude/bin/codeagent-wrapper --backend claude*)',
     'Bash(~/.claude/bin/codeagent-wrapper --backend gemini*)',
     'Bash(~/.claude/bin/codeagent-wrapper --backend codex*)',
   ]
@@ -441,7 +442,7 @@ async function configModelRouting(): Promise<void> {
   console.log()
 
   // Show current routing
-  const currentFrontend = config?.routing?.frontend?.primary || 'gemini'
+  const currentFrontend = config?.routing?.frontend?.primary || 'codex'
   const currentBackend = config?.routing?.backend?.primary || 'codex'
   const currentGeminiModel = config?.routing?.geminiModel || 'gemini-3.1-pro-preview'
 
@@ -459,8 +460,9 @@ async function configModelRouting(): Promise<void> {
     name: 'selectedFrontend',
     message: i18n.t('init:model.selectFrontend'),
     choices: [
-      { name: `Gemini ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'gemini' },
-      { name: 'Codex', value: 'codex' },
+      { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' },
+      { name: 'Claude', value: 'claude' },
+      { name: 'Gemini', value: 'gemini' },
     ],
     default: currentFrontend,
   }])
@@ -471,8 +473,9 @@ async function configModelRouting(): Promise<void> {
     name: 'selectedBackend',
     message: i18n.t('init:model.selectBackend'),
     choices: [
-      { name: 'Gemini', value: 'gemini' },
       { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' },
+      { name: 'Claude', value: 'claude' },
+      { name: 'Gemini', value: 'gemini' },
     ],
     default: currentBackend,
   }])
@@ -769,7 +772,7 @@ async function uninstall(): Promise<void> {
   console.log(ansis.yellow(`  ${i18n.t('menu:uninstall.uninstalling')}`))
 
   // Uninstall workflows
-  const installDir = join(homedir(), '.claude')
+  const installDir = getDefaultInstallDir()
   const result = await uninstallWorkflows(installDir)
 
   if (result.success) {

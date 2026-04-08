@@ -9,7 +9,7 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { checkForUpdates, compareVersions } from '../utils/version'
 import { showBinaryDownloadWarning, verifyBinary } from '../utils/installer'
-import { readCcgConfig, writeCcgConfig } from '../utils/config'
+import { getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { i18n } from '../i18n'
 
@@ -303,7 +303,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   // the user was left with nothing. New approach backs up first, installs new,
   // verifies, then cleans up backups. On failure, restores from backup.
 
-  const installDir = join(homedir(), '.claude')
+  const installDir = getDefaultInstallDir()
   const BACKUP_SUFFIX = '.ccg-update-bak'
 
   // Directories to back up before installing new version

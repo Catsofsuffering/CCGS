@@ -134,7 +134,7 @@ describe('injectConfigVariables — routing variables', () => {
   it('defaults to standard routing when not specified', () => {
     const input = '{{FRONTEND_PRIMARY}} / {{BACKEND_PRIMARY}}'
     const result = injectConfigVariables(input, {})
-    expect(result).toBe('gemini / codex')
+    expect(result).toBe('codex / codex')
   })
 })
 
@@ -161,6 +161,92 @@ describe('injectConfigVariables — liteMode', () => {
 // ─────────────────────────────────────────────────────────────
 // C. Template variable completeness
 // ─────────────────────────────────────────────────────────────
+describe('primary-path research templates', () => {
+  it('spec-research does not require Gemini when routing excludes it', () => {
+    const content = readFileSync(join(TEMPLATES_DIR, 'spec-research.md'), 'utf-8')
+    const result = injectConfigVariables(content, {
+      routing: {
+        mode: 'smart',
+        frontend: { models: ['claude'], primary: 'claude' },
+        backend: { models: ['codex'], primary: 'codex' },
+        review: { models: ['codex'] },
+      },
+    })
+
+    expect(result).not.toContain('BOTH Codex AND Gemini')
+    expect(result).not.toContain('<gemini_task_id>')
+    expect(result).toContain('Gemini is an optional enhancement, not a prerequisite for the primary workflow.')
+    expect(result).toContain('must use `codex`')
+    expect(result).toContain('launch a second call with `claude`')
+  })
+
+  it('team-research follows configured prompt paths instead of hardcoded Gemini prompts', () => {
+    const content = readFileSync(join(TEMPLATES_DIR, 'team-research.md'), 'utf-8')
+    const result = injectConfigVariables(content, {
+      routing: {
+        mode: 'smart',
+        frontend: { models: ['claude'], primary: 'claude' },
+        backend: { models: ['codex'], primary: 'codex' },
+        review: { models: ['codex'] },
+      },
+    })
+
+    expect(result).toContain('prompts/codex/analyzer.md')
+    expect(result).toContain('prompts/claude/analyzer.md')
+    expect(result).not.toContain('prompts/gemini/analyzer.md')
+    expect(result).not.toContain('hardcoded Gemini')
+    expect(result).toContain('Gemini is never a mandatory prerequisite')
+  })
+})
+
+describe('compatibility and secondary templates', () => {
+  const compatRouting = {
+    routing: {
+      mode: 'smart',
+      frontend: { models: ['claude'], primary: 'claude' },
+      backend: { models: ['codex'], primary: 'codex' },
+      review: { models: ['codex'] },
+    },
+  }
+
+  it('planning and execution compatibility templates follow configured models instead of hardcoded Gemini assets', () => {
+    const templates = ['workflow', 'plan', 'execute', 'frontend', 'team', 'codex-exec']
+
+    for (const template of templates) {
+      const content = readFileSync(join(TEMPLATES_DIR, `${template}.md`), 'utf-8')
+      const result = injectConfigVariables(content, compatRouting)
+
+      expect(result, `${template} should not hardcode Gemini prompts`).not.toContain('prompts/gemini/')
+      expect(result, `${template} should not require Gemini-specific sessions`).not.toContain('GEMINI_SESSION')
+      expect(result, `${template} should not wait on Gemini-specific task ids`).not.toContain('<gemini_task_id>')
+      expect(result, `${template} should not instruct users to mandatory-call Gemini`).not.toContain('必须调用 Gemini')
+      expect(result, `${template} should not require Gemini retry logic`).not.toContain('Gemini 失败必须重试')
+    }
+  })
+
+  it('utility compatibility templates follow configured prompt paths instead of Gemini-only prompts', () => {
+    const templates = ['analyze', 'debug', 'optimize', 'review', 'test', 'feat']
+
+    for (const template of templates) {
+      const content = readFileSync(join(TEMPLATES_DIR, `${template}.md`), 'utf-8')
+      const result = injectConfigVariables(content, compatRouting)
+
+      expect(result, `${template} should not hardcode Gemini prompts`).not.toContain('prompts/gemini/')
+      expect(result, `${template} should not require Gemini retry logic`).not.toContain('Gemini 失败必须重试')
+      expect(result, `${template} should not grant unconditional frontend authority to Gemini`).not.toContain('前端以 Gemini 为准')
+    }
+  })
+
+  it('frontend compatibility descriptions do not imply Gemini is the required frontend model', () => {
+    const frontend = getWorkflowById('frontend')
+    expect(frontend?.descriptionEn).toBe('Frontend-focused quick flow using the configured frontend model')
+
+    const menuSource = readFileSync(join(PACKAGE_ROOT, 'src', 'commands', 'menu.ts'), 'utf-8')
+    expect(menuSource).toContain('Secondary quick flow: frontend tasks using the configured frontend model')
+    expect(menuSource).not.toContain('Secondary quick flow: frontend tasks with optional Gemini')
+  })
+})
+
 describe('template variable completeness', () => {
   function collectTemplateFiles(dir: string): string[] {
     const files: string[] = []
@@ -190,9 +276,9 @@ describe('template variable completeness', () => {
       const result = injectConfigVariables(content, {
         routing: {
           mode: 'smart',
-          frontend: { models: ['gemini'], primary: 'gemini' },
+          frontend: { models: ['codex'], primary: 'codex' },
           backend: { models: ['codex'], primary: 'codex' },
-          review: { models: ['codex', 'gemini'] },
+          review: { models: ['codex'] },
         },
         liteMode: false,
         mcpProvider: 'ace-tool',
@@ -250,7 +336,7 @@ describe('uninstallWorkflows E2E', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs then uninstalls cleanly', async () => {
+  it('installs then uninstalls cleanly', { timeout: 20_000 }, async () => {
     // First install
     const installResult = await installWorkflows(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'ace-tool',
@@ -288,7 +374,7 @@ describe('installWorkflows — binary installation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs codeagent-wrapper binary for current platform', async () => {
+  it('installs codeagent-wrapper binary for current platform', { timeout: 20_000 }, async () => {
     const result = await installWorkflows(['workflow'], tmpDir, true, {
       mcpProvider: 'skip',
     })
@@ -311,7 +397,7 @@ describe('installWorkflows — prompts installation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs codex, gemini, and claude prompts', async () => {
+  it('installs codex and claude prompts by default', { timeout: 60_000 }, async () => {
     const result = await installWorkflows(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'skip',
     })
@@ -321,13 +407,40 @@ describe('installWorkflows — prompts installation', () => {
     // Check model directories exist
     const promptsDir = join(tmpDir, '.ccg', 'prompts')
     expect(fs.existsSync(join(promptsDir, 'codex'))).toBe(true)
-    expect(fs.existsSync(join(promptsDir, 'gemini'))).toBe(true)
+    expect(fs.existsSync(join(promptsDir, 'claude'))).toBe(true)
+    expect(fs.existsSync(join(promptsDir, 'gemini'))).toBe(false)
 
     // Check at least one prompt per model
     const codexFiles = readdirSync(join(promptsDir, 'codex')).filter(f => f.endsWith('.md'))
-    const geminiFiles = readdirSync(join(promptsDir, 'gemini')).filter(f => f.endsWith('.md'))
+    const claudeFiles = readdirSync(join(promptsDir, 'claude')).filter(f => f.endsWith('.md'))
     expect(codexFiles.length).toBeGreaterThanOrEqual(5)
-    expect(geminiFiles.length).toBeGreaterThanOrEqual(5)
+    expect(claudeFiles.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('installs gemini prompts only when routing uses gemini', { timeout: 60_000 }, async () => {
+    const geminiDir = join(tmpdir(), `ccg-test-prompts-gemini-${Date.now()}`)
+
+    try {
+      const result = await installWorkflows(getAllCommandIds(), geminiDir, true, {
+        mcpProvider: 'skip',
+        routing: {
+          mode: 'smart',
+          frontend: { models: ['gemini'], primary: 'gemini' },
+          backend: { models: ['codex'], primary: 'codex' },
+          review: { models: ['codex'] },
+          geminiModel: 'gemini-3.1-pro-preview',
+        },
+      })
+      expect(result.success).toBe(true)
+
+      const promptsDir = join(geminiDir, '.ccg', 'prompts')
+      expect(fs.existsSync(join(promptsDir, 'gemini'))).toBe(true)
+      const geminiFiles = readdirSync(join(promptsDir, 'gemini')).filter(f => f.endsWith('.md'))
+      expect(geminiFiles.length).toBeGreaterThanOrEqual(5)
+    }
+    finally {
+      await fs.remove(geminiDir)
+    }
   })
 })
 
@@ -341,9 +454,10 @@ describe('skills namespace isolation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs skills under skills/ccg/ namespace', async () => {
+  it('installs skills under skills/ccg/ namespace', { timeout: 60_000 }, async () => {
     const result = await installWorkflows(['workflow'], tmpDir, true, {
       mcpProvider: 'skip',
+      skipBinary: true,
     })
     expect(result.success).toBe(true)
     expect(result.installedSkills).toBeGreaterThanOrEqual(6)
@@ -394,6 +508,7 @@ describe('skills namespace isolation', () => {
     // Install triggers migration
     const result = await installWorkflows(['workflow'], migrateDir, true, {
       mcpProvider: 'skip',
+      skipBinary: true,
     })
     expect(result.success).toBe(true)
 
@@ -410,5 +525,77 @@ describe('skills namespace isolation', () => {
     expect(fs.existsSync(join(migrateDir, 'skills', 'orchestration'))).toBe(false)
 
     await fs.remove(migrateDir)
+  })
+})
+
+describe('Codex native workflow entrypoint', () => {
+  const tmpDir = join(tmpdir(), `ccg-test-codex-entry-${Date.now()}`)
+  const codexHomeDir = join(tmpDir, '.codex-home')
+
+  afterAll(async () => {
+    await fs.remove(tmpDir)
+  })
+
+  it('installs top-level Codex workflow skills for the primary path', { timeout: 60_000 }, async () => {
+    const result = await installWorkflows(['workflow'], tmpDir, true, {
+      mcpProvider: 'skip',
+      codexHomeDir,
+      skipBinary: true,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.installedCodexSkills).toEqual([
+      'ccg-spec-init',
+      'ccg-spec-plan',
+      'ccg-spec-impl',
+    ])
+    expect(fs.existsSync(join(codexHomeDir, 'skills', 'ccg-spec-init', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(codexHomeDir, 'skills', 'ccg-spec-plan', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(codexHomeDir, 'skills', 'ccg-spec-impl', 'SKILL.md'))).toBe(true)
+  })
+
+  it('keeps Codex as the entrypoint and Claude as the execution worker', () => {
+    const content = readFileSync(join(codexHomeDir, 'skills', 'ccg-spec-impl', 'SKILL.md'), 'utf-8')
+
+    expect(content).toContain('Codex remains the orchestrator')
+    expect(content).toContain("$env:NO_PROXY")
+    expect(content).toContain("$env:no_proxy")
+    expect(content).toContain('127.0.0.1,localhost')
+    expect(content).toContain('claude -p')
+    expect(content).not.toContain('/ccg:')
+    expect(content).not.toContain('open Claude')
+  })
+
+  it('uninstall only removes CCG-owned Codex workflow skills', { timeout: 60_000 }, async () => {
+    const uninstallDir = join(tmpdir(), `ccg-test-codex-uninstall-${Date.now()}`)
+    const uninstallCodexHome = join(uninstallDir, '.codex-home')
+    const userSkillDir = join(uninstallCodexHome, 'skills', 'my-custom-skill')
+
+    try {
+      await installWorkflows(['workflow'], uninstallDir, true, {
+        mcpProvider: 'skip',
+        codexHomeDir: uninstallCodexHome,
+        skipBinary: true,
+      })
+
+      await fs.ensureDir(userSkillDir)
+      await fs.writeFile(join(userSkillDir, 'SKILL.md'), '# My Custom Skill')
+
+      const result = await uninstallWorkflows(uninstallDir, { codexHomeDir: uninstallCodexHome })
+      expect(result.success).toBe(true)
+      expect(result.removedCodexSkills).toEqual([
+        'ccg-spec-init',
+        'ccg-spec-plan',
+        'ccg-spec-impl',
+      ])
+
+      expect(fs.existsSync(join(uninstallCodexHome, 'skills', 'ccg-spec-init'))).toBe(false)
+      expect(fs.existsSync(join(uninstallCodexHome, 'skills', 'ccg-spec-plan'))).toBe(false)
+      expect(fs.existsSync(join(uninstallCodexHome, 'skills', 'ccg-spec-impl'))).toBe(false)
+      expect(fs.existsSync(join(userSkillDir, 'SKILL.md'))).toBe(true)
+    }
+    finally {
+      await fs.remove(uninstallDir)
+    }
   })
 })

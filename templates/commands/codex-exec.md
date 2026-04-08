@@ -1,87 +1,76 @@
----
-description: '{{BACKEND_PRIMARY}} 全权执行计划 - 读取 /ccg:plan 产出的计划文件，{{BACKEND_PRIMARY}} 承担 MCP 搜索 + 代码实现 + 测试，多模型审核'
+﻿---
+description: '{{BACKEND_PRIMARY}} 鍏ㄦ潈鎵ц璁″垝 - 璇诲彇 /ccg:plan 浜у嚭鐨勮鍒掓枃浠讹紝{{BACKEND_PRIMARY}} 鎵挎媴 MCP 鎼滅储 + 浠ｇ爜瀹炵幇 + 娴嬭瘯锛屽妯″瀷瀹℃牳'
 ---
 
-# Codex-Exec - Codex 全权执行计划
+# Codex-Exec - Codex 鍏ㄦ潈鎵ц璁″垝
 
 $ARGUMENTS
 
 ---
 
-## 核心理念
+## 鏍稿績鐞嗗康
 
-**与 `/ccg:plan` 配对使用**：
-
+**涓?`/ccg:plan` 閰嶅浣跨敤**锛?
 ```
-/ccg:plan → 多模型协同规划（Codex ∥ Gemini 分析 → Claude 综合）
-                ↓ 计划文件 (.claude/plan/xxx.md)
-/ccg:codex-exec → Codex 全权执行（MCP 搜索 + 代码实现 + 测试）
-                ↓ 代码变更
-                → 多模型审核（Codex ∥ Gemini 交叉审查）
-```
+/ccg:plan 鈫?澶氭ā鍨嬪崗鍚岃鍒掞紙Codex 鈭?{{FRONTEND_PRIMARY}} 鍒嗘瀽 鈫?Claude 缁煎悎锛?                鈫?璁″垝鏂囦欢 (.claude/plan/xxx.md)
+/ccg:codex-exec 鈫?Codex 鍏ㄦ潈鎵ц锛圡CP 鎼滅储 + 浠ｇ爜瀹炵幇 + 娴嬭瘯锛?                鈫?浠ｇ爜鍙樻洿
+                鈫?澶氭ā鍨嬪鏍革紙Codex 鈭?{{FRONTEND_PRIMARY}} 浜ゅ弶瀹℃煡锛?```
 
-**与 `/ccg:execute` 的区别**：
-
-| 维度 | `/ccg:execute` | `/ccg:codex-exec` |
+**涓?`/ccg:execute` 鐨勫尯鍒?*锛?
+| 缁村害 | `/ccg:execute` | `/ccg:codex-exec` |
 |------|---------------|-------------------|
-| 代码实现 | Claude 重构 {{BACKEND_PRIMARY}}/{{FRONTEND_PRIMARY}} 的 Diff | **{{BACKEND_PRIMARY}} 直接实现** |
-| MCP 搜索 | Claude 调用 MCP | **{{BACKEND_PRIMARY}} 调用 MCP** |
-| Claude 上下文 | 高（搜索结果 + 代码全进来） | **极低（只看摘要 + diff）** |
-| Claude token | 大量消耗 | **极少消耗** |
-| 审核 | 多模型审查 | **多模型审查（不变）** |
+| 浠ｇ爜瀹炵幇 | Claude 閲嶆瀯 {{BACKEND_PRIMARY}}/{{FRONTEND_PRIMARY}} 鐨?Diff | **{{BACKEND_PRIMARY}} 鐩存帴瀹炵幇** |
+| MCP 鎼滅储 | Claude 璋冪敤 MCP | **{{BACKEND_PRIMARY}} 璋冪敤 MCP** |
+| Claude 涓婁笅鏂?| 楂橈紙鎼滅储缁撴灉 + 浠ｇ爜鍏ㄨ繘鏉ワ級 | **鏋佷綆锛堝彧鐪嬫憳瑕?+ diff锛?* |
+| Claude token | 澶ч噺娑堣€?| **鏋佸皯娑堣€?* |
+| 瀹℃牳 | 澶氭ā鍨嬪鏌?| **澶氭ā鍨嬪鏌ワ紙涓嶅彉锛?* |
 
 ---
 
-## 语言协议
+## 璇█鍗忚
 
-- 与工具/模型交互用 **英语**
-- 与用户交互用 **中文**
+- 涓庡伐鍏?妯″瀷浜や簰鐢?**鑻辫**
+- 涓庣敤鎴蜂氦浜掔敤 **涓枃**
 
 ---
 
-## 多模型调用规范
-
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
-**{{BACKEND_PRIMARY}} 执行调用语法**：
-
+## 澶氭ā鍨嬭皟鐢ㄨ鑼?
+**宸ヤ綔鐩綍**锛?- `{{WORKDIR}}`锛?*蹇呴』閫氳繃 Bash 鎵ц `pwd`锛圲nix锛夋垨 `cd`锛圵indows CMD锛夎幏鍙栧綋鍓嶅伐浣滅洰褰曠殑缁濆璺緞**锛岀姝粠 `$HOME` 鎴栫幆澧冨彉閲忔帹鏂?- 濡傛灉鐢ㄦ埛閫氳繃 `/add-dir` 娣诲姞浜嗗涓伐浣滃尯锛屽厛鐢?Glob/Grep 纭畾浠诲姟鐩稿叧鐨勫伐浣滃尯
+- 濡傛灉鏃犳硶纭畾锛岀敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨鐩爣宸ヤ綔鍖?
+**{{BACKEND_PRIMARY}} 鎵ц璋冪敤璇硶**锛?
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EXEC_EOF'
 <TASK>
-<指令内容>
+<鎸囦护鍐呭>
 </TASK>
 EXEC_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**{{BACKEND_PRIMARY}} 复用会话调用**：
-
+**{{BACKEND_PRIMARY}} 澶嶇敤浼氳瘽璋冪敤**锛?
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <SESSION_ID> - \"{{WORKDIR}}\" <<'EXEC_EOF'
 <TASK>
-<指令内容>
+<鎸囦护鍐呭>
 </TASK>
 EXEC_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**审核调用语法**（Codex ∥ Gemini 并行审查）：
+**瀹℃牳璋冪敤璇硶**锛圕odex 鈭?{{FRONTEND_PRIMARY}} 骞惰瀹℃煡锛夛細
 
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'REVIEW_EOF'
-ROLE_FILE: <角色提示词路径>
+ROLE_FILE: <瑙掕壊鎻愮ず璇嶈矾寰?
 <TASK>
 Scope: Audit the code changes made by Codex.
 Inputs:
@@ -96,75 +85,61 @@ OUTPUT:
 REVIEW_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**角色提示词**：
-
-| 阶段 | Codex | Gemini |
+**瑙掕壊鎻愮ず璇?*锛?
+| 闃舵 | Codex | {{FRONTEND_PRIMARY}} |
 |------|-------|--------|
-| 审查 | `~/.claude/.ccg/prompts/codex/reviewer.md` | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 瀹℃煡 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
-**等待后台任务**（最大超时 600000ms = 10 分钟）：
+**绛夊緟鍚庡彴浠诲姟**锛堟渶澶ц秴鏃?600000ms = 10 鍒嗛挓锛夛細
 
 ```
 TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ```
 
-**重要**：
-- 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时
-- 若 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
-- 若因等待时间过长跳过了等待，**必须调用 `AskUserQuestion` 询问用户选择继续等待还是 Kill Task**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
-
+**閲嶈**锛?- 蹇呴』鎸囧畾 `timeout: 600000`锛屽惁鍒欓粯璁ゅ彧鏈?30 绉掍細瀵艰嚧鎻愬墠瓒呮椂
+- 鑻?10 鍒嗛挓鍚庝粛鏈畬鎴愶紝缁х画鐢?`TaskOutput` 杞锛?*缁濆涓嶈 Kill 杩涚▼**
+- 鑻ュ洜绛夊緟鏃堕棿杩囬暱璺宠繃浜嗙瓑寰咃紝**蹇呴』璋冪敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨缁х画绛夊緟杩樻槸 Kill Task**
+- 鉀?**{{FRONTEND_PRIMARY}} 澶辫触蹇呴』閲嶈瘯**锛氳嫢 {{FRONTEND_PRIMARY}} 璋冪敤澶辫触锛堥潪闆堕€€鍑虹爜鎴栬緭鍑哄寘鍚敊璇俊鎭級锛屾渶澶氶噸璇?2 娆★紙闂撮殧 5 绉掞級銆備粎褰?3 娆″叏閮ㄥけ璐ユ椂鎵嶈烦杩?{{FRONTEND_PRIMARY}} 缁撴灉骞朵娇鐢ㄥ崟妯″瀷缁撴灉缁х画銆?- 鉀?**Codex 缁撴灉蹇呴』绛夊緟**锛欳odex 鎵ц鏃堕棿杈冮暱锛?-15 鍒嗛挓锛夊睘浜庢甯搞€俆askOutput 瓒呮椂鍚庡繀椤荤户缁敤 TaskOutput 杞锛?*缁濆绂佹鍦?Codex 鏈繑鍥炵粨鏋滄椂鐩存帴璺宠繃鎴栫户缁笅涓€闃舵**銆傚凡鍚姩鐨?Codex 浠诲姟鑻ヨ璺宠繃 = 娴垂 token + 涓㈠け缁撴灉銆?
 ---
 
-## 执行工作流
+## 鎵ц宸ヤ綔娴?
+**鎵ц浠诲姟**锛?ARGUMENTS
 
-**执行任务**：$ARGUMENTS
+### 馃摉 Phase 0锛氳鍙栬鍒?
+`[妯″紡锛氬噯澶嘳`
 
-### 📖 Phase 0：读取计划
+1. **璇嗗埆杈撳叆绫诲瀷**锛?   - 璁″垝鏂囦欢璺緞锛堝 `.claude/plan/xxx.md`锛夆啋 璇诲彇骞惰В鏋?   - 鐩存帴鐨勪换鍔℃弿杩?鈫?鎻愮ず鐢ㄦ埛鍏堟墽琛?`/ccg:plan`
 
-`[模式：准备]`
-
-1. **识别输入类型**：
-   - 计划文件路径（如 `.claude/plan/xxx.md`）→ 读取并解析
-   - 直接的任务描述 → 提示用户先执行 `/ccg:plan`
-
-2. **解析计划内容**，提取：
-   - 任务类型（前端/后端/全栈）
-   - 技术方案
-   - 实施步骤
-   - 关键文件列表
-   - SESSION_ID（`CODEX_SESSION` / `GEMINI_SESSION`）
-
-3. **执行前确认**：
-   向用户展示计划摘要，确认后执行：
+2. **瑙ｆ瀽璁″垝鍐呭**锛屾彁鍙栵細
+   - 浠诲姟绫诲瀷锛堝墠绔?鍚庣/鍏ㄦ爤锛?   - 鎶€鏈柟妗?   - 瀹炴柦姝ラ
+   - 鍏抽敭鏂囦欢鍒楄〃
+   - SESSION_ID锛坄CODEX_SESSION` / `FRONTEND_SESSION`锛?
+3. **鎵ц鍓嶇‘璁?*锛?   鍚戠敤鎴峰睍绀鸿鍒掓憳瑕侊紝纭鍚庢墽琛岋細
 
    ```markdown
-   ## 即将执行
+   ## 鍗冲皢鎵ц
 
-   **任务**：<计划标题>
-   **模式**：Codex 全权执行
-   **步骤**：<N 步>
-   **关键文件**：<N 个>
+   **浠诲姟**锛?璁″垝鏍囬>
+   **妯″紡**锛欳odex 鍏ㄦ潈鎵ц
+   **姝ラ**锛?N 姝?
+   **鍏抽敭鏂囦欢**锛?N 涓?
 
-   Codex 将自主完成：MCP 搜索 + 代码实现 + 测试验证
-   Claude 仅做最终审核
-
-   确认执行？(Y/N)
+   Codex 灏嗚嚜涓诲畬鎴愶細MCP 鎼滅储 + 浠ｇ爜瀹炵幇 + 娴嬭瘯楠岃瘉
+   Claude 浠呭仛鏈€缁堝鏍?
+   纭鎵ц锛?Y/N)
    ```
 
 ---
 
-### ⚡ Phase 1：Codex 全权执行
+### 鈿?Phase 1锛欳odex 鍏ㄦ潈鎵ц
 
-`[模式：执行]`
+`[妯″紡锛氭墽琛宂`
 
-**将计划转化为 Codex 结构化指令，一次性下发**：
-
+**灏嗚鍒掕浆鍖栦负 Codex 缁撴瀯鍖栨寚浠わ紝涓€娆℃€т笅鍙?*锛?
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <CODEX_SESSION> - \"{{WORKDIR}}\" <<'EXEC_EOF'
@@ -172,7 +147,7 @@ Bash({
 You are a full-stack execution agent. Implement the following plan end-to-end.
 
 ## Implementation Plan
-<将 Phase 0 解析出的完整计划内容粘贴于此>
+<灏?Phase 0 瑙ｆ瀽鍑虹殑瀹屾暣璁″垝鍐呭绮樿创浜庢>
 
 ## Your Instructions
 
@@ -185,7 +160,7 @@ Before coding, verify you have sufficient context:
 
 ### Step 2: Implementation
 Implement each step from the plan in order:
-<将计划的实施步骤逐条列出>
+<灏嗚鍒掔殑瀹炴柦姝ラ閫愭潯鍒楀嚭>
 
 Constraints:
 - Follow existing code conventions in this project
@@ -196,7 +171,7 @@ Constraints:
 ### Step 3: Self-Verification
 After implementation:
 - Run lint/typecheck if available
-- Run existing tests: <从计划中提取测试命令，如无则 "run project's test suite">
+- Run existing tests: <浠庤鍒掍腑鎻愬彇娴嬭瘯鍛戒护锛屽鏃犲垯 "run project's test suite">
 - Verify no regressions in touched modules
 
 ## Output Format
@@ -222,49 +197,37 @@ For each file changed:
 EXEC_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "Codex 全权执行：<计划标题>"
+  description: "Codex 鍏ㄦ潈鎵ц锛?璁″垝鏍囬>"
 })
 ```
 
-**📌 记录 SESSION_ID**（`CODEX_EXEC_SESSION`）
+**馃搶 璁板綍 SESSION_ID**锛坄CODEX_EXEC_SESSION`锛?
+濡傛灉璁″垝涓棤 `CODEX_SESSION`锛堢敤鎴疯烦杩囦簡 `/ccg:plan` 鐨勫妯″瀷鍒嗘瀽锛夛紝鍒欎娇鐢ㄦ柊浼氳瘽銆?
+鐢?`TaskOutput` 绛夊緟瀹屾垚銆?
+---
 
-如果计划中无 `CODEX_SESSION`（用户跳过了 `/ccg:plan` 的多模型分析），则使用新会话。
+### 馃攳 Phase 2锛欳laude 杞婚噺瀹℃牳
 
-用 `TaskOutput` 等待完成。
+`[妯″紡锛氬鏍竇`
+
+**Claude 鍙仛鏈€灏忛獙璇侊紝涓嶉噸澶?Codex 宸插仛鐨勫伐浣?*锛?
+1. **璇诲彇 Codex 鎶ュ憡**锛氳В鏋?CONTEXT_GATHERED / CHANGES_MADE / VERIFICATION_RESULTS / REMAINING_ISSUES
+2. **鏌ョ湅瀹為檯鍙樻洿**锛?
+   ```
+   Bash({ command: "git diff HEAD", description: "鏌ョ湅 Codex 瀹為檯鍙樻洿" })
+   ```
+
+3. **蹇€熷垽瀹?*锛?   - 鍙樻洿鏄惁鍦ㄨ鍒掕寖鍥村唴锛?   - 鏄惁鏈夋槑鏄惧畨鍏?閫昏緫闂锛?   - 娴嬭瘯鏄惁閫氳繃锛?
+4. **澶勭悊缁撴灉**锛?   - 鉁?**閫氳繃** 鈫?Phase 3 澶氭ā鍨嬪鏍?   - 鈿狅笍 **灏忛棶棰?* 鈫?Claude 鐩存帴淇锛? 10 琛岀殑淇 Claude 鑷繁鍋氾級
+   - 鉂?**闇€杩斿伐** 鈫?Phase 2.5 杩藉姞鎸囦护
 
 ---
 
-### 🔍 Phase 2：Claude 轻量审核
+### 馃攧 Phase 2.5锛氳拷鍔犳寚浠わ紙浠呭湪闇€杩斿伐鏃讹級
 
-`[模式：审核]`
+`[妯″紡锛氳拷鍔燷`
 
-**Claude 只做最小验证，不重复 Codex 已做的工作**：
-
-1. **读取 Codex 报告**：解析 CONTEXT_GATHERED / CHANGES_MADE / VERIFICATION_RESULTS / REMAINING_ISSUES
-2. **查看实际变更**：
-
-   ```
-   Bash({ command: "git diff HEAD", description: "查看 Codex 实际变更" })
-   ```
-
-3. **快速判定**：
-   - 变更是否在计划范围内？
-   - 是否有明显安全/逻辑问题？
-   - 测试是否通过？
-
-4. **处理结果**：
-   - ✅ **通过** → Phase 3 多模型审核
-   - ⚠️ **小问题** → Claude 直接修复（< 10 行的修正 Claude 自己做）
-   - ❌ **需返工** → Phase 2.5 追加指令
-
----
-
-### 🔄 Phase 2.5：追加指令（仅在需返工时）
-
-`[模式：追加]`
-
-**复用 Codex 会话，下发修正指令**：
-
+**澶嶇敤 Codex 浼氳瘽锛屼笅鍙戜慨姝ｆ寚浠?*锛?
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <CODEX_EXEC_SESSION> - \"{{WORKDIR}}\" <<'FIXEOF'
@@ -272,140 +235,112 @@ Bash({
 The implementation needs corrections:
 
 ## Issues Found
-1. <问题描述 + 具体文件:行号>
-2. <问题描述 + 具体文件:行号>
+1. <闂鎻忚堪 + 鍏蜂綋鏂囦欢:琛屽彿>
+2. <闂鎻忚堪 + 鍏蜂綋鏂囦欢:琛屽彿>
 
 ## Required Fixes
-1. <具体修正要求>
-2. <具体修正要求>
+1. <鍏蜂綋淇瑕佹眰>
+2. <鍏蜂綋淇瑕佹眰>
 
 Apply fixes and re-run tests. Report results in the same format.
 </TASK>
 FIXEOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "Codex 修正：<问题简述>"
+  description: "Codex 淇锛?闂绠€杩?"
 })
 ```
 
-等待完成后回到 Phase 2。**最多 2 轮返工**，超过则 Claude 直接接管修复。
-
+绛夊緟瀹屾垚鍚庡洖鍒?Phase 2銆?*鏈€澶?2 杞繑宸?*锛岃秴杩囧垯 Claude 鐩存帴鎺ョ淇銆?
 ---
 
-### ✅ Phase 3：多模型审核
+### 鉁?Phase 3锛氬妯″瀷瀹℃牳
 
-`[模式：审核]`
+`[妯″紡锛氬鏍竇`
 
-**并行调用 Codex + Gemini 交叉审查**（多模型协同不变）：
+**骞惰璋冪敤 {{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}} 浜ゅ弶瀹℃煡**锛堝妯″瀷鍗忓悓涓嶅彉锛夛細
 
-1. **获取变更 diff**：
-
+1. **鑾峰彇鍙樻洿 diff**锛?
    ```
-   Bash({ command: "git diff HEAD", description: "获取完整变更 diff" })
+   Bash({ command: "git diff HEAD", description: "鑾峰彇瀹屾暣鍙樻洿 diff" })
    ```
 
-2. **并行调用**（`run_in_background: true`）：
+2. **骞惰璋冪敤**锛坄run_in_background: true`锛夛細
 
-   - **{{BACKEND_PRIMARY}} 审查**：
-     - ROLE_FILE: `~/.claude/.ccg/prompts/codex/reviewer.md`
-     - 输入：变更 Diff + 计划文件内容
-     - 关注：安全性、性能、错误处理、逻辑正确性
-
-   - **{{FRONTEND_PRIMARY}} 审查**：
-     - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/reviewer.md`
-     - 输入：变更 Diff + 计划文件内容
-     - 关注：代码可读性、设计一致性、可维护性
-
-   用 `TaskOutput` 等待两个模型的完整审查结果。
-
-3. **整合审查意见**：
-   - 按信任规则：后端问题以 Codex 为准，前端问题以 Gemini 为准
-   - **Critical** → 必须修复（Claude 直接修或再派 Codex）
-   - **Warning** → 建议修复，报告给用户决定
-   - **Info** → 记录不处理
-
-4. **执行修复**（如有 Critical）：
-   - < 10 行修正：Claude 直接修
-   - ≥ 10 行修正：再派 Codex（复用 `CODEX_EXEC_SESSION`）
-   - 修复后可选重复 Phase 3（直到风险可接受）
-
+   - **{{BACKEND_PRIMARY}} 瀹℃煡**锛?     - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md`
+     - 杈撳叆锛氬彉鏇?Diff + 璁″垝鏂囦欢鍐呭
+     - 鍏虫敞锛氬畨鍏ㄦ€с€佹€ц兘銆侀敊璇鐞嗐€侀€昏緫姝ｇ‘鎬?
+   - **{{FRONTEND_PRIMARY}} 瀹℃煡**锛?     - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md`
+     - 杈撳叆锛氬彉鏇?Diff + 璁″垝鏂囦欢鍐呭
+     - 鍏虫敞锛氫唬鐮佸彲璇绘€с€佽璁′竴鑷存€с€佸彲缁存姢鎬?
+   鐢?`TaskOutput` 绛夊緟涓や釜妯″瀷鐨勫畬鏁村鏌ョ粨鏋溿€?
+3. **鏁村悎瀹℃煡鎰忚**锛?   - 鎸変俊浠昏鍒欙細鍚庣闂浠?Codex 涓哄噯锛屽墠绔棶棰樹互 {{FRONTEND_PRIMARY}} 涓哄噯
+   - **Critical** 鈫?蹇呴』淇锛圕laude 鐩存帴淇垨鍐嶆淳 Codex锛?   - **Warning** 鈫?寤鸿淇锛屾姤鍛婄粰鐢ㄦ埛鍐冲畾
+   - **Info** 鈫?璁板綍涓嶅鐞?
+4. **鎵ц淇**锛堝鏈?Critical锛夛細
+   - < 10 琛屼慨姝ｏ細Claude 鐩存帴淇?   - 鈮?10 琛屼慨姝ｏ細鍐嶆淳 Codex锛堝鐢?`CODEX_EXEC_SESSION`锛?   - 淇鍚庡彲閫夐噸澶?Phase 3锛堢洿鍒伴闄╁彲鎺ュ彈锛?
 ---
 
-### 📦 Phase 4：交付
+### 馃摝 Phase 4锛氫氦浠?
+`[妯″紡锛氫氦浠榏`
 
-`[模式：交付]`
-
-向用户报告：
+鍚戠敤鎴锋姤鍛婏細
 
 ```markdown
-## ✅ 执行完成
+## 鉁?鎵ц瀹屾垚
 
-### 执行摘要
-| 项目 | 详情 |
+### 鎵ц鎽樿
+| 椤圭洰 | 璇︽儏 |
 |------|------|
-| 计划 | <计划文件路径> |
-| 模式 | Codex 全权执行 + 多模型审核 |
-| 搜索 | <Codex 使用了哪些 MCP 工具，关键发现> |
-| 变更 | <N 个文件，+X/-Y 行> |
-| 测试 | <通过/失败> |
-| 返工 | <0/1/2 轮> |
+| 璁″垝 | <璁″垝鏂囦欢璺緞> |
+| 妯″紡 | Codex 鍏ㄦ潈鎵ц + 澶氭ā鍨嬪鏍?|
+| 鎼滅储 | <Codex 浣跨敤浜嗗摢浜?MCP 宸ュ叿锛屽叧閿彂鐜? |
+| 鍙樻洿 | <N 涓枃浠讹紝+X/-Y 琛? |
+| 娴嬭瘯 | <閫氳繃/澶辫触> |
+| 杩斿伐 | <0/1/2 杞? |
 
-### 变更清单
-| 文件 | 操作 | 说明 |
+### 鍙樻洿娓呭崟
+| 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |------|------|------|
-| path/to/file.ts | 修改/新增 | 描述 |
+| path/to/file.ts | 淇敼/鏂板 | 鎻忚堪 |
 
-### 审核结果
-- Codex 审查：<通过/发现 N 个问题>
-- Gemini 审查：<通过/发现 N 个问题>
-- Claude 处理：<已修复 N 个 Critical，N 个 Warning 待用户决定>
+### 瀹℃牳缁撴灉
+- Codex 瀹℃煡锛?閫氳繃/鍙戠幇 N 涓棶棰?
+- {{FRONTEND_PRIMARY}} 瀹℃煡锛?閫氳繃/鍙戠幇 N 涓棶棰?
+- Claude 澶勭悊锛?宸蹭慨澶?N 涓?Critical锛孨 涓?Warning 寰呯敤鎴峰喅瀹?
 
-### 后续建议
-1. [ ] <建议的测试步骤>
-2. [ ] <建议的验证步骤>
+### 鍚庣画寤鸿
+1. [ ] <寤鸿鐨勬祴璇曟楠?
+2. [ ] <寤鸿鐨勯獙璇佹楠?
 ```
 
 ---
 
-## 关键规则
+## 鍏抽敭瑙勫垯
 
-1. **Claude 极简原则** — Claude 不调用 MCP、不做代码检索。只读计划、指挥 Codex、审核结果。
-2. **{{BACKEND_PRIMARY}} 全权执行** — MCP 搜索、文档查询、代码检索、实现、测试全由 {{BACKEND_PRIMARY}} 完成。
-3. **多模型审核不变** — 审核阶段仍然 Codex ∥ Gemini 交叉审查，保证质量。
-4. **信任规则** — 后端以 Codex 为准，前端以 Gemini 为准。
-5. **一次性下发** — 尽量一次给 Codex 完整指令 + 完整计划，减少来回通信。
-6. **最多 2 轮返工** — 超过 2 轮 Claude 直接接管，避免无限循环。
-7. **计划对齐** — Codex 实现必须在计划范围内，超出范围的变更视为违规。
-
+1. **Claude 鏋佺畝鍘熷垯** 鈥?Claude 涓嶈皟鐢?MCP銆佷笉鍋氫唬鐮佹绱€傚彧璇昏鍒掋€佹寚鎸?Codex銆佸鏍哥粨鏋溿€?2. **{{BACKEND_PRIMARY}} 鍏ㄦ潈鎵ц** 鈥?MCP 鎼滅储銆佹枃妗ｆ煡璇€佷唬鐮佹绱€佸疄鐜般€佹祴璇曞叏鐢?{{BACKEND_PRIMARY}} 瀹屾垚銆?3. **澶氭ā鍨嬪鏍镐笉鍙?* 鈥?瀹℃牳闃舵浠嶇劧 Codex 鈭?{{FRONTEND_PRIMARY}} 浜ゅ弶瀹℃煡锛屼繚璇佽川閲忋€?4. **淇′换瑙勫垯** 鈥?鍚庣浠?Codex 涓哄噯锛屽墠绔互 {{FRONTEND_PRIMARY}} 涓哄噯銆?5. **涓€娆℃€т笅鍙?* 鈥?灏介噺涓€娆＄粰 Codex 瀹屾暣鎸囦护 + 瀹屾暣璁″垝锛屽噺灏戞潵鍥為€氫俊銆?6. **鏈€澶?2 杞繑宸?* 鈥?瓒呰繃 2 杞?Claude 鐩存帴鎺ョ锛岄伩鍏嶆棤闄愬惊鐜€?7. **璁″垝瀵归綈** 鈥?Codex 瀹炵幇蹇呴』鍦ㄨ鍒掕寖鍥村唴锛岃秴鍑鸿寖鍥寸殑鍙樻洿瑙嗕负杩濊銆?
 ---
 
-## 使用方法
+## 浣跨敤鏂规硶
 
 ```bash
-# 标准流程：先规划，再执行
-/ccg:plan 实现用户认证功能
-# 审查计划后...
+# 鏍囧噯娴佺▼锛氬厛瑙勫垝锛屽啀鎵ц
+/ccg:plan 瀹炵幇鐢ㄦ埛璁よ瘉鍔熻兘
+# 瀹℃煡璁″垝鍚?..
 /ccg:codex-exec .claude/plan/user-auth.md
 
-# 直接执行（会提示先 /ccg:plan）
-/ccg:codex-exec 实现用户认证功能
+# 鐩存帴鎵ц锛堜細鎻愮ず鍏?/ccg:plan锛?/ccg:codex-exec 瀹炵幇鐢ㄦ埛璁よ瘉鍔熻兘
 ```
 
 ---
 
-## 与 /ccg:plan 的关系
-
+## 涓?/ccg:plan 鐨勫叧绯?
 ```
-/ccg:plan ──→ .claude/plan/xxx.md
-                    │
-          ┌─────────┴─────────┐
-          ↓                   ↓
-   /ccg:execute        /ccg:codex-exec
-   (Claude 重构)       (Codex 全权)
-   Claude 高消耗       Claude 极低消耗
-   精细控制             高效执行
+/ccg:plan 鈹€鈹€鈫?.claude/plan/xxx.md
+                    鈹?          鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?          鈫?                  鈫?   /ccg:execute        /ccg:codex-exec
+   (Claude 閲嶆瀯)       (Codex 鍏ㄦ潈)
+   Claude 楂樻秷鑰?      Claude 鏋佷綆娑堣€?   绮剧粏鎺у埗             楂樻晥鎵ц
 ```
 
-用户可根据任务特点选择：
-- **需要精细控制** → `/ccg:execute`（Claude 逐行重构）
-- **需要高效执行** → `/ccg:codex-exec`（Codex 一把梭）
+鐢ㄦ埛鍙牴鎹换鍔＄壒鐐归€夋嫨锛?- **闇€瑕佺簿缁嗘帶鍒?* 鈫?`/ccg:execute`锛圕laude 閫愯閲嶆瀯锛?- **闇€瑕侀珮鏁堟墽琛?* 鈫?`/ccg:codex-exec`锛圕odex 涓€鎶婃锛?
+

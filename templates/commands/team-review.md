@@ -1,98 +1,69 @@
 ---
-description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，分级处理 Critical/Warning/Info'
+description: 'Codex 审查 Claude Agent Teams 的执行结果，并决定通过还是打回'
 ---
 <!-- CCG:TEAM:REVIEW:START -->
 **Core Philosophy**
-- 双模型交叉验证捕获单模型审查遗漏的盲区。
-- Critical 问题必须修复后才能结束。
-- 审查范围严格限于 team-exec 的变更，不扩大范围。
+- `team-review` 由 Codex 主导，目的是决定“通过”还是“打回”。
+- review 不是补写代码的阶段，而是做质量门禁和返工决策。
+- Gemini 可以参与辅助 review，但不是 mandatory。
 
 **Guardrails**
-- **MANDATORY**: Codex 和 Gemini 必须都完成审查后才能综合。
-- 审查范围限于 `git diff` 的变更，不做范围蔓延。
-- Lead 可以直接修复 Critical 问题（审查阶段允许写代码）。
+- 审查范围仅限本轮执行变更和对应 plan/spec 约束。
+- 发现问题后优先形成 rework packet，而不是在 review 阶段直接接管实现。
+- Critical 问题未解决前，不得视为通过。
 
 **Steps**
-1. **收集变更产物**
-   - 运行 `git diff` 获取变更摘要。
-   - 如果有 `.claude/team-plan/` 下的计划文件，读取约束和成功判据作为审查基准。
-   - 列出所有被修改的文件。
+1. 收集材料
+   - 读取 `git diff`。
+   - 读取最近的 `.claude/team-plan/*.md`。
+   - 读取 `Execution Return Packet`。
+   - 如有 active change，同时读取对应 spec artifacts。
 
-2. **多模型审查（PARALLEL）**
-   - **CRITICAL**: 必须在一条消息中同时发起两个 Bash 调用。
-   - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。
+2. Codex 主审查
+   - Codex 必须检查：
+     - scope compliance
+     - correctness
+     - regression risk
+     - verification completeness
+   - 如配置了 `{{FRONTEND_PRIMARY}}` 且当前问题偏前端/集成，可选增加辅助审查。
 
-   **FIRST Bash call ({{BACKEND_PRIMARY}})**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"logic|security|performance|error_handling\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
-     run_in_background: true,
-     timeout: 3600000,
-     description: "{{BACKEND_PRIMARY}} 后端审查"
-   })
-   ```
+3. 形成审查结论
+   - 输出分级结果：
+     - Critical
+     - Warning
+     - Info
+   - 每个 Critical 必须附带明确返工条件。
 
-   **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/gemini/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"patterns|maintainability|accessibility|ux|frontend_security\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
-     run_in_background: true,
-     timeout: 3600000,
-     description: "{{FRONTEND_PRIMARY}} 前端审查"
-   })
-   ```
+4. 决策
+   - 若存在 Critical：
+     - 输出 `Rework Packet`
+     - 指示回到 `/ccg:team-exec`
+   - 若无 Critical：
+     - 标记 `team review passed`
+     - 指示回到 `/ccg:spec-impl` 或 `/ccg:spec-review`
 
-   **等待结果**:
-   ```
-   TaskOutput({ task_id: "<codex_task_id>", block: true, timeout: 600000 })
-   TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
-   ```
+**Rework Packet**
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+```md
+## Rework Packet
 
-3. **综合发现**
-   - 合并两个模型的发现。
-   - 去重重叠问题。
-   - 按严重性分级：
-     * **Critical**: 安全漏洞、逻辑错误、数据丢失风险 → 必须修复
-     * **Warning**: 模式偏离、可维护性问题 → 建议修复
-     * **Info**: 小改进建议 → 可选修复
+### Critical Findings
+- file: ...
+  issue: ...
+  required fix: ...
 
-4. **输出审查报告**
-   ```markdown
-   ## 审查报告
+### Verification Gaps
+- ...
 
-   ### 🔴 Critical (X issues) - 必须修复
-   - [ ] [安全] file.ts:42 - 描述
-   - [ ] [逻辑] api.ts:15 - 描述
-
-   ### 🟡 Warning (Y issues) - 建议修复
-   - [ ] [模式] utils.ts:88 - 描述
-
-   ### 🔵 Info (Z issues) - 可选
-   - [ ] [维护] helper.ts:20 - 描述
-
-   ### ✅ 已通过检查
-   - ✅ 无 XSS 漏洞
-   - ✅ 错误处理完整
-   ```
-
-5. **决策门**
-   - **Critical > 0**:
-     * 展示发现，用 `AskUserQuestion` 询问："立即修复 / 跳过"
-     * 选择修复 → Lead 直接修复（后端问题参考 Codex 建议，前端参考 Gemini 建议）
-     * 修复后重新运行受影响的审查维度
-     * 重复直到 Critical = 0
-   - **Critical = 0**:
-     * 报告通过，建议提交代码
-
-6. **上下文检查点**
-   - 报告当前上下文使用量。
+### Return Conditions
+- rerun tests: ...
+- maintain scope: ...
+- include evidence: ...
+```
 
 **Exit Criteria**
-- [ ] Codex + Gemini 审查完成
-- [ ] 所有发现已综合分级
-- [ ] Critical = 0（已修复或用户确认跳过）
-- [ ] 审查报告已输出
+- [ ] 审查材料已收集
+- [ ] Critical/Warning/Info 已分级
+- [ ] 失败时已生成 rework packet
+- [ ] 通过时已明确交还给 Codex 的下一步
 <!-- CCG:TEAM:REVIEW:END -->

@@ -1,4 +1,4 @@
-import type { SupportedLang } from '../types'
+﻿import type { SupportedLang } from '../types'
 import i18next from 'i18next'
 
 export const i18n = i18next
@@ -103,6 +103,7 @@ const zhCN = {
     },
     summary: {
       title: '配置摘要:',
+      orchestrator: '编排器 → 执行:',
       frontendModels: '前端模型:',
       backendModels: '后端模型:',
       collaboration: '协作模式:',
@@ -190,6 +191,7 @@ const zhCN = {
     },
     model: {
       title: '模型路由配置',
+      selectOrchestrator: '选择工作流编排器',
       selectFrontend: '选择前端模型',
       selectBackend: '选择后端模型',
       selectGeminiModel: 'Gemini 模型型号',
@@ -358,7 +360,7 @@ const zhCN = {
         plan: '多模型协作规划（Phase 1-2）',
         execute: '多模型协作执行（Phase 3-5）',
         dev: '完整六阶段开发工作流',
-        frontend: '前端任务 → Gemini',
+        frontend: '前端任务 → 已配置的前端模型',
         backend: '后端任务 → Codex',
         feat: '智能功能开发',
         review: '双模型代码审查',
@@ -580,6 +582,7 @@ const en: typeof zhCN = {
     },
     summary: {
       title: 'Configuration Summary:',
+      orchestrator: 'Orchestrator → Execution:',
       frontendModels: 'Frontend Models:',
       backendModels: 'Backend Models:',
       collaboration: 'Collaboration:',
@@ -667,6 +670,7 @@ const en: typeof zhCN = {
     },
     model: {
       title: 'Model Routing',
+      selectOrchestrator: 'Select workflow orchestrator',
       selectFrontend: 'Select frontend model',
       selectBackend: 'Select backend model',
       selectGeminiModel: 'Gemini model name',
@@ -835,7 +839,7 @@ const en: typeof zhCN = {
         plan: 'Multi-model planning (Phase 1-2)',
         execute: 'Multi-model execution (Phase 3-5)',
         dev: 'Complete 6-phase development workflow',
-        frontend: 'Frontend tasks → Gemini',
+        frontend: 'Frontend tasks → configured frontend model',
         backend: 'Backend tasks → Codex',
         feat: 'Smart feature development',
         review: 'Dual-model code review',

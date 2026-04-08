@@ -1,4 +1,4 @@
-import type { CcgConfig, ModelRouting, SupportedLang } from '../types'
+import type { CcgConfig, HostRuntime, ModelRouting, ModelType, SupportedLang } from '../types'
 import fs from 'fs-extra'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
@@ -6,8 +6,13 @@ import { parse, stringify } from 'smol-toml'
 import { version as packageVersion } from '../../package.json'
 
 // v1.4.0: 配置目录统一到 ~/.claude/.ccg/
-const CCG_DIR = join(homedir(), '.claude', '.ccg')
+const DEFAULT_INSTALL_DIR = join(homedir(), '.claude')
+const CCG_DIR = join(DEFAULT_INSTALL_DIR, '.ccg')
 const CONFIG_FILE = join(CCG_DIR, 'config.toml')
+
+export function getDefaultInstallDir(): string {
+  return DEFAULT_INSTALL_DIR
+}
 
 export function getCcgDir(): string {
   return CCG_DIR
@@ -47,19 +52,31 @@ export function createDefaultConfig(options: {
   mcpProvider?: string
   liteMode?: boolean
   skipImpeccable?: boolean
+  ownership?: {
+    orchestrator: ModelType
+    executionHost: HostRuntime
+    acceptance: ModelType
+  }
 }): CcgConfig {
+  const ownership = options.ownership || {
+    orchestrator: 'codex',
+    executionHost: 'claude',
+    acceptance: 'codex',
+  }
+
   return {
     general: {
       version: packageVersion,
       language: options.language,
       createdAt: new Date().toISOString(),
     },
+    ownership,
     routing: options.routing,
     workflows: {
       installed: options.installedWorkflows,
     },
     paths: {
-      commands: join(homedir(), '.claude', 'commands', 'ccg'),
+      commands: join(DEFAULT_INSTALL_DIR, 'commands', 'ccg'),
       prompts: join(CCG_DIR, 'prompts'), // v1.4.0: 移到配置目录
       backup: join(CCG_DIR, 'backup'),
     },
@@ -77,17 +94,17 @@ export function createDefaultConfig(options: {
 export function createDefaultRouting(): ModelRouting {
   return {
     frontend: {
-      models: ['gemini'],
-      primary: 'gemini',
-      strategy: 'parallel',
+      models: ['codex'],
+      primary: 'codex',
+      strategy: 'fallback',
     },
     backend: {
       models: ['codex'],
       primary: 'codex',
-      strategy: 'parallel',
+      strategy: 'fallback',
     },
     review: {
-      models: ['codex', 'gemini'],
+      models: ['codex'],
       strategy: 'parallel',
     },
     mode: 'smart',

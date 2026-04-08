@@ -32,3 +32,18 @@ The system SHALL present the default product narrative as "Codex orchestrates, C
 #### Scenario: User compares available workflow paths
 - **WHEN** the product shows the main workflow alongside optional alternatives
 - **THEN** the main path is identified as Codex-led and any Claude-led or multi-model variants are treated as secondary or compatibility paths
+
+#### Scenario: User reads compatibility workflow guidance
+- **WHEN** a user opens a compatibility or secondary command from the same installation
+- **THEN** the guidance keeps Codex-led ownership intact and does not describe Gemini as an unconditional authority or required collaborator
+
+### Requirement: Installer surfaces orchestration ownership
+The installer SHALL prompt users to confirm who acts as the workflow orchestrator before selecting frontend/backend execution models. Codex MUST remain the recommended default, while Claude SHOULD remain selectable for compatibility. The prompt outcome MUST persist into configuration metadata and be summarized back to the user.
+
+#### Scenario: User runs interactive init with defaults
+- **WHEN** a user runs the interactive installer without overriding any options
+- **THEN** the orchestrator prompt recommends Codex, shows Claude as the execution host, and saves that ownership metadata into the config file
+
+#### Scenario: User intentionally selects Claude as orchestrator
+- **WHEN** a user selects Claude as the orchestrator during the installer step
+- **THEN** the resulting configuration records Claude as the orchestrator, Codex as the execution host, and the summary reflects the compatibility setup

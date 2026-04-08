@@ -1,159 +1,132 @@
+﻿---
+description: '澶氭ā鍨嬫妧鏈垎鏋愶紙骞惰鎵ц锛夛細{{BACKEND_PRIMARY}} 鍚庣瑙嗚 + {{FRONTEND_PRIMARY}} 鍓嶇瑙嗚锛屼氦鍙夐獙璇佸悗缁煎悎瑙佽В'
 ---
-description: '多模型技术分析（并行执行）：{{BACKEND_PRIMARY}} 后端视角 + {{FRONTEND_PRIMARY}} 前端视角，交叉验证后综合见解'
----
 
-# Analyze - 多模型技术分析
+# Analyze - 澶氭ā鍨嬫妧鏈垎鏋?
+浣跨敤鍙屾ā鍨嬪苟琛屽垎鏋愶紝浜ゅ弶楠岃瘉寰楀嚭缁煎悎鎶€鏈瑙ｃ€?*浠呭垎鏋愶紝涓嶄慨鏀逛唬鐮併€?*
 
-使用双模型并行分析，交叉验证得出综合技术见解。**仅分析，不修改代码。**
-
-## 使用方法
+## 浣跨敤鏂规硶
 
 ```bash
-/analyze <分析问题或任务>
+/analyze <鍒嗘瀽闂鎴栦换鍔?
 ```
 
-## 你的角色
+## 浣犵殑瑙掕壊
 
-你是**分析协调者**，编排多模型分析流程：
-- **ace-tool** – 代码上下文检索
-- **{{BACKEND_PRIMARY}}** – 后端/系统视角（**后端权威**）
-- **{{FRONTEND_PRIMARY}}** – 前端/用户视角（**前端权威**）
-- **Claude (自己)** – 综合见解
+浣犳槸**鍒嗘瀽鍗忚皟鑰?*锛岀紪鎺掑妯″瀷鍒嗘瀽娴佺▼锛?- **ace-tool** 鈥?浠ｇ爜涓婁笅鏂囨绱?- **{{BACKEND_PRIMARY}}** 鈥?鍚庣/绯荤粺瑙嗚锛?*鍚庣鏉冨▉**锛?- **{{FRONTEND_PRIMARY}}** 鈥?鍓嶇/鐢ㄦ埛瑙嗚锛?*鍓嶇鏉冨▉**锛?- **Claude (鑷繁)** 鈥?缁煎悎瑙佽В
 
 ---
 
-## 多模型调用规范
-
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
-**调用语法**（并行用 `run_in_background: true`）：
+## 澶氭ā鍨嬭皟鐢ㄨ鑼?
+**宸ヤ綔鐩綍**锛?- `{{WORKDIR}}`锛?*蹇呴』閫氳繃 Bash 鎵ц `pwd`锛圲nix锛夋垨 `cd`锛圵indows CMD锛夎幏鍙栧綋鍓嶅伐浣滅洰褰曠殑缁濆璺緞**锛岀姝粠 `$HOME` 鎴栫幆澧冨彉閲忔帹鏂?- 濡傛灉鐢ㄦ埛閫氳繃 `/add-dir` 娣诲姞浜嗗涓伐浣滃尯锛屽厛鐢?Glob/Grep 纭畾浠诲姟鐩稿叧鐨勫伐浣滃尯
+- 濡傛灉鏃犳硶纭畾锛岀敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨鐩爣宸ヤ綔鍖?
+**璋冪敤璇硶**锛堝苟琛岀敤 `run_in_background: true`锛夛細
 
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'
-ROLE_FILE: <角色提示词路径>
+ROLE_FILE: <瑙掕壊鎻愮ず璇嶈矾寰?
 <TASK>
-需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
-上下文：<前序阶段检索到的代码上下文>
+闇€姹傦細<澧炲己鍚庣殑闇€姹傦紙濡傛湭澧炲己鍒欑敤 $ARGUMENTS锛?
+涓婁笅鏂囷細<鍓嶅簭闃舵妫€绱㈠埌鐨勪唬鐮佷笂涓嬫枃>
 </TASK>
-OUTPUT: 期望输出格式
+OUTPUT: 鏈熸湜杈撳嚭鏍煎紡
 EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**角色提示词**：
-
-| 模型 | 提示词 |
+**瑙掕壊鎻愮ず璇?*锛?
+| 妯″瀷 | 鎻愮ず璇?|
 |------|--------|
-| Codex | `~/.claude/.ccg/prompts/codex/analyzer.md` |
-| Gemini | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
+| Codex | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` |
+| {{FRONTEND_PRIMARY}} | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
 
-**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
-
-**等待后台任务**（使用最大超时 600000ms = 10 分钟）：
+**骞惰璋冪敤**锛氫娇鐢?`run_in_background: true` 鍚姩锛岀敤 `TaskOutput` 绛夊緟缁撴灉銆?*蹇呴』绛夋墍鏈夋ā鍨嬭繑鍥炲悗鎵嶈兘杩涘叆涓嬩竴闃舵**銆?
+**绛夊緟鍚庡彴浠诲姟**锛堜娇鐢ㄦ渶澶ц秴鏃?600000ms = 10 鍒嗛挓锛夛細
 
 ```
 TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ```
 
-**重要**：
-- 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时。
-如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**。
-- 若因等待时间过长跳过了等待 TaskOutput 结果，则**必须调用 `AskUserQuestion` 工具询问用户选择继续等待还是 Kill Task。禁止直接 Kill Task。**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
-
+**閲嶈**锛?- 蹇呴』鎸囧畾 `timeout: 600000`锛屽惁鍒欓粯璁ゅ彧鏈?30 绉掍細瀵艰嚧鎻愬墠瓒呮椂銆?濡傛灉 10 鍒嗛挓鍚庝粛鏈畬鎴愶紝缁х画鐢?`TaskOutput` 杞锛?*缁濆涓嶈 Kill 杩涚▼**銆?- 鑻ュ洜绛夊緟鏃堕棿杩囬暱璺宠繃浜嗙瓑寰?TaskOutput 缁撴灉锛屽垯**蹇呴』璋冪敤 `AskUserQuestion` 宸ュ叿璇㈤棶鐢ㄦ埛閫夋嫨缁х画绛夊緟杩樻槸 Kill Task銆傜姝㈢洿鎺?Kill Task銆?*
+- 鉀?**{{FRONTEND_PRIMARY}} 澶辫触蹇呴』閲嶈瘯**锛氳嫢 {{FRONTEND_PRIMARY}} 璋冪敤澶辫触锛堥潪闆堕€€鍑虹爜鎴栬緭鍑哄寘鍚敊璇俊鎭級锛屾渶澶氶噸璇?2 娆★紙闂撮殧 5 绉掞級銆備粎褰?3 娆″叏閮ㄥけ璐ユ椂鎵嶈烦杩?{{FRONTEND_PRIMARY}} 缁撴灉骞朵娇鐢ㄥ崟妯″瀷缁撴灉缁х画銆?- 鉀?**Codex 缁撴灉蹇呴』绛夊緟**锛欳odex 鎵ц鏃堕棿杈冮暱锛?-15 鍒嗛挓锛夊睘浜庢甯搞€俆askOutput 瓒呮椂鍚庡繀椤荤户缁敤 TaskOutput 杞锛?*缁濆绂佹鍦?Codex 鏈繑鍥炵粨鏋滄椂鐩存帴璺宠繃鎴栫户缁笅涓€闃舵**銆傚凡鍚姩鐨?Codex 浠诲姟鑻ヨ璺宠繃 = 娴垂 token + 涓㈠け缁撴灉銆?
 ---
 
-## 执行工作流
+## 鎵ц宸ヤ綔娴?
+**鍒嗘瀽浠诲姟**锛?ARGUMENTS
 
-**分析任务**：$ARGUMENTS
+### 馃攳 闃舵 0锛歅rompt 澧炲己锛堝彲閫夛級
 
-### 🔍 阶段 0：Prompt 增强（可选）
+`[妯″紡锛氬噯澶嘳` - **Prompt 澧炲己**锛堟寜 `/ccg:enhance` 鐨勯€昏緫鎵ц锛夛細鍒嗘瀽 $ARGUMENTS 鐨勬剰鍥俱€佺己澶变俊鎭€侀殣鍚亣璁撅紝琛ュ叏涓虹粨鏋勫寲闇€姹傦紙鏄庣‘鐩爣銆佹妧鏈害鏉熴€佽寖鍥磋竟鐣屻€侀獙鏀舵爣鍑嗭級锛?*鐢ㄥ寮虹粨鏋滄浛浠ｅ師濮?$ARGUMENTS锛屽悗缁皟鐢?{{BACKEND_PRIMARY}}/{{FRONTEND_PRIMARY}} 鏃朵紶鍏ュ寮哄悗鐨勯渶姹?*
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
+### 馃攳 闃舵 1锛氫笂涓嬫枃妫€绱?
+`[妯″紡锛氱爺绌禲`
 
-### 🔍 阶段 1：上下文检索
+1. 璋冪敤 `{{MCP_SEARCH_TOOL}}` 妫€绱㈢浉鍏充唬鐮?2. 璇嗗埆鍒嗘瀽鑼冨洿鍜屽叧閿粍浠?3. 鍒楀嚭宸茬煡绾︽潫鍜屽亣璁?
+### 馃挕 闃舵 2锛氬苟琛屽垎鏋?
+`[妯″紡锛氬垎鏋怾`
 
-`[模式：研究]`
+**鈿狅笍 蹇呴』鍙戣捣涓や釜骞惰 Bash 璋冪敤**锛堝弬鐓т笂鏂硅皟鐢ㄨ鑼冿級锛?
+1. **{{BACKEND_PRIMARY}} 鍚庣鍒嗘瀽**锛歚Bash({ command: "...--backend {{BACKEND_PRIMARY}}...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md`
+   - OUTPUT锛氭妧鏈彲琛屾€с€佹灦鏋勫奖鍝嶃€佹€ц兘鑰冮噺
 
-1. 调用 `{{MCP_SEARCH_TOOL}}` 检索相关代码
-2. 识别分析范围和关键组件
-3. 列出已知约束和假设
+2. **{{FRONTEND_PRIMARY}} 鍓嶇鍒嗘瀽**锛歚Bash({ command: "...--backend {{FRONTEND_PRIMARY}}...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
+   - OUTPUT锛歎I/UX 褰卞搷銆佺敤鎴蜂綋楠屻€佽瑙夎璁¤€冮噺
 
-### 💡 阶段 2：并行分析
+鐢?`TaskOutput` 绛夊緟涓や釜妯″瀷鐨勫畬鏁寸粨鏋溿€?*蹇呴』绛夋墍鏈夋ā鍨嬭繑鍥炲悗鎵嶈兘杩涘叆涓嬩竴闃舵**銆?
+**鍔″繀閬靛惊涓婃柟 `澶氭ā鍨嬭皟鐢ㄨ鑼僠 鐨?`閲嶈` 鎸囩ず**
 
-`[模式：分析]`
+### 馃攢 闃舵 3锛氫氦鍙夐獙璇?
+`[妯″紡锛氶獙璇乚`
 
-**⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
+1. 瀵规瘮鍙屾柟鍒嗘瀽缁撴灉
+2. 璇嗗埆锛?   - **涓€鑷磋鐐?*锛堝己淇″彿锛?   - **鍒嗘鐐?*锛堥渶鏉冭　锛?   - **浜掕ˉ瑙佽В**锛堝悇鑷鍩熸礊瀵燂級
+3. 鎸変俊浠昏鍒欐潈琛★細鍚庣浠?Codex 涓哄噯锛屽墠绔互 {{FRONTEND_PRIMARY}} 涓哄噯
 
-1. **{{BACKEND_PRIMARY}} 后端分析**：`Bash({ command: "...--backend {{BACKEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
-   - OUTPUT：技术可行性、架构影响、性能考量
-
-2. **{{FRONTEND_PRIMARY}} 前端分析**：`Bash({ command: "...--backend {{FRONTEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
-   - OUTPUT：UI/UX 影响、用户体验、视觉设计考量
-
-用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。
-
-**务必遵循上方 `多模型调用规范` 的 `重要` 指示**
-
-### 🔀 阶段 3：交叉验证
-
-`[模式：验证]`
-
-1. 对比双方分析结果
-2. 识别：
-   - **一致观点**（强信号）
-   - **分歧点**（需权衡）
-   - **互补见解**（各自领域洞察）
-3. 按信任规则权衡：后端以 Codex 为准，前端以 Gemini 为准
-
-### 📊 阶段 4：综合输出
-
-`[模式：总结]`
+### 馃搳 闃舵 4锛氱患鍚堣緭鍑?
+`[妯″紡锛氭€荤粨]`
 
 ```markdown
-## 🔬 技术分析：<主题>
+## 馃敩 鎶€鏈垎鏋愶細<涓婚>
 
-### 一致观点（强信号）
-1. <双方都认同的点>
+### 涓€鑷磋鐐癸紙寮轰俊鍙凤級
+1. <鍙屾柟閮借鍚岀殑鐐?
 
-### 分歧点（需权衡）
-| 议题 | Codex 观点 | Gemini 观点 | 建议 |
+### 鍒嗘鐐癸紙闇€鏉冭　锛?| 璁 | Codex 瑙傜偣 | {{FRONTEND_PRIMARY}} 瑙傜偣 | 寤鸿 |
 |------|------------|-------------|------|
 
-### 核心结论
-<1-2 句话总结>
+### 鏍稿績缁撹
+<1-2 鍙ヨ瘽鎬荤粨>
 
-### 推荐方案
-**首选**：<方案>
-- 理由 / 风险 / 缓解措施
+### 鎺ㄨ崘鏂规
+**棣栭€?*锛?鏂规>
+- 鐞嗙敱 / 椋庨櫓 / 缂撹В鎺柦
 
-### 后续行动
-1. [ ] <具体步骤>
+### 鍚庣画琛屽姩
+1. [ ] <鍏蜂綋姝ラ>
 ```
 
 ---
 
-## 适用场景
+## 閫傜敤鍦烘櫙
 
-| 场景 | 示例 |
+| 鍦烘櫙 | 绀轰緥 |
 |------|------|
-| 技术选型 | "比较 Redux vs Zustand" |
-| 架构评估 | "评估微服务拆分方案" |
-| 性能分析 | "分析 API 响应慢的原因" |
-| 安全审计 | "评估认证模块安全性" |
+| 鎶€鏈€夊瀷 | "姣旇緝 Redux vs Zustand" |
+| 鏋舵瀯璇勪及 | "璇勪及寰湇鍔℃媶鍒嗘柟妗? |
+| 鎬ц兘鍒嗘瀽 | "鍒嗘瀽 API 鍝嶅簲鎱㈢殑鍘熷洜" |
+| 瀹夊叏瀹¤ | "璇勪及璁よ瘉妯″潡瀹夊叏鎬? |
 
-## 关键规则
+## 鍏抽敭瑙勫垯
 
-1. **仅分析不修改** – 本命令不执行任何代码变更
-2. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
-3. 外部模型对文件系统**零写入权限**
+1. **浠呭垎鏋愪笉淇敼** 鈥?鏈懡浠や笉鎵ц浠讳綍浠ｇ爜鍙樻洿
+2. **淇′换瑙勫垯** 鈥?鍚庣浠?Codex 涓哄噯锛屽墠绔互 {{FRONTEND_PRIMARY}} 涓哄噯
+3. 澶栭儴妯″瀷瀵规枃浠剁郴缁?*闆跺啓鍏ユ潈闄?*
+
+
+

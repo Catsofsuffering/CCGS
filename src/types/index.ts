@@ -4,6 +4,8 @@ export type SupportedLang = 'zh-CN' | 'en'
 // 模型类型
 export type ModelType = 'codex' | 'gemini' | 'claude'
 
+export type HostRuntime = 'codex' | 'claude'
+
 // 协作模式
 export type CollaborationMode = 'parallel' | 'smart' | 'sequential'
 
@@ -36,6 +38,11 @@ export interface CcgConfig {
     version: string
     language: SupportedLang
     createdAt: string
+  }
+  ownership?: {
+    orchestrator: ModelType
+    executionHost: HostRuntime
+    acceptance: ModelType
   }
   routing: ModelRouting
   workflows: {
@@ -76,6 +83,7 @@ export interface InitOptions {
   skipMcp?: boolean // 更新时跳过 MCP 配置
   force?: boolean
   // 非交互模式参数
+  orchestrator?: ModelType
   frontend?: string
   backend?: string
   mode?: CollaborationMode
@@ -89,6 +97,7 @@ export interface InstallResult {
   installedCommands: string[]
   installedPrompts: string[]
   installedSkills?: number
+  installedCodexSkills?: string[]
   installedSkillCommands?: number
   installedRules?: boolean
   errors: string[]

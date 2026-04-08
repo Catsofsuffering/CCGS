@@ -78,8 +78,8 @@ export function injectConfigVariables(content: string, config: {
   const routing = config.routing || {}
 
   // Frontend models
-  const frontendModels = routing.frontend?.models || ['gemini']
-  const frontendPrimary = routing.frontend?.primary || 'gemini'
+  const frontendModels = routing.frontend?.models || ['codex']
+  const frontendPrimary = routing.frontend?.primary || 'codex'
   processed = processed.replace(/\{\{FRONTEND_MODELS\}\}/g, JSON.stringify(frontendModels))
   processed = processed.replace(/\{\{FRONTEND_PRIMARY\}\}/g, frontendPrimary)
 
@@ -90,7 +90,7 @@ export function injectConfigVariables(content: string, config: {
   processed = processed.replace(/\{\{BACKEND_PRIMARY\}\}/g, backendPrimary)
 
   // Review models
-  const reviewModels = routing.review?.models || ['codex', 'gemini']
+  const reviewModels = routing.review?.models || ['codex']
   processed = processed.replace(/\{\{REVIEW_MODELS\}\}/g, JSON.stringify(reviewModels))
 
   // Routing mode
@@ -101,7 +101,7 @@ export function injectConfigVariables(content: string, config: {
   // When gemini is used for any role, pass --gemini-model <name>
   // The codeagent-wrapper gracefully ignores this flag for non-gemini backends
   const geminiModel = routing.geminiModel || 'gemini-3.1-pro-preview'
-  const usesGemini = frontendPrimary === 'gemini' || backendPrimary === 'gemini'
+  const usesGemini = [...frontendModels, ...backendModels, ...reviewModels].includes('gemini')
   const geminiModelFlag = usesGemini ? `--gemini-model ${geminiModel} ` : ''
   processed = processed.replace(/\{\{GEMINI_MODEL_FLAG\}\}/g, geminiModelFlag)
 
@@ -146,7 +146,7 @@ export function replaceHomePathsInTemplate(content: string, installDir: string):
   const userHome = homedir()
   const ccgDir = join(installDir, '.ccg')
   const binDir = join(installDir, 'bin')
-  const claudeDir = installDir // ~/.claude
+  const hostDir = installDir
 
   // IMPORTANT: Always use forward slashes for cross-platform compatibility
   // Git Bash on Windows requires forward slashes in heredoc (backslashes get escaped)
@@ -156,20 +156,24 @@ export function replaceHomePathsInTemplate(content: string, installDir: string):
   let processed = content
 
   // Order matters: replace longer patterns first to avoid partial matches
-  // 1. Replace ~/.claude/.ccg with absolute path (longest match first)
+  // 1. Replace ~/.claude/.ccg and ~/.codex/.ccg with absolute path (longest match first)
   processed = processed.replace(/~\/\.claude\/\.ccg/g, toForwardSlash(ccgDir))
+  processed = processed.replace(/~\/\.codex\/\.ccg/g, toForwardSlash(ccgDir))
 
-  // 2. Replace ~/.claude/bin/codeagent-wrapper with absolute path + .exe on Windows
+  // 2. Replace host wrapper paths with absolute path + .exe on Windows
   //    CRITICAL: Windows Git Bash requires explicit .exe extension
   const wrapperName = isWindows() ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
   const wrapperPath = `${toForwardSlash(binDir)}/${wrapperName}`
   processed = processed.replace(/~\/\.claude\/bin\/codeagent-wrapper/g, wrapperPath)
+  processed = processed.replace(/~\/\.codex\/bin\/codeagent-wrapper/g, wrapperPath)
 
-  // 3. Replace ~/.claude/bin with absolute path (for other binaries)
+  // 3. Replace host bin directories
   processed = processed.replace(/~\/\.claude\/bin/g, toForwardSlash(binDir))
+  processed = processed.replace(/~\/\.codex\/bin/g, toForwardSlash(binDir))
 
-  // 4. Replace ~/.claude with absolute path
-  processed = processed.replace(/~\/\.claude/g, toForwardSlash(claudeDir))
+  // 4. Replace host roots with the selected install directory
+  processed = processed.replace(/~\/\.claude/g, toForwardSlash(hostDir))
+  processed = processed.replace(/~\/\.codex/g, toForwardSlash(hostDir))
 
   // 5. Replace remaining ~/ patterns with user home
   processed = processed.replace(/~\//g, `${toForwardSlash(userHome)}/`)

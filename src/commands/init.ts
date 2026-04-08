@@ -1,4 +1,4 @@
-import type { CollaborationMode, InitOptions, ModelRouting, ModelType, SupportedLang } from '../types'
+import type { CollaborationMode, HostRuntime, InitOptions, ModelRouting, ModelType, SupportedLang } from '../types'
 import ansis from 'ansis'
 import fs from 'fs-extra'
 import inquirer from 'inquirer'
@@ -6,7 +6,7 @@ import ora from 'ora'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
-import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
+import { createDefaultConfig, ensureCcgDir, getCcgDir, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { getAllCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
@@ -151,8 +151,8 @@ async function installGrokSearchMcp(keys: {
 
 export async function init(options: InitOptions = {}): Promise<void> {
   console.log()
-  console.log(ansis.cyan.bold(`  CCG - Claude + Codex + Gemini`))
-  console.log(ansis.gray(`  Multi-Model Collaboration Workflow`))
+  console.log(ansis.cyan.bold(`  CCG - Codex Orchestrated Workflow`))
+  console.log(ansis.gray(`  Codex plans and accepts, Claude executes`))
   console.log()
 
   // ═══════════════════════════════════════════════════════
@@ -192,7 +192,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
   }
 
   // Model routing configuration (user-selectable since v2.1.0)
-  let frontendModels: ModelType[] = ['gemini']
+  let orchestrator: ModelType = options.orchestrator || 'codex'
+  let executionHost: HostRuntime = orchestrator === 'codex' ? 'claude' : 'codex'
+  let acceptanceModel: ModelType = orchestrator === 'codex' ? 'codex' : 'claude'
+  let frontendModels: ModelType[] = ['codex']
   let backendModels: ModelType[] = ['codex']
   let geminiModel = 'gemini-3.1-pro-preview'
   const mode: CollaborationMode = 'smart'
@@ -202,9 +205,14 @@ export async function init(options: InitOptions = {}): Promise<void> {
   if (options.skipPrompt) {
     const existingConfig = await readCcgConfig()
     if (existingConfig?.routing) {
-      frontendModels = existingConfig.routing.frontend?.models || ['gemini']
+      frontendModels = existingConfig.routing.frontend?.models || ['codex']
       backendModels = existingConfig.routing.backend?.models || ['codex']
       geminiModel = existingConfig.routing.geminiModel || 'gemini-3.1-pro-preview'
+    }
+    if (existingConfig?.ownership) {
+      orchestrator = existingConfig.ownership.orchestrator || orchestrator
+      executionHost = existingConfig.ownership.executionHost || (orchestrator === 'codex' ? 'claude' : 'codex')
+      acceptanceModel = existingConfig.ownership.acceptance || (orchestrator === 'codex' ? 'codex' : 'claude')
     }
   }
 
@@ -282,15 +290,31 @@ export async function init(options: InitOptions = {}): Promise<void> {
     console.log(ansis.cyan.bold(`  🧠 Step 2/4 — ${i18n.t('init:model.title')}`))
     console.log()
 
+    const { selectedOrchestrator } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedOrchestrator',
+      message: i18n.t('init:model.selectOrchestrator'),
+      choices: [
+        { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
+        { name: 'Claude', value: 'claude' as ModelType },
+      ],
+      default: existingConfig?.ownership?.orchestrator || 'codex',
+    }])
+
+    orchestrator = selectedOrchestrator
+    executionHost = selectedOrchestrator === 'codex' ? 'claude' : 'codex'
+    acceptanceModel = selectedOrchestrator === 'codex' ? 'codex' : 'claude'
+
     const { selectedFrontend } = await inquirer.prompt([{
       type: 'list',
       name: 'selectedFrontend',
       message: i18n.t('init:model.selectFrontend'),
       choices: [
-        { name: `Gemini ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'gemini' as ModelType },
-        { name: 'Codex', value: 'codex' as ModelType },
+        { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
+        { name: 'Claude', value: 'claude' as ModelType },
+        { name: 'Gemini', value: 'gemini' as ModelType },
       ],
-      default: existingConfig?.routing?.frontend?.primary || 'gemini',
+      default: existingConfig?.routing?.frontend?.primary || 'codex',
     }])
 
     const { selectedBackend } = await inquirer.prompt([{
@@ -298,8 +322,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       name: 'selectedBackend',
       message: i18n.t('init:model.selectBackend'),
       choices: [
-        { name: 'Gemini', value: 'gemini' as ModelType },
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
+        { name: 'Claude', value: 'claude' as ModelType },
+        { name: 'Gemini', value: 'gemini' as ModelType },
       ],
       default: existingConfig?.routing?.backend?.primary || 'codex',
     }])
@@ -574,6 +599,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
   console.log()
   const fmName = frontendModels[0].charAt(0).toUpperCase() + frontendModels[0].slice(1)
   const bmName = backendModels[0].charAt(0).toUpperCase() + backendModels[0].slice(1)
+  const orchestratorName = orchestrator.charAt(0).toUpperCase() + orchestrator.slice(1)
+  const execName = executionHost.charAt(0).toUpperCase() + executionHost.slice(1)
+  console.log(`  ${ansis.cyan(i18n.t('init:summary.orchestrator'))}  ${ansis.green(orchestratorName)} ${ansis.gray('→')} ${ansis.blue(execName)}`)
   console.log(`  ${ansis.cyan(i18n.t('init:summary.modelRouting'))}  ${ansis.green(fmName)} (Frontend) + ${ansis.blue(bmName)} (Backend)`)
   console.log(`  ${ansis.cyan(i18n.t('init:summary.commandCount'))}  ${ansis.yellow(selectedWorkflows.length.toString())}`)
   const mcpSummary = (() => {
@@ -609,6 +637,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
   const spinner = ora(i18n.t('init:installing')).start()
 
   try {
+    const activeBackends = [...frontendModels, ...backendModels]
+    const usesGemini = activeBackends.includes('gemini')
+    const usesClaudeBackend = activeBackends.includes('claude')
+
     // v1.4.0: Auto-migrate from old directory structure
     if (await needsMigration()) {
       spinner.text = 'Migrating from v1.3.x to v1.4.0...'
@@ -651,13 +683,18 @@ export async function init(options: InitOptions = {}): Promise<void> {
       mcpProvider,
       liteMode,
       skipImpeccable,
+      ownership: {
+        orchestrator,
+        executionHost,
+        acceptance: acceptanceModel,
+      },
     })
 
     // Save config FIRST - ensure it's created even if installation fails
     await writeCcgConfig(config)
 
     // Install workflows and commands
-    const installDir = options.installDir || join(homedir(), '.claude')
+    const installDir = options.installDir || getDefaultInstallDir()
     const result = await installWorkflows(selectedWorkflows, installDir, options.force, {
       routing,
       liteMode,
@@ -737,9 +774,14 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if (!settings.permissions.allow)
         settings.permissions.allow = []
       const wrapperPerms = [
-        'Bash(~/.claude/bin/codeagent-wrapper --backend gemini*)',
         'Bash(~/.claude/bin/codeagent-wrapper --backend codex*)',
       ]
+      if (usesClaudeBackend) {
+        wrapperPerms.push('Bash(~/.claude/bin/codeagent-wrapper --backend claude*)')
+      }
+      if (usesGemini) {
+        wrapperPerms.push('Bash(~/.claude/bin/codeagent-wrapper --backend gemini*)')
+      }
       for (const perm of wrapperPerms) {
         if (!settings.permissions.allow.includes(perm))
           settings.permissions.allow.push(perm)
@@ -813,15 +855,17 @@ export async function init(options: InitOptions = {}): Promise<void> {
       // ═══════════════════════════════════════════════════════
       // Sync MCP servers to Gemini (~/.gemini/settings.json)
       // ═══════════════════════════════════════════════════════
-      const geminiSyncResult = await syncMcpToGemini()
-      if (geminiSyncResult.success && geminiSyncResult.synced.length > 0) {
-        console.log()
-        console.log(`    ${ansis.green('✓')} Gemini MCP sync: ${geminiSyncResult.synced.join(', ')} ${ansis.gray('→ ~/.gemini/settings.json')}`)
-      }
-      else if (!geminiSyncResult.success) {
-        console.log()
-        console.log(`    ${ansis.yellow('⚠')} Gemini MCP sync failed`)
-        console.log(ansis.gray(`      ${geminiSyncResult.message}`))
+      if (usesGemini) {
+        const geminiSyncResult = await syncMcpToGemini()
+        if (geminiSyncResult.success && geminiSyncResult.synced.length > 0) {
+          console.log()
+          console.log(`    ${ansis.green('✓')} Gemini MCP sync: ${geminiSyncResult.synced.join(', ')} ${ansis.gray('→ ~/.gemini/settings.json')}`)
+        }
+        else if (!geminiSyncResult.success) {
+          console.log()
+          console.log(`    ${ansis.yellow('⚠')} Gemini MCP sync failed`)
+          console.log(ansis.gray(`      ${geminiSyncResult.message}`))
+        }
       }
     }
 
@@ -857,6 +901,15 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(ansis.cyan('  Skills:'))
       console.log(`    ${ansis.green('✓')} ${result.installedSkills} skills installed (quality gates + multi-agent)`)
       console.log(ansis.gray('       → ~/.claude/skills/'))
+    }
+
+    if (result.installedCodexSkills && result.installedCodexSkills.length > 0) {
+      console.log()
+      console.log(ansis.cyan('  Codex workflow skills:'))
+      for (const skill of result.installedCodexSkills) {
+        console.log(`    ${ansis.green('✓')} ${skill}`)
+      }
+      console.log(ansis.gray('       → ~/.codex/skills/'))
     }
 
     // Show installed rules

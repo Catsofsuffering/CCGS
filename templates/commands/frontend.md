@@ -1,167 +1,122 @@
----
-description: '前端专项工作流（研究→构思→计划→执行→优化→评审），{{FRONTEND_PRIMARY}} 主导'
+﻿---
+description: '鍓嶇涓撻」宸ヤ綔娴侊紙鐮旂┒鈫掓瀯鎬濃啋璁″垝鈫掓墽琛屸啋浼樺寲鈫掕瘎瀹★級锛寋{FRONTEND_PRIMARY}} 涓诲'
 ---
 
-# Frontend - 前端专项开发
-
-## 使用方法
+# Frontend - 鍓嶇涓撻」寮€鍙?
+## 浣跨敤鏂规硶
 
 ```bash
-/frontend <UI任务描述>
+/frontend <UI浠诲姟鎻忚堪>
 ```
 
-## 上下文
+## 涓婁笅鏂?
+- 鍓嶇浠诲姟锛?ARGUMENTS
+- {{FRONTEND_PRIMARY}} 涓诲锛寋{BACKEND_PRIMARY}} 杈呭姪鍙傝€?- 閫傜敤锛氱粍浠惰璁°€佸搷搴斿紡甯冨眬銆乁I 鍔ㄧ敾銆佹牱寮忎紭鍖?
+## 浣犵殑瑙掕壊
 
-- 前端任务：$ARGUMENTS
-- {{FRONTEND_PRIMARY}} 主导，{{BACKEND_PRIMARY}} 辅助参考
-- 适用：组件设计、响应式布局、UI 动画、样式优化
-
-## 你的角色
-
-你是**前端编排者**，协调多模型完成 UI/UX 任务（研究 → 构思 → 计划 → 执行 → 优化 → 评审），用中文协助用户。
-
-**协作模型**：
-- **{{FRONTEND_PRIMARY}}** – 前端 UI/UX（**前端权威，可信赖**）
-- **{{BACKEND_PRIMARY}}** – 后端视角（**前端意见仅供参考**）
-- **Claude (自己)** – 编排、计划、执行、交付
-
+浣犳槸**鍓嶇缂栨帓鑰?*锛屽崗璋冨妯″瀷瀹屾垚 UI/UX 浠诲姟锛堢爺绌?鈫?鏋勬€?鈫?璁″垝 鈫?鎵ц 鈫?浼樺寲 鈫?璇勫锛夛紝鐢ㄤ腑鏂囧崗鍔╃敤鎴枫€?
+**鍗忎綔妯″瀷**锛?- **{{FRONTEND_PRIMARY}}** 鈥?鍓嶇 UI/UX锛?*鍓嶇鏉冨▉锛屽彲淇¤禆**锛?- **{{BACKEND_PRIMARY}}** 鈥?鍚庣瑙嗚锛?*鍓嶇鎰忚浠呬緵鍙傝€?*锛?- **Claude (鑷繁)** 鈥?缂栨帓銆佽鍒掋€佹墽琛屻€佷氦浠?
 ---
 
-## 多模型调用规范
-
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
-**调用语法**：
-
+## 澶氭ā鍨嬭皟鐢ㄨ鑼?
+**宸ヤ綔鐩綍**锛?- `{{WORKDIR}}`锛?*蹇呴』閫氳繃 Bash 鎵ц `pwd`锛圲nix锛夋垨 `cd`锛圵indows CMD锛夎幏鍙栧綋鍓嶅伐浣滅洰褰曠殑缁濆璺緞**锛岀姝粠 `$HOME` 鎴栫幆澧冨彉閲忔帹鏂?- 濡傛灉鐢ㄦ埛閫氳繃 `/add-dir` 娣诲姞浜嗗涓伐浣滃尯锛屽厛鐢?Glob/Grep 纭畾浠诲姟鐩稿叧鐨勫伐浣滃尯
+- 濡傛灉鏃犳硶纭畾锛岀敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨鐩爣宸ヤ綔鍖?
+**璋冪敤璇硶**锛?
 ```
-# 新会话调用
-Bash({
+# 鏂颁細璇濊皟鐢?Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'
-ROLE_FILE: <角色提示词路径>
+ROLE_FILE: <瑙掕壊鎻愮ず璇嶈矾寰?
 <TASK>
-需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
-上下文：<前序阶段收集的项目上下文、分析结果等>
+闇€姹傦細<澧炲己鍚庣殑闇€姹傦紙濡傛湭澧炲己鍒欑敤 $ARGUMENTS锛?
+涓婁笅鏂囷細<鍓嶅簭闃舵鏀堕泦鐨勯」鐩笂涓嬫枃銆佸垎鏋愮粨鏋滅瓑>
 </TASK>
-OUTPUT: 期望输出格式
+OUTPUT: 鏈熸湜杈撳嚭鏍煎紡
 EOF",
   run_in_background: false,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 
-# 复用会话调用
+# 澶嶇敤浼氳瘽璋冪敤
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <GEMINI_SESSION> - \"{{WORKDIR}}\" <<'EOF'
-ROLE_FILE: <角色提示词路径>
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <FRONTEND_SESSION> - \"{{WORKDIR}}\" <<'EOF'
+ROLE_FILE: <瑙掕壊鎻愮ず璇嶈矾寰?
 <TASK>
-需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
-上下文：<前序阶段收集的项目上下文、分析结果等>
+闇€姹傦細<澧炲己鍚庣殑闇€姹傦紙濡傛湭澧炲己鍒欑敤 $ARGUMENTS锛?
+涓婁笅鏂囷細<鍓嶅簭闃舵鏀堕泦鐨勯」鐩笂涓嬫枃銆佸垎鏋愮粨鏋滅瓑>
 </TASK>
-OUTPUT: 期望输出格式
+OUTPUT: 鏈熸湜杈撳嚭鏍煎紡
 EOF",
   run_in_background: false,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**角色提示词**：
-
-| 阶段 | Gemini |
+**瑙掕壊鎻愮ず璇?*锛?
+| 闃舵 | {{FRONTEND_PRIMARY}} |
 |------|--------|
-| 分析 | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/gemini/architect.md` |
-| 审查 | `~/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 鍒嗘瀽 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
+| 瑙勫垝 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
+| 瀹℃煡 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
-**会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `GEMINI_SESSION`，阶段 3 和 5 使用 `resume` 复用。
+**浼氳瘽澶嶇敤**锛氭瘡娆¤皟鐢ㄨ繑鍥?`SESSION_ID: xxx`锛屽悗缁樁娈电敤 `resume xxx` 澶嶇敤涓婁笅鏂囥€傞樁娈?2 淇濆瓨 `FRONTEND_SESSION`锛岄樁娈?3 鍜?5 浣跨敤 `resume` 澶嶇敤銆?
+鉀?**{{FRONTEND_PRIMARY}} 澶辫触蹇呴』閲嶈瘯**锛氳嫢 {{FRONTEND_PRIMARY}} 璋冪敤澶辫触锛堥潪闆堕€€鍑虹爜鎴栬緭鍑哄寘鍚敊璇俊鎭級锛屾渶澶氶噸璇?2 娆★紙闂撮殧 5 绉掞級銆備粎褰?3 娆″叏閮ㄥけ璐ユ椂鎵嶆姤鍛婇敊璇苟缁堟銆?
+---
 
-⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才报告错误并终止。
+## 娌熼€氬畧鍒?
+1. 鍝嶅簲浠ユā寮忔爣绛?`[妯″紡锛歑]` 寮€濮嬶紝鍒濆涓?`[妯″紡锛氱爺绌禲`
+2. 涓ユ牸鎸?`鐮旂┒ 鈫?鏋勬€?鈫?璁″垝 鈫?鎵ц 鈫?浼樺寲 鈫?璇勫` 椤哄簭娴佽浆
+3. 鍦ㄩ渶瑕佽闂敤鎴锋椂锛屽敖閲忎娇鐢?`AskUserQuestion` 宸ュ叿杩涜浜や簰锛屼妇渚嬪満鏅細璇锋眰鐢ㄦ埛纭/閫夋嫨/鎵瑰噯
 
 ---
 
-## 沟通守则
+## 鏍稿績宸ヤ綔娴?
+### 馃攳 闃舵 0锛歅rompt 澧炲己锛堝彲閫夛級
 
-1. 响应以模式标签 `[模式：X]` 开始，初始为 `[模式：研究]`
-2. 严格按 `研究 → 构思 → 计划 → 执行 → 优化 → 评审` 顺序流转
-3. 在需要询问用户时，尽量使用 `AskUserQuestion` 工具进行交互，举例场景：请求用户确认/选择/批准
+`[妯″紡锛氬噯澶嘳` - **Prompt 澧炲己**锛堟寜 `/ccg:enhance` 鐨勯€昏緫鎵ц锛夛細鍒嗘瀽 $ARGUMENTS 鐨勬剰鍥俱€佺己澶变俊鎭€侀殣鍚亣璁撅紝琛ュ叏涓虹粨鏋勫寲闇€姹傦紙鏄庣‘鐩爣銆佹妧鏈害鏉熴€佽寖鍥磋竟鐣屻€侀獙鏀舵爣鍑嗭級锛?*鐢ㄥ寮虹粨鏋滄浛浠ｅ師濮?$ARGUMENTS锛屽悗缁皟鐢?{{FRONTEND_PRIMARY}} 鏃朵紶鍏ュ寮哄悗鐨勯渶姹?*
 
+### 馃攳 闃舵 1锛氱爺绌?
+`[妯″紡锛氱爺绌禲` - 鐞嗚В闇€姹傚苟鏀堕泦涓婁笅鏂?
+1. **浠ｇ爜妫€绱?*锛堝 ace-tool MCP 鍙敤锛夛細璋冪敤 `{{MCP_SEARCH_TOOL}}` 妫€绱㈢幇鏈夌粍浠躲€佹牱寮忋€佽璁＄郴缁?2. 闇€姹傚畬鏁存€ц瘎鍒嗭紙0-10 鍒嗭級锛氣墺7 缁х画锛?7 鍋滄琛ュ厖
+
+### 馃挕 闃舵 2锛氭瀯鎬?
+`[妯″紡锛氭瀯鎬漖` - {{FRONTEND_PRIMARY}} 涓诲鍒嗘瀽
+
+**鈿狅笍 蹇呴』璋冪敤 {{FRONTEND_PRIMARY}}**锛堝弬鐓т笂鏂硅皟鐢ㄨ鑼冿級锛?- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
+- 闇€姹傦細澧炲己鍚庣殑闇€姹傦紙濡傛湭澧炲己鍒欑敤 $ARGUMENTS锛?- 涓婁笅鏂囷細闃舵 1 鏀堕泦鐨勯」鐩笂涓嬫枃
+- OUTPUT: UI 鍙鎬у垎鏋愩€佹帹鑽愭柟妗堬紙鑷冲皯 2 涓級銆佺敤鎴蜂綋楠岃瘎浼?
+**馃搶 淇濆瓨 SESSION_ID**锛坄FRONTEND_SESSION`锛夌敤浜庡悗缁樁娈靛鐢ㄣ€?
+杈撳嚭鏂规锛堣嚦灏?2 涓級锛岀瓑寰呯敤鎴烽€夋嫨銆?
+### 馃搵 闃舵 3锛氳鍒?
+`[妯″紡锛氳鍒抅` - {{FRONTEND_PRIMARY}} 涓诲瑙勫垝
+
+**鈿狅笍 蹇呴』璋冪敤 {{FRONTEND_PRIMARY}}**锛堜娇鐢?`resume <FRONTEND_SESSION>` 澶嶇敤浼氳瘽锛夛細
+- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md`
+- 闇€姹傦細鐢ㄦ埛閫夋嫨鐨勬柟妗?- 涓婁笅鏂囷細闃舵 2 鐨勫垎鏋愮粨鏋?- OUTPUT: 缁勪欢缁撴瀯銆乁I 娴佺▼銆佹牱寮忔柟妗?
+Claude 缁煎悎瑙勫垝锛岃姹傜敤鎴锋壒鍑嗗悗瀛樺叆 `.claude/plan/浠诲姟鍚?md`
+
+### 鈿?闃舵 4锛氭墽琛?
+`[妯″紡锛氭墽琛宂` - 浠ｇ爜寮€鍙?
+- 涓ユ牸鎸夋壒鍑嗙殑璁″垝瀹炴柦
+- 閬靛惊椤圭洰鐜版湁璁捐绯荤粺鍜屼唬鐮佽鑼?- 纭繚鍝嶅簲寮忋€佸彲璁块棶鎬?
+### 馃殌 闃舵 5锛氫紭鍖?
+`[妯″紡锛氫紭鍖朷` - {{FRONTEND_PRIMARY}} 涓诲瀹℃煡
+
+**鈿狅笍 蹇呴』璋冪敤 {{FRONTEND_PRIMARY}}**锛堝弬鐓т笂鏂硅皟鐢ㄨ鑼冿級锛?- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md`
+- 闇€姹傦細瀹℃煡浠ヤ笅鍓嶇浠ｇ爜鍙樻洿
+- 涓婁笅鏂囷細git diff 鎴栦唬鐮佸唴瀹?- OUTPUT: 鍙闂€с€佸搷搴斿紡銆佹€ц兘銆佽璁′竴鑷存€ч棶棰樺垪琛?
+鏁村悎瀹℃煡鎰忚锛岀敤鎴风‘璁ゅ悗鎵ц浼樺寲銆?
+### 鉁?闃舵 6锛氳瘎瀹?
+`[妯″紡锛氳瘎瀹` - 鏈€缁堣瘎浼?
+- 瀵圭収璁″垝妫€鏌ュ畬鎴愭儏鍐?- 楠岃瘉鍝嶅簲寮忓拰鍙闂€?- 鎶ュ憡闂涓庡缓璁?
 ---
 
-## 核心工作流
+## 鍏抽敭瑙勫垯
 
-### 🔍 阶段 0：Prompt 增强（可选）
+1. **{{FRONTEND_PRIMARY}} 鍓嶇鎰忚鍙俊璧?*
+2. **{{BACKEND_PRIMARY}} 鍓嶇鎰忚浠呬緵鍙傝€?*
+3. 澶栭儴妯″瀷瀵规枃浠剁郴缁?*闆跺啓鍏ユ潈闄?*
+4. Claude 璐熻矗鎵€鏈変唬鐮佸啓鍏ュ拰鏂囦欢鎿嶄綔
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 Gemini 时传入增强后的需求**
 
-### 🔍 阶段 1：研究
-
-`[模式：研究]` - 理解需求并收集上下文
-
-1. **代码检索**（如 ace-tool MCP 可用）：调用 `{{MCP_SEARCH_TOOL}}` 检索现有组件、样式、设计系统
-2. 需求完整性评分（0-10 分）：≥7 继续，<7 停止补充
-
-### 💡 阶段 2：构思
-
-`[模式：构思]` - {{FRONTEND_PRIMARY}} 主导分析
-
-**⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
-- 需求：增强后的需求（如未增强则用 $ARGUMENTS）
-- 上下文：阶段 1 收集的项目上下文
-- OUTPUT: UI 可行性分析、推荐方案（至少 2 个）、用户体验评估
-
-**📌 保存 SESSION_ID**（`GEMINI_SESSION`）用于后续阶段复用。
-
-输出方案（至少 2 个），等待用户选择。
-
-### 📋 阶段 3：计划
-
-`[模式：计划]` - {{FRONTEND_PRIMARY}} 主导规划
-
-**⚠️ 必须调用 Gemini**（使用 `resume <GEMINI_SESSION>` 复用会话）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
-- 需求：用户选择的方案
-- 上下文：阶段 2 的分析结果
-- OUTPUT: 组件结构、UI 流程、样式方案
-
-Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
-
-### ⚡ 阶段 4：执行
-
-`[模式：执行]` - 代码开发
-
-- 严格按批准的计划实施
-- 遵循项目现有设计系统和代码规范
-- 确保响应式、可访问性
-
-### 🚀 阶段 5：优化
-
-`[模式：优化]` - {{FRONTEND_PRIMARY}} 主导审查
-
-**⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/gemini/reviewer.md`
-- 需求：审查以下前端代码变更
-- 上下文：git diff 或代码内容
-- OUTPUT: 可访问性、响应式、性能、设计一致性问题列表
-
-整合审查意见，用户确认后执行优化。
-
-### ✅ 阶段 6：评审
-
-`[模式：评审]` - 最终评估
-
-- 对照计划检查完成情况
-- 验证响应式和可访问性
-- 报告问题与建议
-
----
-
-## 关键规则
-
-1. **{{FRONTEND_PRIMARY}} 前端意见可信赖**
-2. **{{BACKEND_PRIMARY}} 前端意见仅供参考**
-3. 外部模型对文件系统**零写入权限**
-4. Claude 负责所有代码写入和文件操作

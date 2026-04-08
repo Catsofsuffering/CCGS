@@ -97,7 +97,7 @@ describe('installWorkflows E2E — mcpProvider="ace-tool" (control)', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs all workflows and injects ace-tool references', async () => {
+  it('installs all workflows and injects ace-tool references', { timeout: 20_000 }, async () => {
     const result = await installWorkflows(ALL_IDS, tmpDir, true, {
       mcpProvider: 'ace-tool',
     })

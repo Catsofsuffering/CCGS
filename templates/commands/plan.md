@@ -1,257 +1,203 @@
----
-description: '多模型协作规划 - 上下文检索 + 双模型分析 → 生成 Step-by-step 实施计划'
+﻿---
+description: '澶氭ā鍨嬪崗浣滆鍒?- 涓婁笅鏂囨绱?+ 鍙屾ā鍨嬪垎鏋?鈫?鐢熸垚 Step-by-step 瀹炴柦璁″垝'
 ---
 
-# Plan - 多模型协作规划
-
+# Plan - 澶氭ā鍨嬪崗浣滆鍒?
 $ARGUMENTS
 
 ---
 
-## 核心协议
+## 鏍稿績鍗忚
 
-- **语言协议**：与工具/模型交互用**英语**，与用户交互用**中文**
-- **强制并行**：Codex/Gemini 调用必须使用 `run_in_background: true`（包含单模型调用，避免阻塞主线程）
-- **代码主权**：外部模型对文件系统**零写入权限**，所有修改由 Claude 执行
-- **止损机制**：当前阶段输出通过验证前，不进入下一阶段
-- **仅规划**：本命令允许读取上下文与写入 `.claude/plan/*` 计划文件，但**禁止修改产品代码**
+- **璇█鍗忚**锛氫笌宸ュ叿/妯″瀷浜や簰鐢?*鑻辫**锛屼笌鐢ㄦ埛浜や簰鐢?*涓枃**
+- **寮哄埗骞惰**锛欳odex/{{FRONTEND_PRIMARY}} 璋冪敤蹇呴』浣跨敤 `run_in_background: true`锛堝寘鍚崟妯″瀷璋冪敤锛岄伩鍏嶉樆濉炰富绾跨▼锛?- **浠ｇ爜涓绘潈**锛氬閮ㄦā鍨嬪鏂囦欢绯荤粺**闆跺啓鍏ユ潈闄?*锛屾墍鏈変慨鏀圭敱 Claude 鎵ц
+- **姝㈡崯鏈哄埗**锛氬綋鍓嶉樁娈佃緭鍑洪€氳繃楠岃瘉鍓嶏紝涓嶈繘鍏ヤ笅涓€闃舵
+- **浠呰鍒?*锛氭湰鍛戒护鍏佽璇诲彇涓婁笅鏂囦笌鍐欏叆 `.claude/plan/*` 璁″垝鏂囦欢锛屼絾**绂佹淇敼浜у搧浠ｇ爜**
 
 ---
 
-## 多模型调用规范
-
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
-**调用语法**（并行用 `run_in_background: true`）：
+## 澶氭ā鍨嬭皟鐢ㄨ鑼?
+**宸ヤ綔鐩綍**锛?- `{{WORKDIR}}`锛?*蹇呴』閫氳繃 Bash 鎵ц `pwd`锛圲nix锛夋垨 `cd`锛圵indows CMD锛夎幏鍙栧綋鍓嶅伐浣滅洰褰曠殑缁濆璺緞**锛岀姝粠 `$HOME` 鎴栫幆澧冨彉閲忔帹鏂?- 濡傛灉鐢ㄦ埛閫氳繃 `/add-dir` 娣诲姞浜嗗涓伐浣滃尯锛屽厛鐢?Glob/Grep 纭畾浠诲姟鐩稿叧鐨勫伐浣滃尯
+- 濡傛灉鏃犳硶纭畾锛岀敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨鐩爣宸ヤ綔鍖?
+**璋冪敤璇硶**锛堝苟琛岀敤 `run_in_background: true`锛夛細
 
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'
-ROLE_FILE: <角色提示词路径>
+ROLE_FILE: <瑙掕壊鎻愮ず璇嶈矾寰?
 <TASK>
-需求：<增强后的需求>
-上下文：<检索到的项目上下文>
+闇€姹傦細<澧炲己鍚庣殑闇€姹?
+涓婁笅鏂囷細<妫€绱㈠埌鐨勯」鐩笂涓嬫枃>
 </TASK>
 OUTPUT: Step-by-step implementation plan with pseudo-code. DO NOT modify any files.
 EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "简短描述"
+  description: "绠€鐭弿杩?
 })
 ```
 
-**角色提示词**：
-
-| 阶段 | Codex | Gemini |
+**瑙掕壊鎻愮ず璇?*锛?
+| 闃舵 | Codex | {{FRONTEND_PRIMARY}} |
 |------|-------|--------|
-| 分析 | `~/.claude/.ccg/prompts/codex/analyzer.md` | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/codex/architect.md` | `~/.claude/.ccg/prompts/gemini/architect.md` |
+| 鍒嗘瀽 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
+| 瑙勫垝 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
 
-**会话复用**：每次调用返回 `SESSION_ID: xxx`（通常由 wrapper 输出），**必须保存**以供后续 `/ccg:execute` 使用。
-
-**等待后台任务**（最大超时 600000ms = 10 分钟）：
+**浼氳瘽澶嶇敤**锛氭瘡娆¤皟鐢ㄨ繑鍥?`SESSION_ID: xxx`锛堥€氬父鐢?wrapper 杈撳嚭锛夛紝**蹇呴』淇濆瓨**浠ヤ緵鍚庣画 `/ccg:execute` 浣跨敤銆?
+**绛夊緟鍚庡彴浠诲姟**锛堟渶澶ц秴鏃?600000ms = 10 鍒嗛挓锛夛細
 
 ```
 TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ```
 
-**重要**：
-- 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时
-- 若 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
-- 若因等待时间过长跳过了等待，**必须调用 `AskUserQuestion` 询问用户选择继续等待还是 Kill Task**
-- ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过 Gemini 结果并使用单模型结果继续。
-- ⛔ **Codex 结果必须等待**：Codex 执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在 Codex 未返回结果时直接跳过或继续下一阶段**。已启动的 Codex 任务若被跳过 = 浪费 token + 丢失结果。
-
+**閲嶈**锛?- 蹇呴』鎸囧畾 `timeout: 600000`锛屽惁鍒欓粯璁ゅ彧鏈?30 绉掍細瀵艰嚧鎻愬墠瓒呮椂
+- 鑻?10 鍒嗛挓鍚庝粛鏈畬鎴愶紝缁х画鐢?`TaskOutput` 杞锛?*缁濆涓嶈 Kill 杩涚▼**
+- 鑻ュ洜绛夊緟鏃堕棿杩囬暱璺宠繃浜嗙瓑寰咃紝**蹇呴』璋冪敤 `AskUserQuestion` 璇㈤棶鐢ㄦ埛閫夋嫨缁х画绛夊緟杩樻槸 Kill Task**
+- 鉀?**{{FRONTEND_PRIMARY}} 澶辫触蹇呴』閲嶈瘯**锛氳嫢 {{FRONTEND_PRIMARY}} 璋冪敤澶辫触锛堥潪闆堕€€鍑虹爜鎴栬緭鍑哄寘鍚敊璇俊鎭級锛屾渶澶氶噸璇?2 娆★紙闂撮殧 5 绉掞級銆備粎褰?3 娆″叏閮ㄥけ璐ユ椂鎵嶈烦杩?{{FRONTEND_PRIMARY}} 缁撴灉骞朵娇鐢ㄥ崟妯″瀷缁撴灉缁х画銆?- 鉀?**Codex 缁撴灉蹇呴』绛夊緟**锛欳odex 鎵ц鏃堕棿杈冮暱锛?-15 鍒嗛挓锛夊睘浜庢甯搞€俆askOutput 瓒呮椂鍚庡繀椤荤户缁敤 TaskOutput 杞锛?*缁濆绂佹鍦?Codex 鏈繑鍥炵粨鏋滄椂鐩存帴璺宠繃鎴栫户缁笅涓€闃舵**銆傚凡鍚姩鐨?Codex 浠诲姟鑻ヨ璺宠繃 = 娴垂 token + 涓㈠け缁撴灉銆?
 ---
 
-## 执行工作流
+## 鎵ц宸ヤ綔娴?
+**瑙勫垝浠诲姟**锛?ARGUMENTS
 
-**规划任务**：$ARGUMENTS
+### 馃攳 Phase 1锛氫笂涓嬫枃鍏ㄩ噺妫€绱?
+`[妯″紡锛氱爺绌禲`
 
-### 🔍 Phase 1：上下文全量检索
+#### 1.1 Prompt 澧炲己锛堝繀椤婚鍏堟墽琛岋級
 
-`[模式：研究]`
-
-#### 1.1 Prompt 增强（必须首先执行）
-
-**Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS** 用于后续所有阶段。
-
-#### 1.2 上下文检索
-
-**调用 `{{MCP_SEARCH_TOOL}}` 工具**：
-
+**Prompt 澧炲己**锛堟寜 `/ccg:enhance` 鐨勯€昏緫鎵ц锛夛細鍒嗘瀽 $ARGUMENTS 鐨勬剰鍥俱€佺己澶变俊鎭€侀殣鍚亣璁撅紝琛ュ叏涓虹粨鏋勫寲闇€姹傦紙鏄庣‘鐩爣銆佹妧鏈害鏉熴€佽寖鍥磋竟鐣屻€侀獙鏀舵爣鍑嗭級锛?*鐢ㄥ寮虹粨鏋滄浛浠ｅ師濮?$ARGUMENTS** 鐢ㄤ簬鍚庣画鎵€鏈夐樁娈点€?
+#### 1.2 涓婁笅鏂囨绱?
+**璋冪敤 `{{MCP_SEARCH_TOOL}}` 宸ュ叿**锛?
 ```
 {{MCP_SEARCH_TOOL}}({
-  query: "<基于增强后需求构建的语义查询>",
+  query: "<鍩轰簬澧炲己鍚庨渶姹傛瀯寤虹殑璇箟鏌ヨ>",
   project_root_path: "{{WORKDIR}}"
 })
 ```
 
-- 使用自然语言构建语义查询（Where/What/How）
-- **禁止基于假设回答**
-- 若 MCP 不可用：回退到 Glob + Grep 进行文件发现与关键符号定位
+- 浣跨敤鑷劧璇█鏋勫缓璇箟鏌ヨ锛圵here/What/How锛?- **绂佹鍩轰簬鍋囪鍥炵瓟**
+- 鑻?MCP 涓嶅彲鐢細鍥為€€鍒?Glob + Grep 杩涜鏂囦欢鍙戠幇涓庡叧閿鍙峰畾浣?
+#### 1.3 瀹屾暣鎬ф鏌?
+- 蹇呴』鑾峰彇鐩稿叧绫汇€佸嚱鏁般€佸彉閲忕殑**瀹屾暣瀹氫箟涓庣鍚?*
+- 鑻ヤ笂涓嬫枃涓嶈冻锛岃Е鍙?*閫掑綊妫€绱?*
+- 浼樺厛杈撳嚭锛氬叆鍙ｆ枃浠?+ 琛屽彿 + 鍏抽敭绗﹀彿鍚嶏紱蹇呰鏃惰ˉ鍏呮渶灏忎唬鐮佺墖娈碉紙浠呯敤浜庢秷闄ゆ涔夛級
 
-#### 1.3 完整性检查
+#### 1.4 闇€姹傚榻?
+- 鑻ラ渶姹備粛鏈夋ā绯婄┖闂达紝**蹇呴』**鍚戠敤鎴疯緭鍑哄紩瀵兼€ч棶棰樺垪琛?- 鐩磋嚦闇€姹傝竟鐣屾竻鏅帮紙鏃犻仐婕忋€佹棤鍐椾綑锛?
+### 馃挕 Phase 2锛氬妯″瀷鍗忎綔鍒嗘瀽
 
-- 必须获取相关类、函数、变量的**完整定义与签名**
-- 若上下文不足，触发**递归检索**
-- 优先输出：入口文件 + 行号 + 关键符号名；必要时补充最小代码片段（仅用于消除歧义）
+`[妯″紡锛氬垎鏋怾`
 
-#### 1.4 需求对齐
+#### 2.1 鍒嗗彂杈撳叆
 
-- 若需求仍有模糊空间，**必须**向用户输出引导性问题列表
-- 直至需求边界清晰（无遗漏、无冗余）
+**骞惰璋冪敤** Codex 鍜?{{FRONTEND_PRIMARY}}锛坄run_in_background: true`锛夛細
 
-### 💡 Phase 2：多模型协作分析
+灏?*鍘熷闇€姹?*锛堜笉甯﹂璁捐鐐癸級鍒嗗彂缁欎袱涓ā鍨嬶細
 
-`[模式：分析]`
+1. **{{BACKEND_PRIMARY}} 鍚庣鍒嗘瀽**锛?   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md`
+   - 鍏虫敞锛氭妧鏈彲琛屾€с€佹灦鏋勫奖鍝嶃€佹€ц兘鑰冮噺銆佹綔鍦ㄩ闄?   - OUTPUT: 澶氳搴﹁В鍐虫柟妗?+ 浼樺姡鍔垮垎鏋?
+2. **{{FRONTEND_PRIMARY}} 鍓嶇鍒嗘瀽**锛?   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
+   - 鍏虫敞锛歎I/UX 褰卞搷銆佺敤鎴蜂綋楠屻€佽瑙夎璁?   - OUTPUT: 澶氳搴﹁В鍐虫柟妗?+ 浼樺姡鍔垮垎鏋?
+鐢?`TaskOutput` 绛夊緟涓や釜妯″瀷鐨勫畬鏁寸粨鏋溿€?*馃搶 淇濆瓨 SESSION_ID**锛坄CODEX_SESSION` 鍜?`FRONTEND_SESSION`锛夈€?
+#### 2.2 浜ゅ弶楠岃瘉
 
-#### 2.1 分发输入
+鏁村悎鍚勬柟鎬濊矾锛岃繘琛岃凯浠ｄ紭鍖栵細
 
-**并行调用** Codex 和 Gemini（`run_in_background: true`）：
+1. **璇嗗埆涓€鑷磋鐐?*锛堝己淇″彿锛?2. **璇嗗埆鍒嗘鐐?*锛堥渶鏉冭　锛?3. **浜掕ˉ浼樺娍**锛氬悗绔€昏緫浠?Codex 涓哄噯锛屽墠绔璁′互 {{FRONTEND_PRIMARY}} 涓哄噯
+4. **閫昏緫鎺ㄦ紨**锛氭秷闄ゆ柟妗堜腑鐨勯€昏緫婕忔礊
 
-将**原始需求**（不带预设观点）分发给两个模型：
+#### 2.3锛堝彲閫変絾鎺ㄨ崘锛夊弻妯″瀷浜у嚭鈥滆鍒掕崏妗堚€?
+涓洪檷浣?Claude 鍚堟垚璁″垝鐨勯仐婕忛闄╋紝鍙苟琛岃涓や釜妯″瀷杈撳嚭鈥滆鍒掕崏妗堚€濓紙浠嶇劧**涓嶅厑璁?*淇敼鏂囦欢锛夛細
 
-1. **{{BACKEND_PRIMARY}} 后端分析**：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
-   - 关注：技术可行性、架构影响、性能考量、潜在风险
-   - OUTPUT: 多角度解决方案 + 优劣势分析
+1. **{{BACKEND_PRIMARY}} 璁″垝鑽夋**锛堝悗绔潈濞侊級锛?   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md`
+   - OUTPUT: Step-by-step plan + pseudo-code锛堥噸鐐癸細鏁版嵁娴?杈圭晫鏉′欢/閿欒澶勭悊/娴嬭瘯绛栫暐锛?
+2. **{{FRONTEND_PRIMARY}} 璁″垝鑽夋**锛堝墠绔潈濞侊級锛?   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md`
+   - OUTPUT: Step-by-step plan + pseudo-code锛堥噸鐐癸細淇℃伅鏋舵瀯/浜や簰/鍙闂€?瑙嗚涓€鑷存€э級
 
-2. **{{FRONTEND_PRIMARY}} 前端分析**：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
-   - 关注：UI/UX 影响、用户体验、视觉设计
-   - OUTPUT: 多角度解决方案 + 优劣势分析
-
-用 `TaskOutput` 等待两个模型的完整结果。**📌 保存 SESSION_ID**（`CODEX_SESSION` 和 `GEMINI_SESSION`）。
-
-#### 2.2 交叉验证
-
-整合各方思路，进行迭代优化：
-
-1. **识别一致观点**（强信号）
-2. **识别分歧点**（需权衡）
-3. **互补优势**：后端逻辑以 Codex 为准，前端设计以 Gemini 为准
-4. **逻辑推演**：消除方案中的逻辑漏洞
-
-#### 2.3（可选但推荐）双模型产出“计划草案”
-
-为降低 Claude 合成计划的遗漏风险，可并行让两个模型输出“计划草案”（仍然**不允许**修改文件）：
-
-1. **{{BACKEND_PRIMARY}} 计划草案**（后端权威）：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code（重点：数据流/边界条件/错误处理/测试策略）
-
-2. **{{FRONTEND_PRIMARY}} 计划草案**（前端权威）：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code（重点：信息架构/交互/可访问性/视觉一致性）
-
-用 `TaskOutput` 等待两个模型的完整结果，并记录其建议的关键差异点。
-
-#### 2.4 生成实施计划（Claude 最终版）
-
-综合双方分析，生成 **Step-by-step 实施计划**：
-
+鐢?`TaskOutput` 绛夊緟涓や釜妯″瀷鐨勫畬鏁寸粨鏋滐紝骞惰褰曞叾寤鸿鐨勫叧閿樊寮傜偣銆?
+#### 2.4 鐢熸垚瀹炴柦璁″垝锛圕laude 鏈€缁堢増锛?
+缁煎悎鍙屾柟鍒嗘瀽锛岀敓鎴?**Step-by-step 瀹炴柦璁″垝**锛?
 ```markdown
-## 📋 实施计划：<任务名称>
+## 馃搵 瀹炴柦璁″垝锛?浠诲姟鍚嶇О>
 
-### 任务类型
-- [ ] 前端 (→ Gemini)
-- [ ] 后端 (→ Codex)
-- [ ] 全栈 (→ 并行)
+### 浠诲姟绫诲瀷
+- [ ] 鍓嶇 (鈫?{{FRONTEND_PRIMARY}})
+- [ ] 鍚庣 (鈫?Codex)
+- [ ] 鍏ㄦ爤 (鈫?骞惰)
 
-### 技术方案
-<综合 Codex + Gemini 分析的最优方案>
+### 鎶€鏈柟妗?<缁煎悎 {{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}} 鍒嗘瀽鐨勬渶浼樻柟妗?
 
-### 实施步骤
-1. <步骤 1> - 预期产物
-2. <步骤 2> - 预期产物
+### 瀹炴柦姝ラ
+1. <姝ラ 1> - 棰勬湡浜х墿
+2. <姝ラ 2> - 棰勬湡浜х墿
 ...
 
-### 关键文件
-| 文件 | 操作 | 说明 |
+### 鍏抽敭鏂囦欢
+| 鏂囦欢 | 鎿嶄綔 | 璇存槑 |
 |------|------|------|
-| path/to/file.ts:L10-L50 | 修改 | 描述 |
+| path/to/file.ts:L10-L50 | 淇敼 | 鎻忚堪 |
 
-### 风险与缓解
-| 风险 | 缓解措施 |
+### 椋庨櫓涓庣紦瑙?| 椋庨櫓 | 缂撹В鎺柦 |
 |------|----------|
 
-### SESSION_ID（供 /ccg:execute 使用）
-- CODEX_SESSION: <session_id>
-- GEMINI_SESSION: <session_id>
+### SESSION_ID锛堜緵 /ccg:execute 浣跨敤锛?- CODEX_SESSION: <session_id>
+- FRONTEND_SESSION: <session_id>
 ```
 
-### ⛔ Phase 2 结束：计划交付（非执行）
+### 鉀?Phase 2 缁撴潫锛氳鍒掍氦浠橈紙闈炴墽琛岋級
 
-**`/ccg:plan` 的职责到此结束，必须执行以下动作**：
-
-1. 向用户展示完整实施计划（含伪代码）
-2. 将计划保存至 `.claude/plan/<功能名>.md`（功能名从需求中提取，如 `user-auth`、`payment-module` 等）
-3. 以**加粗文本**输出提示（必须使用实际保存的文件路径）：
+**`/ccg:plan` 鐨勮亴璐ｅ埌姝ょ粨鏉燂紝蹇呴』鎵ц浠ヤ笅鍔ㄤ綔**锛?
+1. 鍚戠敤鎴峰睍绀哄畬鏁村疄鏂借鍒掞紙鍚吉浠ｇ爜锛?2. 灏嗚鍒掍繚瀛樿嚦 `.claude/plan/<鍔熻兘鍚?.md`锛堝姛鑳藉悕浠庨渶姹備腑鎻愬彇锛屽 `user-auth`銆乣payment-module` 绛夛級
+3. 浠?*鍔犵矖鏂囨湰**杈撳嚭鎻愮ず锛堝繀椤讳娇鐢ㄥ疄闄呬繚瀛樼殑鏂囦欢璺緞锛夛細
 
    ---
-   **📋 计划已生成并保存至 `.claude/plan/实际功能名.md`**
+   **馃搵 璁″垝宸茬敓鎴愬苟淇濆瓨鑷?`.claude/plan/瀹為檯鍔熻兘鍚?md`**
 
-   **请审查上述计划，您可以：**
-   - 🔧 **修改计划**：告诉我需要调整的部分，我会更新计划
-   - ▶️ **执行计划**：复制以下命令到新会话执行
-
+   **璇峰鏌ヤ笂杩拌鍒掞紝鎮ㄥ彲浠ワ細**
+   - 馃敡 **淇敼璁″垝**锛氬憡璇夋垜闇€瑕佽皟鏁寸殑閮ㄥ垎锛屾垜浼氭洿鏂拌鍒?   - 鈻讹笍 **鎵ц璁″垝**锛氬鍒朵互涓嬪懡浠ゅ埌鏂颁細璇濇墽琛?
    ```
-   /ccg:execute .claude/plan/实际功能名.md
+   /ccg:execute .claude/plan/瀹為檯鍔熻兘鍚?md
    ```
    ---
 
-   **⚠️ 注意**：上面的 `实际功能名.md` 必须替换为你实际保存的文件名！
-
-4. **立即终止当前回复**（Stop here. No more tool calls.）
-
-**⚠️ 绝对禁止**：
-- ❌ 问用户 "Y/N" 然后自动执行（执行是 `/ccg:execute` 的职责）
-- ❌ 对产品代码进行任何写操作
-- ❌ 自动调用 `/ccg:execute` 或任何实施动作
-- ❌ 在用户未明确要求修改时继续触发模型调用
-
+   **鈿狅笍 娉ㄦ剰**锛氫笂闈㈢殑 `瀹為檯鍔熻兘鍚?md` 蹇呴』鏇挎崲涓轰綘瀹為檯淇濆瓨鐨勬枃浠跺悕锛?
+4. **绔嬪嵆缁堟褰撳墠鍥炲**锛圫top here. No more tool calls.锛?
+**鈿狅笍 缁濆绂佹**锛?- 鉂?闂敤鎴?"Y/N" 鐒跺悗鑷姩鎵ц锛堟墽琛屾槸 `/ccg:execute` 鐨勮亴璐ｏ級
+- 鉂?瀵逛骇鍝佷唬鐮佽繘琛屼换浣曞啓鎿嶄綔
+- 鉂?鑷姩璋冪敤 `/ccg:execute` 鎴栦换浣曞疄鏂藉姩浣?- 鉂?鍦ㄧ敤鎴锋湭鏄庣‘瑕佹眰淇敼鏃剁户缁Е鍙戞ā鍨嬭皟鐢?
 ---
 
-## 计划保存
+## 璁″垝淇濆瓨
 
-规划完成后，将计划保存至：
+瑙勫垝瀹屾垚鍚庯紝灏嗚鍒掍繚瀛樿嚦锛?
+- **棣栨瑙勫垝**锛歚.claude/plan/<鍔熻兘鍚?.md`
+- **杩唬鐗堟湰**锛歚.claude/plan/<鍔熻兘鍚?-v2.md`銆乣.claude/plan/<鍔熻兘鍚?-v3.md`...
 
-- **首次规划**：`.claude/plan/<功能名>.md`
-- **迭代版本**：`.claude/plan/<功能名>-v2.md`、`.claude/plan/<功能名>-v3.md`...
-
-计划文件写入应在向用户展示计划前完成。
-
+璁″垝鏂囦欢鍐欏叆搴斿湪鍚戠敤鎴峰睍绀鸿鍒掑墠瀹屾垚銆?
 ---
 
-## 计划修改流程
+## 璁″垝淇敼娴佺▼
 
-如果用户要求修改计划：
-
-1. 根据用户反馈调整计划内容
-2. 更新 `.claude/plan/<功能名>.md` 文件
-3. 重新展示修改后的计划
-4. 再次提示用户审查或执行
-
+濡傛灉鐢ㄦ埛瑕佹眰淇敼璁″垝锛?
+1. 鏍规嵁鐢ㄦ埛鍙嶉璋冩暣璁″垝鍐呭
+2. 鏇存柊 `.claude/plan/<鍔熻兘鍚?.md` 鏂囦欢
+3. 閲嶆柊灞曠ず淇敼鍚庣殑璁″垝
+4. 鍐嶆鎻愮ず鐢ㄦ埛瀹℃煡鎴栨墽琛?
 ---
 
-## 后续步骤
+## 鍚庣画姝ラ
 
-用户审查满意后，**手动**执行：
-
+鐢ㄦ埛瀹℃煡婊℃剰鍚庯紝**鎵嬪姩**鎵ц锛?
 ```bash
-/ccg:execute .claude/plan/<功能名>.md
+/ccg:execute .claude/plan/<鍔熻兘鍚?.md
 ```
 
 ---
 
-## 关键规则
+## 鍏抽敭瑙勫垯
 
-1. **仅规划不实施** – 本命令不执行任何代码变更
-2. **不问 Y/N** – 只展示计划，让用户决定下一步
-3. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
-4. 外部模型对文件系统**零写入权限**
-5. **SESSION_ID 交接** – 计划末尾必须包含 `CODEX_SESSION` / `GEMINI_SESSION`（供 `/ccg:execute resume <SESSION_ID>` 使用）
+1. **浠呰鍒掍笉瀹炴柦** 鈥?鏈懡浠や笉鎵ц浠讳綍浠ｇ爜鍙樻洿
+2. **涓嶉棶 Y/N** 鈥?鍙睍绀鸿鍒掞紝璁╃敤鎴峰喅瀹氫笅涓€姝?3. **淇′换瑙勫垯** 鈥?鍚庣浠?Codex 涓哄噯锛屽墠绔互 {{FRONTEND_PRIMARY}} 涓哄噯
+4. 澶栭儴妯″瀷瀵规枃浠剁郴缁?*闆跺啓鍏ユ潈闄?*
+5. **SESSION_ID 浜ゆ帴** 鈥?璁″垝鏈熬蹇呴』鍖呭惈 `CODEX_SESSION` / `FRONTEND_SESSION`锛堜緵 `/ccg:execute resume <SESSION_ID>` 浣跨敤锛?
+
+

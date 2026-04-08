@@ -1,124 +1,75 @@
 ---
-description: '双模型交叉审查（独立工具，随时可用）'
+description: 'Codex 最终验收 OpenSpec change，失败打回，成功 archive'
 ---
 <!-- CCG:SPEC:REVIEW:START -->
 **Core Philosophy**
-- Dual-model cross-validation catches blind spots single-model review would miss.
-- Critical findings SHOULD be addressed before proceeding.
-- Review validates implementation against spec constraints and code quality.
-- This is an independent review tool—can be used anytime, not tied to archive workflow.
+- `spec-review` 是最终验收门禁。
+- Codex 对 change 是否满足 spec 负责最终判断。
+- 通过前不 archive，失败时必须打回执行层。
 
 **Guardrails**
-- **MANDATORY**: Both Codex AND Gemini must complete review before synthesis.
-- Review scope is strictly limited to the proposal's changes—no scope creep.
-- Refer to `openspec/config.yaml` for project conventions when reviewing OpenSpec proposals.
+- Codex 审查是 mandatory。
+- Gemini 可作为补充视角，但不是硬前提。
+- 审查必须对照 spec、design、tasks 和执行回传证据。
 
 **Steps**
-1. **Select Proposal**
-   - Run `openspec list --json` to display Active Changes.
-   - Confirm with user which proposal ID to review.
-   - Run `openspec status --change "<proposal_id>" --json` to load spec and tasks.
+1. 选择 change
+   - 运行 `openspec list --json`。
+   - 选择待验收的 change。
+   - 运行 `openspec status --change "<change_id>" --json`。
 
-2. **Collect Implementation Artifacts**
-   - Identify all files modified by this proposal.
-   - Use `git diff` to get change summary.
-   - Load relevant spec constraints and PBT properties from `openspec/changes/<id>/specs/`.
+2. 收集验收材料
+   - 读取 `proposal.md`、`design.md`、`tasks.md`、`specs/**/*.md`。
+   - 读取最近的 `Execution Return Packet` / `Rework Packet`。
+   - 查看 `git diff` 与本地验证结果。
 
-3. **Multi-Model Review (PARALLEL)**
-   - **CRITICAL**: You MUST launch BOTH Codex AND Gemini in a SINGLE message with TWO Bash tool calls.
-   - **DO NOT** call one model first and wait. Launch BOTH simultaneously with `run_in_background: true`.
-   - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
+3. Codex 验收
+   - 检查：
+     - tasks 是否完成
+     - 规格约束是否满足
+     - required verification 是否具备证据
+     - 是否存在越界修改
+   - 必要时运行独立测试/检查。
 
-   **Step 3.1**: In ONE message, make TWO parallel Bash calls:
+4. 做出判定
+   - 若失败：
+     - 输出 `Acceptance Failed`
+     - 生成新的 rework packet
+     - 指示回到 `/ccg:team-exec` 或 `/ccg:spec-impl`
+   - 若通过：
+     - 输出 `Acceptance Passed`
+     - 允许 archive
 
-   **FIRST Bash call ({{BACKEND_PRIMARY}})**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nReview proposal <proposal_id> implementation:\n\n## {{BACKEND_PRIMARY}} Review Dimensions\n1. **Spec Compliance**: Verify ALL constraints from spec are satisfied\n2. **PBT Properties**: Check invariants, idempotency, bounds are correctly implemented\n3. **Logic Correctness**: Edge cases, error handling, algorithm correctness\n4. **Backend Security**: Injection vulnerabilities, auth checks, input validation\n5. **Regression Risk**: Interface compatibility, type safety, breaking changes\n\n## Output Format (JSON)\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"spec_compliance|pbt|logic|security|regression\",\n      \"file\": \"path/to/file.ts\",\n      \"line\": 42,\n      \"description\": \"What is wrong\",\n      \"constraint_violated\": \"Constraint ID from spec (if applicable)\",\n      \"fix_suggestion\": \"How to fix\"\n    }\n  ],\n  \"passed_checks\": [\"List of verified constraints/properties\"],\n  \"summary\": \"Overall assessment\"\n}\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{BACKEND_PRIMARY}}: backend/logic review"
-   })
-   ```
+5. 归档
+   - 仅在通过时内部调用 `/opsx:archive`。
+   - 归档后报告 archived change id。
 
-   **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nReview proposal <proposal_id> implementation:\n\n## {{FRONTEND_PRIMARY}} Review Dimensions\n1. **Pattern Consistency**: Naming conventions, code style, project patterns\n2. **Maintainability**: Readability, complexity, documentation adequacy\n3. **Integration Risk**: Dependency changes, cross-module impacts\n4. **Frontend Security**: XSS, CSRF, sensitive data exposure\n5. **Spec Alignment**: Implementation matches spec intent (not just letter)\n\n## Output Format (JSON)\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"patterns|maintainability|integration|security|alignment\",\n      \"file\": \"path/to/file.ts\",\n      \"line\": 42,\n      \"description\": \"What is wrong\",\n      \"spec_reference\": \"Spec section (if applicable)\",\n      \"fix_suggestion\": \"How to fix\"\n    }\n  ],\n  \"passed_checks\": [\"List of verified aspects\"],\n  \"summary\": \"Overall assessment\"\n}\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{FRONTEND_PRIMARY}}: patterns/integration review"
-   })
-   ```
+**Result Format**
+失败：
 
-   **Step 3.2**: After BOTH Bash calls return task IDs, wait for results with TWO TaskOutput calls:
-   ```
-   TaskOutput({ task_id: "<codex_task_id>", block: true, timeout: 600000 })
-   TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
-   ```
+```md
+## Acceptance Failed
 
-   ⛔ **Gemini 失败必须重试**：若 Gemini 调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **Codex 结果必须等待**：Codex 执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+### Reasons
+- ...
 
-4. **Synthesize Findings**
-   - Merge findings from both models.
-   - Deduplicate overlapping issues.
-   - Classify by severity:
-     * **Critical**: Spec violation, security vulnerability, breaking change → MUST fix
-     * **Warning**: Pattern deviation, maintainability concern → SHOULD fix
-     * **Info**: Minor improvement suggestion → MAY fix
+### Rework Packet
+- ...
 
-5. **Present Review Report**
-   - Display findings grouped by severity:
-   ```
-   ## Review Report: <proposal_id>
+Next: /ccg:team-exec
+```
 
-   ### Critical (X issues) - MUST FIX
-   - [ ] [SPEC] file.ts:42 - Constraint X violated: description
-   - [ ] [SEC] api.ts:15 - SQL injection vulnerability
+通过：
 
-   ### Warning (Y issues) - SHOULD FIX
-   - [ ] [PATTERN] utils.ts:88 - Inconsistent naming convention
+```md
+## Acceptance Passed
 
-   ### Info (Z issues) - MAY FIX
-   - [ ] [MAINT] helper.ts:20 - Consider extracting to separate function
-
-   ### Passed Checks
-   - ✅ PBT: Idempotency property verified
-   - ✅ Security: No XSS vulnerabilities found
-   ```
-
-6. **Decision Gate**
-   - **If Critical > 0**:
-     * Present findings to user.
-     * Ask: "Fix now or return to `/ccg:spec-impl` to address?"
-     * Do NOT allow archiving.
-
-   - **If Critical = 0**:
-     * Ask user: "All critical checks passed. Proceed to archive?"
-     * If Warning > 0, recommend addressing before archive.
-
-7. **Optional: Inline Fix Mode**
-   - If user chooses "Fix now" for Critical issues:
-     * Route each fix to appropriate model (backend→Codex, frontend→Gemini).
-     * Apply fix using unified diff patch pattern.
-     * Re-run affected review dimension.
-     * Repeat until Critical = 0.
-
-8. **Context Checkpoint**
-   - Report current context usage.
-   - If approaching 80K tokens, suggest: "Run `/clear` and continue with `/ccg:spec-review` or `/ccg:spec-impl`"
+- change: <change_id>
+- archive: completed
+```
 
 **Exit Criteria**
-Review is complete when:
-- [ ] Both Codex and Gemini reviews completed
-- [ ] All findings synthesized and classified
-- [ ] Zero Critical issues remain (fixed or user-acknowledged)
-- [ ] User decision captured (archive / return to impl / defer)
-
-**Reference**
-- View proposal: `openspec status --change "<id>" --json`
-- Check spec constraints: `rg -n "CONSTRAINT:|MUST|INVARIANT:" openspec/changes/<id>/specs/`
-- View implementation diff: `git diff`
-- Archive (after passing): `/ccg:spec-impl` → Step 10
+- [ ] Codex 已完成最终验收
+- [ ] 失败时已打回执行层
+- [ ] 通过时已 archive
 <!-- CCG:SPEC:REVIEW:END -->

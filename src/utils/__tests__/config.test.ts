@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { createDefaultConfig, createDefaultRouting } from '../config'
 
 describe('createDefaultRouting', () => {
-  it('returns gemini as frontend primary', () => {
+  it('returns codex as frontend primary for the Codex-led path', () => {
     const routing = createDefaultRouting()
-    expect(routing.frontend.primary).toBe('gemini')
-    expect(routing.frontend.models).toEqual(['gemini'])
+    expect(routing.frontend.primary).toBe('codex')
+    expect(routing.frontend.models).toEqual(['codex'])
   })
 
   it('returns codex as backend primary', () => {
@@ -14,9 +14,9 @@ describe('createDefaultRouting', () => {
     expect(routing.backend.models).toEqual(['codex'])
   })
 
-  it('returns both models for review', () => {
+  it('returns codex-only review defaults', () => {
     const routing = createDefaultRouting()
-    expect(routing.review.models).toEqual(['codex', 'gemini'])
+    expect(routing.review.models).toEqual(['codex'])
     expect(routing.review.strategy).toBe('parallel')
   })
 
@@ -81,6 +81,31 @@ describe('createDefaultConfig', () => {
     expect(config.paths.commands).toContain('.claude')
     expect(config.paths.prompts).toContain('.ccg')
     expect(config.paths.backup).toContain('.ccg')
+  })
+
+  it('records Codex-led workflow ownership', () => {
+    const config = createDefaultConfig(baseOptions)
+    expect(config.ownership).toEqual({
+      orchestrator: 'codex',
+      executionHost: 'claude',
+      acceptance: 'codex',
+    })
+  })
+
+  it('allows overriding ownership metadata', () => {
+    const config = createDefaultConfig({
+      ...baseOptions,
+      ownership: {
+        orchestrator: 'claude',
+        executionHost: 'codex',
+        acceptance: 'claude',
+      },
+    })
+    expect(config.ownership).toEqual({
+      orchestrator: 'claude',
+      executionHost: 'codex',
+      acceptance: 'claude',
+    })
   })
 
   it('preserves routing config exactly', () => {

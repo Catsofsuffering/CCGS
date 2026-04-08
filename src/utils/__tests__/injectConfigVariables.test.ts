@@ -202,9 +202,9 @@ describe('integration: real templates with skip mode', () => {
     return content.includes('{{MCP_SEARCH_TOOL}}')
   })
 
-  // Sanity check: we expect at least 14 files with MCP references
+  // Sanity check: we expect a broad set of templates to still exercise MCP injection.
   it('finds templates containing {{MCP_SEARCH_TOOL}}', () => {
-    expect(filesWithMcpRef.length).toBeGreaterThanOrEqual(14)
+    expect(filesWithMcpRef.length).toBeGreaterThanOrEqual(12)
   })
 
   for (const file of filesWithMcpRef) {

@@ -1,6 +1,7 @@
 import type { InstallResult } from '../types'
 import ansis from 'ansis'
 import fs from 'fs-extra'
+import { homedir } from 'node:os'
 import { basename, join } from 'pathe'
 import { getWorkflowById } from './installer-data'
 import { PACKAGE_ROOT, injectConfigVariables, replaceHomePathsInTemplate } from './installer-template'
@@ -79,10 +80,25 @@ interface InstallConfig {
 
 interface InstallContext {
   installDir: string
+  codexHomeDir: string
   force: boolean
   config: InstallConfig
   templateDir: string
   result: InstallResult
+}
+
+const CODEX_WORKFLOW_SKILLS = [
+  'ccg-spec-init',
+  'ccg-spec-plan',
+  'ccg-spec-impl',
+] as const
+
+function routingUsesGemini(routing: InstallConfig['routing']): boolean {
+  return [
+    ...(routing.frontend?.models || []),
+    ...(routing.backend?.models || []),
+    ...(routing.review?.models || []),
+  ].includes('gemini')
 }
 
 // ═══════════════════════════════════════════════════════
@@ -291,7 +307,12 @@ async function installPromptFiles(ctx: InstallContext): Promise<void> {
     return
   }
 
-  for (const model of ['codex', 'gemini', 'claude']) {
+  const promptModels = ['codex', 'claude']
+  if (routingUsesGemini(ctx.config.routing)) {
+    promptModels.push('gemini')
+  }
+
+  for (const model of promptModels) {
     try {
       const installed = await copyMdTemplates(
         ctx,
@@ -424,6 +445,51 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
   }
   catch (error) {
     ctx.result.errors.push(`Failed to install skills: ${error}`)
+    ctx.result.success = false
+  }
+}
+
+/**
+ * Install Codex-native workflow skills from templates/codex-skills/ -> ~/.codex/skills/
+ * Each skill is installed as a top-level directory so Codex can discover it directly.
+ */
+async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
+  const skillsTemplateDir = join(ctx.templateDir, 'codex-skills')
+  const codexSkillsDir = join(ctx.codexHomeDir, 'skills')
+
+  if (!(await fs.pathExists(skillsTemplateDir))) {
+    ctx.result.errors.push(`Codex skills template directory not found: ${skillsTemplateDir}`)
+    ctx.result.success = false
+    return
+  }
+
+  try {
+    await fs.ensureDir(codexSkillsDir)
+    const installed: string[] = []
+
+    for (const skillName of CODEX_WORKFLOW_SKILLS) {
+      const srcDir = join(skillsTemplateDir, skillName)
+      const destDir = join(codexSkillsDir, skillName)
+      const skillFile = join(srcDir, 'SKILL.md')
+
+      if (!(await fs.pathExists(skillFile))) {
+        ctx.result.errors.push(`Missing Codex workflow skill template: ${skillFile}`)
+        ctx.result.success = false
+        continue
+      }
+
+      await fs.ensureDir(destDir)
+      let content = await fs.readFile(skillFile, 'utf-8')
+      content = injectConfigVariables(content, ctx.config)
+      content = replaceHomePathsInTemplate(content, ctx.installDir)
+      await fs.writeFile(join(destDir, 'SKILL.md'), content, 'utf-8')
+      installed.push(skillName)
+    }
+
+    ctx.result.installedCodexSkills = installed
+  }
+  catch (error) {
+    ctx.result.errors.push(`Failed to install Codex workflow skills: ${error}`)
     ctx.result.success = false
   }
 }
@@ -666,21 +732,25 @@ export async function installWorkflows(
       frontend?: { models?: string[], primary?: string }
       backend?: { models?: string[], primary?: string }
       review?: { models?: string[] }
+      geminiModel?: string
     }
     liteMode?: boolean
     mcpProvider?: string
     skipImpeccable?: boolean
+    codexHomeDir?: string
+    skipBinary?: boolean
   },
 ): Promise<InstallResult> {
   const ctx: InstallContext = {
     installDir,
+    codexHomeDir: config?.codexHomeDir || join(homedir(), '.codex'),
     force,
     config: {
       routing: config?.routing as InstallConfig['routing'] || {
         mode: 'smart',
-        frontend: { models: ['gemini'], primary: 'gemini' },
+        frontend: { models: ['codex'], primary: 'codex' },
         backend: { models: ['codex'], primary: 'codex' },
-        review: { models: ['codex', 'gemini'] },
+        review: { models: ['codex'] },
       },
       liteMode: config?.liteMode || false,
       mcpProvider: config?.mcpProvider || 'ace-tool',
@@ -691,6 +761,7 @@ export async function installWorkflows(
       success: true,
       installedCommands: [],
       installedPrompts: [],
+      installedCodexSkills: [],
       errors: [],
       configPath: '',
     },
@@ -719,9 +790,12 @@ export async function installWorkflows(
   await installAgentFiles(ctx)
   await installPromptFiles(ctx)
   await installSkillFiles(ctx)
+  await installCodexWorkflowSkills(ctx)
   await installSkillGeneratedCommands(ctx)
   await installRuleFiles(ctx)
-  await installBinaryFile(ctx)
+  if (!config?.skipBinary) {
+    await installBinaryFile(ctx)
+  }
 
   // ── Post-flight: validate installation produced results ──
   // Catch the case where all sub-steps silently returned empty
@@ -748,6 +822,7 @@ export interface UninstallResult {
   removedPrompts: string[]
   removedAgents: string[]
   removedSkills: string[]
+  removedCodexSkills: string[]
   removedRules: boolean
   removedBin: boolean
   errors: string[]
@@ -755,15 +830,19 @@ export interface UninstallResult {
 
 /**
  * Uninstall workflows by removing their command files.
- * @param options.preserveBinary — when true, skip binary removal (used during update)
+ * @param options.preserveBinary – when true, skip binary removal (used during update)
  */
-export async function uninstallWorkflows(installDir: string, options?: { preserveBinary?: boolean }): Promise<UninstallResult> {
+export async function uninstallWorkflows(
+  installDir: string,
+  options?: { preserveBinary?: boolean, codexHomeDir?: string },
+): Promise<UninstallResult> {
   const result: UninstallResult = {
     success: true,
     removedCommands: [],
     removedPrompts: [],
     removedAgents: [],
     removedSkills: [],
+    removedCodexSkills: [],
     removedRules: false,
     removedBin: false,
     errors: [],
@@ -775,6 +854,7 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
   const rulesDir = join(installDir, 'rules')
   const binDir = join(installDir, 'bin')
   const ccgConfigDir = join(installDir, '.ccg')
+  const codexSkillsDir = join(options?.codexHomeDir || join(homedir(), '.codex'), 'skills')
 
   // Remove CCG commands directory
   try {
@@ -802,6 +882,21 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
     }
     catch (error) {
       result.errors.push(`Failed to remove skills: ${error}`)
+      result.success = false
+    }
+  }
+
+  // Remove only CCG-owned Codex workflow skills
+  for (const skillName of CODEX_WORKFLOW_SKILLS) {
+    const skillDir = join(codexSkillsDir, skillName)
+    try {
+      if (await fs.pathExists(skillDir)) {
+        await fs.remove(skillDir)
+        result.removedCodexSkills.push(skillName)
+      }
+    }
+    catch (error) {
+      result.errors.push(`Failed to remove Codex workflow skill ${skillName}: ${error}`)
       result.success = false
     }
   }
