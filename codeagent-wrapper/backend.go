@@ -146,7 +146,11 @@ func buildGeminiArgs(cfg *Config, targetArg string) []string {
 		args = append(args, "--include-directories", cfg.WorkDir)
 	}
 
-	args = append(args, "-p", targetArg)
+	// On Windows with stdin pipe mode, targetArg is "" — omit -p so Gemini reads from stdin.
+	// On macOS/Linux, targetArg contains the actual prompt text for the -p flag.
+	if targetArg != "" {
+		args = append(args, "-p", targetArg)
+	}
 
 	return args
 }

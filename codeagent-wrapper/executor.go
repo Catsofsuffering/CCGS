@@ -857,10 +857,17 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 	targetArg := taskSpec.Task
 
 	// Gemini CLI does not support "-" as stdin marker for -p flag.
-	// Pass the actual task text directly via -p; skip stdin pipe for Gemini.
-	geminiDirect := useStdin && cfg.Backend == "gemini"
-	if useStdin && !geminiDirect {
+	// On macOS/Linux: pass the actual task text directly via -p (execve preserves
+	// multi-line args in argv). On Windows: npm's .cmd wrapper routes through
+	// cmd.exe which truncates multi-line args at the first newline (Issue #129).
+	// Use stdin pipe instead and omit -p so Gemini reads from piped stdin.
+	geminiDirect := useStdin && cfg.Backend == "gemini" && !isWindows()
+	geminiStdinPipe := useStdin && cfg.Backend == "gemini" && isWindows()
+	if useStdin && !geminiDirect && !geminiStdinPipe {
 		targetArg = "-"
+	}
+	if geminiStdinPipe {
+		targetArg = "" // signal buildGeminiArgs to omit -p flag
 	}
 
 	var codexArgs []string

@@ -1,151 +1,87 @@
-# CCGS - Codex-Orchestrated Spec Collaboration Workflow
+# CCGS
 
 <div align="center">
 
-<img src="assets/logo/ccg-logo-cropped.png" alt="CCGS Workflow" width="400">
+<img src="assets/logo/ccg-logo-cropped.png" alt="CCGS" width="360">
 
 [![npm version](https://img.shields.io/npm/v/ccg-workflow.svg)](https://www.npmjs.com/package/ccg-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Codex-led](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-139%20passed-brightgreen.svg)]()
-[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
+[![Primary Path](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
 
-[简体中文](./README.zh-CN.md) | English
+[English](./README.md) | [简体中文](./README.zh-CN.md)
 
 </div>
 
-CCGS is a Codex-orchestrated spec collaboration workflow. The extra `S` stands for `Spec`, highlighting that OpenSpec is the backbone of the maintained path. The primary path is:
+CCGS is the Codex-led fork of `ccg-workflow`. In this fork, the extra `S` stands for `Spec`: OpenSpec is the backbone, Codex owns workflow progression, Claude Agent Teams handle bounded execution, and Codex performs review, testing, acceptance, and archive decisions.
 
-1. Codex creates and advances OpenSpec change artifacts.
-2. Codex prepares an execution handoff for Claude.
-3. Claude Agent Teams implement the work.
-4. Codex reviews, tests, accepts, and archives.
+This repository no longer uses the upstream README as its product story. Upstream compatibility remains valuable, but the maintained default path in this fork is:
 
-MCP, skills, and Gemini still exist, but they are optional integrations rather than default requirements for the main path.
+1. Codex creates or advances the OpenSpec change.
+2. Codex prepares the execution handoff contract.
+3. Claude Agent Teams implement the scoped work.
+4. Codex reviews the return packet, verifies results, and decides archive readiness.
+
+## Why This Fork
+
+- Codex is the workflow owner, not a side model behind another orchestrator.
+- OpenSpec is required for the maintained path, not an optional afterthought.
+- Claude remains important, but primarily as the execution layer.
+- MCP, reusable skills, and Gemini are optional integrations rather than baseline requirements.
+- Legacy and upstream-compatible command surfaces stay available while the Codex-led path matures.
 
 ## Primary Workflow
 
-The recommended end-to-end path is:
+The recommended end-to-end flow is:
 
 ```bash
 /ccg:spec-init
-/ccg:spec-research implement user authentication
+/ccg:spec-research <request>
 /ccg:spec-plan
 /ccg:team-plan
 /ccg:team-exec
 /ccg:team-review
 /ccg:spec-review
-```
-
-If the change is accepted, archive it with:
-
-```bash
 openspec archive <change-id>
 ```
 
-`/ccg:spec-impl` is now the managed shortcut for the same contract: Codex dispatches Claude execution, validates the result, and decides whether the change can be archived.
+`/ccg:spec-impl` is the managed shortcut when you want Codex to dispatch Claude execution and keep acceptance inside the same Codex-led loop.
 
-### Codex-Native Entrypoint
+## Codex-Native Entrypoint
 
-The primary workflow no longer has to begin inside Claude.
-
-After `npx ccg-workflow init`, CCGS now also installs top-level Codex workflow skills under `~/.codex/skills/`:
+After install, CCGS also places Codex-native skills under `~/.codex/skills/`:
 
 - `ccg-spec-init`
 - `ccg-spec-plan`
 - `ccg-spec-impl`
 
-That means the intended primary path is now:
-
-1. Open Codex.
-2. Start with `ccg-spec-init`.
-3. Refine the handoff with `ccg-spec-plan`.
-4. Let Codex dispatch Claude execution through `ccg-spec-impl`.
-
-Claude slash commands still exist, but they are now the compatibility surface rather than the only runtime entrypoint.
+That means the maintained path can start directly inside Codex instead of relying on Claude as the shell host.
 
 ## Compatibility Flows
 
-These commands remain available as compatibility or secondary surfaces:
+These flows still exist, but they are compatibility or secondary paths rather than the main product story:
 
-| Command | Status | Notes |
-|---------|--------|-------|
-| `/ccg:workflow` | Compatibility flow | Legacy full workflow surface |
-| `/ccg:plan` | Compatibility flow | Legacy multi-model planning path |
-| `/ccg:execute` | Compatibility flow | Legacy execution path for existing plans |
-| `/ccg:team-research` | Compatibility flow | Older research-first Team flow |
-| `/ccg:frontend` | Secondary quick flow | Gemini-friendly frontend shortcut |
-| `/ccg:codex-exec` | Secondary quick flow | Direct Codex execution outside the full spec/team loop |
+- `/ccg:workflow`
+- `/ccg:plan`
+- `/ccg:execute`
+- `/ccg:team-research`
+- `/ccg:frontend`
+- `/ccg:codex-exec`
 
-## Command Surface
-
-### Primary Commands
-
-| Command | Role |
-|---------|------|
-| `/ccg:spec-init` | Initialize OpenSpec in the repository |
-| `/ccg:spec-research` | Turn a request into a change proposal and constraints |
-| `/ccg:spec-plan` | Codex refines proposal/design/tasks and creates the execution handoff |
-| `/ccg:team-plan` | Codex prepares the Claude Agent Teams execution plan |
-| `/ccg:team-exec` | Claude Agent Teams execute Codex-dispatched work |
-| `/ccg:team-review` | Execution results return to Codex for review and rework decisions |
-| `/ccg:spec-review` | Codex final acceptance gate before archive |
-| `/ccg:spec-impl` | Managed dispatch + acceptance shortcut |
-
-### Utility Commands
-
-| Command | Role |
-|---------|------|
-| `/ccg:backend` | Codex-first backend quick flow |
-| `/ccg:analyze` | Analysis-only workflow |
-| `/ccg:debug` | Diagnose and propose fixes |
-| `/ccg:optimize` | Performance investigation |
-| `/ccg:test` | Test generation |
-| `/ccg:review` | Code review |
-| `/ccg:context` | Context logging and history compression |
-| `/ccg:commit` | Smart commit |
-| `/ccg:rollback` | Interactive rollback |
-| `/ccg:clean-branches` | Clean merged branches |
-| `/ccg:worktree` | Worktree management |
-| `/ccg:init` | Initialize project guidance files |
-
-## Why This Fork
-
-- Codex owns the lifecycle instead of being a routed side model.
-- Claude is used where it adds the most value: execution, especially Agent Teams.
-- OpenSpec remains the backbone for proposal, design, tasks, review, and archive.
-- Optional integrations stay available without defining the default user journey.
-- Compatibility surfaces remain available without redefining the main workflow.
-
-## Architecture
-
-```mermaid
-graph TD
-    User["User"] --> Codex["Codex-Orchestrated Workflow"]
-    Codex --> OpenSpec["OpenSpec change artifacts"]
-    Codex --> Handoff["Execution handoff contract"]
-    Handoff --> Claude["Claude Agent Teams"]
-    Claude --> ReturnPacket["Execution return packet"]
-    ReturnPacket --> Codex
-    Codex --> Verify["Tests, review, acceptance"]
-    Verify --> Archive["Archive change"]
-    Codex -. optional .-> Gemini["Gemini"]
-    Codex -. optional .-> MCP["MCP"]
-    Codex -. optional .-> Skills["Skills"]
-```
+Utility commands such as `/ccg:backend`, `/ccg:debug`, `/ccg:review`, `/ccg:test`, `/ccg:commit`, and `/ccg:worktree` remain available as well.
 
 ## Installation
 
 ### Prerequisites
 
-| Dependency | Required | Notes |
-|------------|----------|-------|
-| Node.js 20+ | Yes | `ora@9.x` requires Node 20+ |
-| Codex CLI | Recommended | Primary path is Codex-led |
-| Claude Code CLI | Recommended | Needed for Claude execution flows and slash commands |
-| Gemini CLI | Optional | Only for optional Gemini-assisted flows |
-| MCP tools | Optional | Not required for the default workflow |
-| Skills | Optional | Not required for the default workflow |
+- Node.js 20+
+- Codex CLI for the primary host workflow
+- Claude Code CLI for Agent Teams execution and compatibility command surfaces
+
+Optional:
+
+- Gemini CLI
+- MCP tooling
+- Extra reusable skills
 
 ### Install
 
@@ -153,68 +89,72 @@ graph TD
 npx ccg-workflow
 ```
 
-Step 2 of `npx ccg-workflow init` asks **“Who orchestrates this workspace?”** before you pick frontend/backend execution models. Codex remains the recommended default, but you can switch to a Claude-led compatibility path and the choice is saved into `~/.claude/.ccg/config.toml`.
-
-The installer creates Claude-compatible slash commands under `~/.claude/` and Codex workflow skills under `~/.codex/skills/`, so the primary path can start from Codex while compatibility surfaces remain available.
-
-## Optional Integrations
-
-### MCP
-
-MCP is no longer part of the default story. If you want code retrieval or web tooling, configure it manually from the menu:
+You can also run:
 
 ```bash
+npx ccg-workflow init
 npx ccg-workflow menu
+npx ccg-workflow update
 ```
 
-### Skills
+During setup, the installer asks who orchestrates the workspace before frontend/backend model selection. Codex is the recommended default, but Claude can still be selected for compatibility.
 
-Skills are still installable and reusable, but the primary Codex-led workflow should work without them.
+## What Gets Installed
 
-### Gemini
+Current install behavior keeps compatibility with existing environments:
 
-Gemini remains available for secondary frontend-heavy or comparison workflows, but it is no longer assumed in the default path.
+- Claude-facing commands and assets are installed under `~/.claude/`
+- Codex-native workflow skills are installed under `~/.codex/skills/`
+- Workflow configuration is stored under `~/.claude/.ccg/`
+- `codeagent-wrapper` remains the backend invocation boundary
 
-## Key Directories
+## Repository Landmarks
 
 ```text
-~/.claude/
-├── commands/ccg/           # Installed slash commands (compatibility target for now)
-├── agents/ccg/             # Sub-agents
-├── skills/ccg/             # Optional skills
-├── bin/codeagent-wrapper   # Backend invocation wrapper
-└── .ccg/
-    ├── config.toml         # Workflow config
-    └── prompts/            # Prompt assets
+src/
+├── cli.ts
+├── cli-setup.ts
+├── commands/
+├── utils/
+└── i18n/
 
-~/.codex/
+templates/
+├── commands/
+├── prompts/
 └── skills/
-    ├── ccg-spec-init/     # Codex-native change entrypoint
-    ├── ccg-spec-plan/     # Codex-native planning + handoff
-    └── ccg-spec-impl/     # Codex-native Claude dispatch + acceptance
+
+openspec/
+└── changes/
+
+codeagent-wrapper/
+└── main.go
+```
+
+## Architecture
+
+```mermaid
+graph TD
+    User["User"] --> Codex["Codex-led workflow"]
+    Codex --> OpenSpec["OpenSpec artifacts"]
+    Codex --> Contract["Execution handoff contract"]
+    Contract --> Claude["Claude Agent Teams"]
+    Claude --> Packet["Execution return packet"]
+    Packet --> Codex
+    Codex --> Verify["Tests + review + acceptance"]
+    Verify --> Archive["Archive"]
+    Codex -. optional .-> MCP["MCP"]
+    Codex -. optional .-> Skills["Skills"]
+    Codex -. optional .-> Gemini["Gemini"]
 ```
 
 ## Contributing
 
-The safest contribution pattern is:
+- Prefer OpenSpec-first changes over direct ad hoc edits.
+- Keep compatibility flows labeled as compatibility before removing them.
+- Do not assume MCP, skills, or Gemini are mandatory in new product language.
+- If you change Go code under `codeagent-wrapper/`, keep the wrapper version in sync with `src/utils/installer.ts`.
 
-1. Open or continue an OpenSpec change.
-2. Update proposal, design, specs, and tasks first.
-3. Keep legacy command behavior available unless the change explicitly retires it.
-4. Prefer labeling old surfaces as compatibility flows before deleting them.
-
-General contribution guidance lives in [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Credits
-
-- [cexll/myclaude](https://github.com/cexll/myclaude) - `codeagent-wrapper`
-- [UfoMiao/zcf](https://github.com/UfoMiao/zcf) - Git tools
-- [GudaStudio/skills](https://github.com/GuDaStudio/skills) - Earlier routing ideas
-
-## Contact
-
-- [@CCG_Workflow](https://x.com/CCG_Workflow) for updates and demos
-- [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com) for collaboration
+Project workflow and contributor guidance are documented in [AGENTS.md](./AGENTS.md).
 
 ## License
 

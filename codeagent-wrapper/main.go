@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	version               = "5.9.0"
+	version               = "5.10.0"
 	defaultWorkdir        = "."
 	defaultTimeout        = 7200 // seconds (2 hours)
 	defaultCoverageTarget = 90.0
@@ -417,11 +417,14 @@ func run() (exitCode int) {
 	useStdin := cfg.ExplicitStdin || shouldUseStdin(taskText, piped)
 
 	targetArg := taskText
-	// Gemini CLI does not support "-" as stdin marker for -p flag.
-	// Match the geminiDirect logic in executor.go so the display is accurate.
-	geminiDirect := useStdin && cfg.Backend == "gemini"
-	if useStdin && !geminiDirect {
+	// Match the geminiDirect/geminiStdinPipe logic in executor.go so the display is accurate.
+	geminiDirect := useStdin && cfg.Backend == "gemini" && !isWindows()
+	geminiStdinPipe := useStdin && cfg.Backend == "gemini" && isWindows()
+	if useStdin && !geminiDirect && !geminiStdinPipe {
 		targetArg = "-"
+	}
+	if geminiStdinPipe {
+		targetArg = ""
 	}
 	codexArgs := buildCodexArgsFn(cfg, targetArg)
 

@@ -171,6 +171,42 @@ func TestGeminiBuildArgs_NeverReceivesDashAsPrompt(t *testing.T) {
 	t.Fatal("expected BuildArgs with '-' to produce '-p -' (the known broken path)")
 }
 
+func TestGeminiBuildArgs_OmitsPFlagWhenTargetEmpty(t *testing.T) {
+	// On Windows, executor passes targetArg="" to signal stdin pipe mode.
+	// buildGeminiArgs should omit -p entirely when targetArg is empty.
+	backend := GeminiBackend{}
+	cfg := &Config{Mode: "new", WorkDir: "/workspace"}
+
+	got := backend.BuildArgs(cfg, "")
+	// Should NOT contain -p at all
+	for i, arg := range got {
+		if arg == "-p" {
+			t.Fatalf("expected no -p flag when targetArg is empty, but found -p at index %d: %v", i, got)
+		}
+	}
+	// Should still contain other flags
+	want := []string{"-o", "stream-json", "-y", "--include-directories", "/workspace"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestGeminiBuildArgs_WithModel_OmitsPFlagWhenTargetEmpty(t *testing.T) {
+	backend := GeminiBackend{}
+	cfg := &Config{Mode: "new", WorkDir: "/workspace", GeminiModel: "gemini-3.1-pro-preview"}
+
+	got := backend.BuildArgs(cfg, "")
+	for i, arg := range got {
+		if arg == "-p" {
+			t.Fatalf("expected no -p flag when targetArg is empty, but found -p at index %d: %v", i, got)
+		}
+	}
+	want := []string{"-m", "gemini-3.1-pro-preview", "-o", "stream-json", "-y", "--include-directories", "/workspace"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
 func TestClaudeBuildArgs_BackendMetadata(t *testing.T) {
 	tests := []struct {
 		backend Backend

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.14] - 2026-04-07
+
+### 🐛 修复
+
+- **模型路由硬编码导致非默认配置失效**：21 个模板文件中 ROLE_FILE 路径、表头、执行指令硬编码了 `codex/` 和 `gemini/`，导致用户配置 `Frontend: codex` 后 Claude 仍尝试调用 Gemini（exit code 127）。全量替换为 `{{BACKEND_PRIMARY}}/` 和 `{{FRONTEND_PRIMARY}}/` 模板变量，安装时按路由配置动态生成
+
+---
+
+## [2.1.13] - 2026-04-05
+
+### 🐛 修复
+
+- **Windows Gemini 多行参数截断**（#129）：Windows 上 npm `.cmd` wrapper 经由 cmd.exe 转发时截断多行 `-p` 参数，导致 Gemini 仅接收到角色设定首行而不执行任务。修复：Windows 平台改用 stdin pipe 传递任务内容，不再使用 `-p` 参数
+- **Binary 版本升级**：`5.9.0` → `5.10.0`
+
+---
+
+## [2.1.12] - 2026-04-03
+
+### ✨ 新功能
+
+- **302.AI 赞助商集成**（#126）：init Step 1/4 和菜单 API 配置新增 302.AI 选项，自动填入 baseUrl，用户仅需输入 API Key
+- **README 赞助商 Banner**：中英文 README 顶部新增 302.AI 可点击 Banner + 产品介绍
+
+---
+
 ## [2.1.11] - 2026-03-31
 
 ### 🐛 修复
