@@ -84,22 +84,10 @@ function drawHeader(statusParts: string[]): void {
   const bot = ansis.cyan('╚' + '═'.repeat(INNER_W) + '╝')
   const empty = boxRow(' '.repeat(INNER_W))
 
-  // ASCII Art Logo
-  const logo = [
-    '  ██████╗  ██████╗  ██████╗ ',
-    ' ██╔════╝ ██╔════╝ ██╔════╝ ',
-    ' ██║      ██║      ██║  ███╗',
-    ' ██║      ██║      ██║   ██║',
-    ' ╚██████╗ ╚██████╗ ╚██████╔╝',
-    '  ╚═════╝  ╚═════╝  ╚═════╝ ',
-  ]
-
   console.log()
   console.log(top)
   console.log(empty)
-  for (const line of logo) {
-    console.log(boxRow(centerLine(ansis.bold.white(line), INNER_W)))
-  }
+  console.log(boxRow(centerLine(ansis.bold.white('CCGS'), INNER_W)))
   console.log(empty)
   console.log(boxRow(centerLine(ansis.gray('Codex Orchestrates, Claude Executes'), INNER_W)))
   console.log(boxRow(centerLine(ansis.gray('Primary Workflow Owner: Codex'), INNER_W)))

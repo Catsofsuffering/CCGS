@@ -2,8 +2,6 @@
 
 <div align="center">
 
-<img src="assets/logo/ccg-logo-cropped.png" alt="CCGS" width="360">
-
 [![npm version](https://img.shields.io/npm/v/ccg-workflow.svg)](https://www.npmjs.com/package/ccg-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Primary Path](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
@@ -154,7 +152,7 @@ graph TD
 - Do not assume MCP, skills, or Gemini are mandatory in new product language.
 - If you change Go code under `codeagent-wrapper/`, keep the wrapper version in sync with `src/utils/installer.ts`.
 
-Project workflow and contributor guidance are documented in [AGENTS.md](./AGENTS.md).
+Project workflow and project guidance are documented in [AGENTS.md](./AGENTS.md).
 
 ## License
 

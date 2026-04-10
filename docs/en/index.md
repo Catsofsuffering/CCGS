@@ -2,12 +2,9 @@
 layout: home
 
 hero:
-  name: CCG
-  text: Three AIs, fully transparent
-  tagline: Codex analyzes backend. Gemini analyzes frontend. Claude writes the code. You see every line.
-  image:
-    src: /logo.svg
-    alt: CCG
+  name: CCGS
+  text: A Codex-led spec collaboration workflow
+  tagline: OpenSpec defines the boundary, Codex owns progression and acceptance, and Claude Agent Teams execute the bounded implementation work.
   actions:
     - theme: brand
       text: Get started in 3 minutes
@@ -17,25 +14,25 @@ hero:
       link: /en/guide/commands
     - theme: alt
       text: GitHub
-      link: https://github.com/fengshao1227/ccg-workflow
+      link: https://github.com/Catsofsuffering/CCGS
 
 features:
   - icon: 🔀
-    title: Automatic task routing
-    details: Say "fix the login page" — Gemini analyzes. Say "add an API endpoint" — Codex analyzes. Claude takes their analysis and writes the code. You see every change.
+    title: Codex owns the lifecycle
+    details: Codex advances the change, refines the plan, prepares the handoff contract, and decides acceptance and archive readiness.
   - icon: 🔒
-    title: Transparent, no black box
-    details: By default, Claude writes the code and you see the full process. Or use codex-exec to let Codex write code, with Claude + Gemini multi-model review. Either way, nothing is hidden.
+    title: Clear execution boundaries
+    details: Work is scoped before implementation starts, so Claude Agent Teams operate inside explicit constraints instead of improvising product decisions.
   - icon: 📐
-    title: No AI improvisation
-    details: OPSX integration turns requirements into constraints. The AI works within boundaries, not freestyle.
+    title: OpenSpec-first workflow
+    details: Proposal, design, tasks, and review stay on the critical path, which keeps implementation aligned with the approved change.
   - icon: 👥
-    title: Parallel coding with Agent Teams
-    details: Multiple Builders write different modules simultaneously, then dual-model cross-review catches what humans might miss.
+    title: Claude Agent Teams execute
+    details: Parallel implementation is still available, but it now sits behind a Codex-led orchestration and acceptance loop.
   - icon: ⚡
-    title: One line, ready to go
-    details: npx ccg-workflow — 28 commands, works on macOS, Linux, and Windows.
+    title: Codex-native entrypoint
+    details: The maintained path can start directly from Codex skills instead of treating Claude as the only shell host.
   - icon: 🧩
-    title: MCP ecosystem built in
-    details: ace-tool, fast-context, Context7 and more — one-click setup, auto-synced to Codex and Gemini.
+    title: Optional integrations stay optional
+    details: MCP, Gemini, and reusable skills remain available without defining the default product story.
 ---

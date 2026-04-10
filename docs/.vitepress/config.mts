@@ -1,21 +1,19 @@
 import { defineConfig } from 'vitepress'
 
-export default defineConfig({
-  title: 'CCG',
-  description: 'Claude + Codex + Gemini 多模型协作开发系统',
+const repo = 'https://github.com/Catsofsuffering/CCGS'
 
-  base: '/ccg-workflow/',
+export default defineConfig({
+  title: 'CCGS',
+  description: 'Codex-led spec collaboration workflow',
+  base: '/CCGS/',
   lastUpdated: true,
   cleanUrls: true,
-
-  head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/ccg-workflow/logo.svg' }],
-  ],
 
   locales: {
     root: {
       label: '简体中文',
       lang: 'zh-CN',
+      description: 'Codex 主控的规范协作工作流',
       themeConfig: {
         nav: [
           { text: '指南', link: '/guide/getting-started' },
@@ -40,19 +38,19 @@ export default defineConfig({
           {
             text: '进阶',
             items: [
-              { text: '工作流指南', link: '/guide/workflows' },
+              { text: '工作流说明', link: '/guide/workflows' },
               { text: 'MCP 配置', link: '/guide/mcp' },
               { text: '配置说明', link: '/guide/configuration' },
             ],
           },
         ],
         editLink: {
-          pattern: 'https://github.com/fengshao1227/ccg-workflow/edit/main/docs/:path',
+          pattern: `${repo}/edit/main/docs/:path`,
           text: '在 GitHub 上编辑此页',
         },
         footer: {
-          message: '基于 MIT 许可发布',
-          copyright: 'Copyright © 2025-present CCG Contributors',
+          message: '基于 MIT License 发布',
+          copyright: 'Copyright © 2025-present CCGS',
         },
         docFooter: {
           prev: '上一页',
@@ -72,7 +70,7 @@ export default defineConfig({
     en: {
       label: 'English',
       lang: 'en',
-      description: 'Claude + Codex + Gemini Multi-Model Collaboration System',
+      description: 'Codex-led spec collaboration workflow',
       themeConfig: {
         nav: [
           { text: 'Guide', link: '/en/guide/getting-started' },
@@ -104,12 +102,12 @@ export default defineConfig({
           },
         ],
         editLink: {
-          pattern: 'https://github.com/fengshao1227/ccg-workflow/edit/main/docs/:path',
+          pattern: `${repo}/edit/main/docs/:path`,
           text: 'Edit this page on GitHub',
         },
         footer: {
           message: 'Released under the MIT License',
-          copyright: 'Copyright © 2025-present CCG Contributors',
+          copyright: 'Copyright © 2025-present CCGS',
         },
       },
     },
@@ -117,7 +115,7 @@ export default defineConfig({
 
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/fengshao1227/ccg-workflow' },
+      { icon: 'github', link: repo },
     ],
     search: {
       provider: 'local',

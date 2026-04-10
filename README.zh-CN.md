@@ -2,8 +2,6 @@
 
 <div align="center">
 
-<img src="assets/logo/ccg-logo-cropped.png" alt="CCGS" width="360">
-
 [![npm version](https://img.shields.io/npm/v/ccg-workflow.svg)](https://www.npmjs.com/package/ccg-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Primary Path](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
