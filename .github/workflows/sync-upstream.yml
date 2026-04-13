@@ -1,9 +1,8 @@
 name: Sync Upstream
 
 on:
+  # Temporarily paused: upstream repository is unavailable, so this stays manual-only.
   workflow_dispatch:
-  schedule:
-    - cron: '0 * * * *'
 
 permissions:
   contents: write

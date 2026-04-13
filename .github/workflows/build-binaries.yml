@@ -1,9 +1,7 @@
 name: Build codeagent-wrapper binaries
 
 on:
-  push:
-    paths:
-      - 'codeagent-wrapper/**'
+  # Temporarily paused: manual runs only while upstream/release automation is being repaired.
   workflow_dispatch:
 
 permissions:
