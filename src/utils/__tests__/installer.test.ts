@@ -27,6 +27,11 @@ const TEMPLATES_DIR = join(PACKAGE_ROOT, 'templates', 'commands')
 // A. Workflow registry consistency
 // ─────────────────────────────────────────────────────────────
 describe('workflow registry', () => {
+  it('publish manifest includes codex skill templates', () => {
+    const packageJson = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8'))
+    expect(packageJson.files).toContain('templates/codex-skills/')
+  })
+
   it('getAllCommandIds returns at least 20 commands', () => {
     const ids = getAllCommandIds()
     expect(ids.length).toBeGreaterThanOrEqual(20)

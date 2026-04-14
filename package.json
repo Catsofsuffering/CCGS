@@ -56,6 +56,7 @@
     "templates/commands/codex-exec.md",
     "templates/commands/context.md",
     "templates/commands/agents/",
+    "templates/codex-skills/",
     "templates/prompts/codex/",
     "templates/prompts/gemini/analyzer.md",
     "templates/prompts/gemini/architect.md",
