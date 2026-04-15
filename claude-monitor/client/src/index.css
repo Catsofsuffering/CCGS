@@ -1,0 +1,93 @@
+/**
+ * @file index.css
+ * @description Global styles and Tailwind CSS configuration for the application.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a3d #0c0c14;
+  }
+
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #0c0c14;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #2a2a3d;
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #363650;
+  }
+
+  ::selection {
+    background: rgba(22, 163, 74, 0.25);
+    color: #e4e4ed;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-0 text-gray-200 antialiased;
+  }
+}
+
+@layer components {
+  /* Minimal card — only used when a contained surface is truly needed */
+  .card {
+    @apply bg-surface-2 border border-border rounded-lg;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-150 hover:border-border-light;
+  }
+
+  /* Primary button — deep-green accent */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-md transition-colors duration-150;
+  }
+
+  /* Ghost button — neutral, no background */
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200 hover:bg-surface-3 rounded-md transition-colors duration-150;
+  }
+
+  /* Badge — minimal pill */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded border;
+  }
+
+  /* Input */
+  .input {
+    @apply bg-surface-2 border border-border rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-accent transition-colors duration-150;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-border;
+  }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

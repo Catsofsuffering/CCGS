@@ -1,77 +1,43 @@
 # MCP Configuration
 
-MCP tools make Claude Code's code search smarter. Not required, but the experience is noticeably better with them.
+MCP is optional in the maintained workflow. The primary path works without it.
+
+## What MCP is for
+
+Use MCP when you want better codebase retrieval or library documentation lookup during research and planning.
+
+## Supported retrieval options
+
+- `ace-tool`
+- `fast-context`
+- `ContextWeaver`
+- `context7`
+
+## Configuration
+
+Open the interactive setup:
 
 ```bash
-npx ccg-workflow menu  # Select "Configure MCP"
+npx ccg-workflow menu
 ```
 
-## Code retrieval (pick one)
+Then choose `Configure MCP`.
 
-### ace-tool
+## Sync targets
 
-Semantic code search powered by Augment Code. It doesn't just grep keywords — it understands what you're looking for.
+When configured, MCP settings can be synchronized to:
 
-Needs an Augment Code account. No account? Try the [third-party proxy](https://acemcp.heroman.wtf/).
+- `~/.codex/config.toml`
+- `~/.gemini/settings.json`
 
-### fast-context
+This is an enhancement path. It is not required for the default Codex -> Claude Agent Teams -> Codex flow.
 
-Windsurf's Fast Context. AI-powered search that doesn't need to index your entire repo. Fast.
+## Hooks
 
-Needs a Windsurf account.
+Claude hooks are now used for the local monitor, not for wrapper auto-authorization.
 
-### ContextWeaver
-
-Fully local hybrid search (Embedding + Rerank). Works offline. Needs a SiliconFlow API Key (free to sign up).
-
-## Optional tools
-
-- **Context7** — Fetches latest library docs. Auto-installed, zero config.
-- **Playwright** — Browser automation and testing.
-- **DeepWiki** — Knowledge base queries.
-- **Exa** — Search engine, needs API Key.
-
-## MCP sync
-
-After you configure MCP, CCG auto-syncs the config to Codex and Gemini:
-
-- Codex: `~/.codex/config.toml`
-- Gemini: `~/.gemini/settings.json`
-
-So when you run `/ccg:codex-exec`, Codex can use MCP search directly. No extra setup.
-
-## Auto-authorization
-
-After installation, CCG sets up a Hook so `codeagent-wrapper` commands don't need manual confirmation every time. Requires [jq](https://jqlang.github.io/jq/).
-
-::: details Manual setup (before v1.7.71)
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '.tool_input.command' 2>/dev/null | grep -q 'codeagent-wrapper' && echo '{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\", \"permissionDecisionReason\": \"codeagent-wrapper auto-approved\"}}' || true",
-            "timeout": 1
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-:::
-
-## Something not working?
+To repair hook setup:
 
 ```bash
-npx ccg-workflow diagnose-mcp
+ccg monitor hooks
 ```
-
-This checks what's wrong with your MCP setup.

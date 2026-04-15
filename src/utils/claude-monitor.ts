@@ -1,0 +1,251 @@
+import { spawn } from 'node:child_process'
+import { homedir } from 'node:os'
+import { dirname, join } from 'pathe'
+import fs from 'fs-extra'
+import { PACKAGE_ROOT } from './installer-template'
+
+export const DEFAULT_MONITOR_PORT = 4820
+
+const HOOKS_WITH_MATCHER = ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop', 'Notification'] as const
+const HOOKS_WITHOUT_MATCHER = ['SessionStart', 'SessionEnd'] as const
+const ALL_HOOK_TYPES = [...HOOKS_WITH_MATCHER, ...HOOKS_WITHOUT_MATCHER]
+
+function toForwardSlash(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
+export function getBundledMonitorDir(): string {
+  return join(PACKAGE_ROOT, 'claude-monitor')
+}
+
+export function getInstalledMonitorDir(installDir = join(homedir(), '.claude')): string {
+  return join(installDir, '.ccg', 'claude-monitor')
+}
+
+export function getClaudeSettingsPath(installDir = join(homedir(), '.claude')): string {
+  return join(installDir, 'settings.json')
+}
+
+export function getHookHandlerPath(installDir = join(homedir(), '.claude')): string {
+  return toForwardSlash(join(getInstalledMonitorDir(installDir), 'scripts', 'hook-handler.js'))
+}
+
+function makeHookEntry(hookType: string, installDir: string) {
+  const entry: Record<string, any> = {
+    hooks: [
+      {
+        type: 'command',
+        command: `node "${getHookHandlerPath(installDir)}" ${hookType}`,
+      },
+    ],
+  }
+
+  if ((HOOKS_WITH_MATCHER as readonly string[]).includes(hookType)) {
+    entry.matcher = '*'
+  }
+
+  return entry
+}
+
+function isMonitorHookEntry(entry: Record<string, any>): boolean {
+  if (typeof entry?.command === 'string' && entry.command.includes('hook-handler.js')) {
+    return true
+  }
+
+  if (Array.isArray(entry?.hooks)) {
+    return entry.hooks.some((hook: Record<string, any>) => typeof hook?.command === 'string' && hook.command.includes('hook-handler.js'))
+  }
+
+  return false
+}
+
+async function readJsonObject(path: string): Promise<Record<string, any>> {
+  if (!await fs.pathExists(path)) {
+    return {}
+  }
+
+  const raw = await fs.readFile(path, 'utf-8')
+  return JSON.parse(raw)
+}
+
+async function writeJsonObject(path: string, value: Record<string, any>): Promise<void> {
+  await fs.ensureDir(dirname(path))
+  await fs.writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf-8')
+}
+
+async function runNpm(args: string[], cwd: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const npmCmd = process.platform === 'win32' ? 'npm' : 'npm'
+    const child = spawn(npmCmd, args, {
+      cwd,
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: process.env,
+      shell: process.platform === 'win32',
+    })
+
+    let stderr = ''
+    child.stderr.on('data', chunk => stderr += chunk.toString())
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve()
+        return
+      }
+      reject(new Error(stderr.trim() || `npm ${args.join(' ')} failed with exit code ${code}`))
+    })
+  })
+}
+
+export async function installBundledMonitor(installDir = join(homedir(), '.claude')): Promise<string> {
+  const sourceDir = getBundledMonitorDir()
+  const targetDir = getInstalledMonitorDir(installDir)
+
+  if (!await fs.pathExists(sourceDir)) {
+    throw new Error(`Bundled monitor source not found: ${sourceDir}`)
+  }
+
+  await fs.ensureDir(join(installDir, '.ccg'))
+  await fs.copy(sourceDir, targetDir, {
+    overwrite: true,
+    errorOnExist: false,
+    filter: (src) => {
+      const normalized = src.replace(/\\/g, '/')
+      return !normalized.includes('/node_modules/')
+        && !normalized.endsWith('/node_modules')
+        && !normalized.includes('/.git/')
+        && !normalized.endsWith('/.git')
+        && !normalized.includes('/client/dist/')
+        && !normalized.endsWith('/client/dist')
+        && !normalized.endsWith('.tsbuildinfo')
+    },
+  })
+
+  return targetDir
+}
+
+export async function configureClaudeMonitorHooks(options?: {
+  installDir?: string
+  port?: number
+}): Promise<{ settingsPath: string, installed: number, updated: number }> {
+  const installDir = options?.installDir || join(homedir(), '.claude')
+  const settingsPath = getClaudeSettingsPath(installDir)
+  const settings = await readJsonObject(settingsPath)
+
+  if (!settings.hooks) {
+    settings.hooks = {}
+  }
+  if (!settings.env) {
+    settings.env = {}
+  }
+  settings.env.CLAUDE_DASHBOARD_PORT = String(options?.port || DEFAULT_MONITOR_PORT)
+
+  let installed = 0
+  let updated = 0
+
+  for (const hookType of ALL_HOOK_TYPES) {
+    if (!Array.isArray(settings.hooks[hookType])) {
+      settings.hooks[hookType] = []
+    }
+
+    const nextEntry = makeHookEntry(hookType, installDir)
+    const existingIndex = settings.hooks[hookType].findIndex(isMonitorHookEntry)
+    if (existingIndex >= 0) {
+      settings.hooks[hookType][existingIndex] = nextEntry
+      updated++
+    }
+    else {
+      settings.hooks[hookType].push(nextEntry)
+      installed++
+    }
+  }
+
+  await writeJsonObject(settingsPath, settings)
+  return { settingsPath, installed, updated }
+}
+
+export async function removeClaudeMonitorHooks(installDir = join(homedir(), '.claude')): Promise<void> {
+  const settingsPath = getClaudeSettingsPath(installDir)
+  if (!await fs.pathExists(settingsPath)) {
+    return
+  }
+
+  const settings = await readJsonObject(settingsPath)
+  if (!settings.hooks) {
+    return
+  }
+
+  for (const hookType of Object.keys(settings.hooks)) {
+    if (!Array.isArray(settings.hooks[hookType])) {
+      continue
+    }
+
+    settings.hooks[hookType] = settings.hooks[hookType].filter((entry: Record<string, any>) => !isMonitorHookEntry(entry))
+    if (settings.hooks[hookType].length === 0) {
+      delete settings.hooks[hookType]
+    }
+  }
+
+  if (settings.env?.CLAUDE_DASHBOARD_PORT) {
+    delete settings.env.CLAUDE_DASHBOARD_PORT
+    if (Object.keys(settings.env).length === 0) {
+      delete settings.env
+    }
+  }
+
+  if (Object.keys(settings.hooks).length === 0) {
+    delete settings.hooks
+  }
+
+  await writeJsonObject(settingsPath, settings)
+}
+
+export async function prepareClaudeMonitorRuntime(options?: {
+  installDir?: string
+  port?: number
+}): Promise<{ monitorDir: string, settingsPath: string }> {
+  const installDir = options?.installDir || join(homedir(), '.claude')
+  const monitorDir = await installBundledMonitor(installDir)
+
+  await runNpm(['install', '--no-package-lock'], monitorDir)
+  await runNpm(['install', '--prefix', 'client', '--no-package-lock'], monitorDir)
+  await runNpm(['run', 'build', '--prefix', 'client'], monitorDir)
+  const hookResult = await configureClaudeMonitorHooks({ installDir, port: options?.port })
+
+  return {
+    monitorDir,
+    settingsPath: hookResult.settingsPath,
+  }
+}
+
+export async function startClaudeMonitor(options?: {
+  installDir?: string
+  port?: number
+  detached?: boolean
+}): Promise<{ url: string, monitorDir: string }> {
+  const installDir = options?.installDir || join(homedir(), '.claude')
+  const monitorDir = getInstalledMonitorDir(installDir)
+
+  if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {
+    throw new Error(`Claude monitor is not installed at ${monitorDir}`)
+  }
+
+  const child = spawn(process.execPath, [join(monitorDir, 'server', 'index.js')], {
+    cwd: monitorDir,
+    env: {
+      ...process.env,
+      DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
+      CLAUDE_DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
+    },
+    stdio: options?.detached ? 'ignore' : 'inherit',
+    detached: options?.detached ?? false,
+  })
+
+  if (options?.detached) {
+    child.unref()
+  }
+
+  return {
+    url: `http://127.0.0.1:${options?.port || DEFAULT_MONITOR_PORT}`,
+    monitorDir,
+  }
+}

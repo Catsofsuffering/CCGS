@@ -237,22 +237,12 @@ function showHelp(): void {
 
   // Development Workflows
   section(i18n.t('menu:help.sections.devWorkflow'))
-  cmd('/ccg:workflow', isZh ? '兼容流：完整 6 阶段开发工作流' : 'Compatibility flow: full 6-phase development workflow')
-  cmd('/ccg:plan', isZh ? '兼容流：多模型协作规划（Phase 1-2）' : 'Compatibility flow: multi-model planning (Phase 1-2)')
-  cmd('/ccg:execute', isZh ? '兼容流：多模型协作执行（Phase 3-5）' : 'Compatibility flow: multi-model execution (Phase 3-5)')
-  cmd('/ccg:frontend', isZh ? '次级快流：前端任务，按配置的前端模型执行' : 'Secondary quick flow: frontend tasks using the configured frontend model')
-  cmd('/ccg:backend', isZh ? '后端任务，Codex 默认负责' : 'Backend tasks led by Codex')
-  cmd('/ccg:feat', i18n.t('menu:help.descriptions.feat'))
-  cmd('/ccg:analyze', isZh ? 'Codex 主导技术分析' : 'Codex-led technical analysis')
-  cmd('/ccg:debug', i18n.t('menu:help.descriptions.debug'))
-  cmd('/ccg:optimize', i18n.t('menu:help.descriptions.optimize'))
-  cmd('/ccg:test', i18n.t('menu:help.descriptions.test'))
-  cmd('/ccg:review', isZh ? 'Codex 主导代码审查' : 'Codex-led code review')
+  cmd('/ccg:context', isZh ? '项目上下文管理' : 'Project context management')
+  cmd('/ccg:enhance', isZh ? 'Prompt 增强' : 'Prompt enhancement')
   console.log()
 
   // Agent Teams
   section(isZh ? 'Agent Teams 并行实施:' : 'Agent Teams Parallel:')
-  cmd('/ccg:team-research', isZh ? '需求 → 约束集' : 'Requirements → Constraints')
   cmd('/ccg:team-plan', isZh ? '约束 → 并行计划' : 'Constraints → Parallel plan')
   cmd('/ccg:team-exec', isZh ? '并行实施' : 'Parallel execution')
   cmd('/ccg:team-review', isZh ? '双模型审查' : 'Dual-model review')
@@ -377,21 +367,6 @@ async function configApi(): Promise<void> {
   settings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
   settings.env.CLAUDE_CODE_ATTRIBUTION_HEADER = '0'
   settings.env.MCP_TIMEOUT = '60000'
-
-  // codeagent-wrapper permission allowlist
-  if (!settings.permissions)
-    settings.permissions = {}
-  if (!settings.permissions.allow)
-    settings.permissions.allow = []
-  const wrapperPerms = [
-    'Bash(~/.claude/bin/codeagent-wrapper --backend claude*)',
-    'Bash(~/.claude/bin/codeagent-wrapper --backend gemini*)',
-    'Bash(~/.claude/bin/codeagent-wrapper --backend codex*)',
-  ]
-  for (const perm of wrapperPerms) {
-    if (!settings.permissions.allow.includes(perm))
-      settings.permissions.allow.push(perm)
-  }
 
   await fs.ensureDir(join(homedir(), '.claude'))
   await fs.writeJson(settingsPath, settings, { spaces: 2 })
@@ -786,12 +761,6 @@ async function uninstall(): Promise<void> {
       console.log()
       console.log(ansis.cyan(`  ${i18n.t('menu:uninstall.removedSkills')}`))
       console.log(`    ${ansis.gray('•')} multi-model-collaboration`)
-    }
-
-    if (result.removedBin) {
-      console.log()
-      console.log(ansis.cyan(`  ${i18n.t('menu:uninstall.removedBin')}`))
-      console.log(`    ${ansis.gray('•')} codeagent-wrapper`)
     }
 
     // If globally installed, show instructions to uninstall npm package

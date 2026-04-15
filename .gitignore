@@ -1,11 +1,6 @@
 # Build outputs
-codeagent-wrapper/codeagent-wrapper
-codeagent-wrapper/*.exe
 *.exe
 dist/
-
-# Pre-compiled binaries (hosted on GitHub Release, not tracked in git)
-bin/codeagent-wrapper-*
 node_modules/
 
 # Python

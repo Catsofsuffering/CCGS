@@ -2,98 +2,78 @@
 
 ## CCG 是什么
 
-一句话：**Codex 和 Gemini 负责分析，Claude 负责写代码。全程透明。**
+CCG 现在维护的是一条单主路径：
 
-```
-你的需求
-   │
-   ↓
-Claude Code (编排 + 写代码)
-   │
-   ├── 后端相关 → 发给 Codex 分析
-   ├── 前端相关 → 发给 Gemini 分析
-   │
-   ↓
-Codex/Gemini 返回分析结果（Patch / 方案）
-   │
-   ↓
-Claude 综合分析结果，写入代码 ← 你能看到每一行改动
-```
+1. Codex 负责编排。
+2. OpenSpec 负责 change 生命周期。
+3. Claude Agent Teams 负责受边界约束的实现执行。
+4. Codex 负责 review、测试、验收和归档。
 
-**关键点**：默认模式下最终写代码的是 Claude，不是黑盒——你在 Claude Code 里能看到完整的改动过程。Codex 和 Gemini 是"参谋"，不直接碰你的文件。
+本地运行监控面板是 `~/.claude/.ccg/claude-monitor` 下的 Claude hook monitor。
 
-还有一种 **codex-exec 模式**：让 Codex 来写代码，写完后 Claude + Gemini 多模型交叉审查。适合目标明确的任务，token 消耗更低。详见[工作流指南](/guide/workflows)。
+## 前置依赖
 
-## 需要什么
+- Node.js 20+
+- Codex CLI
+- Claude Code CLI
 
-- **Node.js 20+** — 低于 20 会报错，不要问为什么（`ora@9.x` 的锅）
-- **Claude Code CLI** — 没有这个什么都跑不了
-- **jq** — 自动授权 Hook 要用
-- **Codex CLI** — 可选，装了才有后端路由
-- **Gemini CLI** — 可选，装了才有前端路由
+可选：
 
-## 装上
+- Gemini CLI
+- MCP 工具
+- 额外 skills
+
+## 安装
 
 ```bash
 npx ccg-workflow
 ```
 
-第一次跑会让你选语言，选完就不问了。
-
-### jq 怎么装
-
-::: code-group
-
-```bash [macOS]
-brew install jq
-```
-
-```bash [Debian / Ubuntu]
-sudo apt install jq
-```
-
-```bash [RHEL / CentOS]
-sudo yum install jq
-```
-
-```bash [Windows]
-choco install jq
-# 或者
-scoop install jq
-```
-
-:::
-
-### Claude Code 怎么装
+常用后续命令：
 
 ```bash
-npx ccg-workflow menu  # 里面有「安装 Claude Code」选项
+npx ccg-workflow init
+npx ccg-workflow menu
+npx ccg-workflow monitor install
+npx ccg-workflow monitor hooks
+npx ccg-workflow monitor start --detach
 ```
 
-npm、homebrew、curl、powershell、cmd 都支持。
-
-## 试一下
-
-装完后，在 Claude Code 里输入：
-
-```
-/ccg:frontend 给登录页加个暗色模式切换按钮
-```
-
-看到 Gemini 被调用，说明一切正常。
-
-## 更新和卸载
+## 第一条主流程
 
 ```bash
-# 更新
-npx ccg-workflow@latest
-
-# 卸载
-npx ccg-workflow  # 选「卸载工作流」
+/ccg:spec-init
+/ccg:spec-research 实现一个边界清晰的功能
+/ccg:spec-plan
+/ccg:team-plan
+/ccg:team-exec
+/ccg:team-review
+/ccg:spec-review
 ```
 
-## 然后呢
+如果想走托管捷径：
 
-- [命令参考](/guide/commands) — 28 个命令，总有你用得上的
-- [工作流指南](/guide/workflows) — 什么场景用什么工作流
-- [MCP 配置](/guide/mcp) — 让代码搜索更聪明
+```bash
+/ccg:spec-impl
+```
+
+## 监控面板
+
+安装后本地监控默认地址：
+
+```text
+http://127.0.0.1:4820
+```
+
+如果还没启动：
+
+```bash
+ccg monitor start --detach
+```
+
+## 下一步
+
+- [命令参考](/guide/commands)
+- [工作流说明](/guide/workflows)
+- [配置说明](/guide/configuration)
+- [MCP 配置](/guide/mcp)

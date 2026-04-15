@@ -1,6 +1,7 @@
 // CCG - Claude + Codex + Gemini Multi-Model Collaboration System
 export * from './types'
 export { init } from './commands/init'
+export { installMonitorHooks, installMonitorRuntime, startMonitor } from './commands/monitor'
 export { showMainMenu } from './commands/menu'
 export { update } from './commands/update'
 export { i18n, initI18n, changeLanguage } from './i18n'
@@ -12,6 +13,12 @@ export {
   getCcgDir,
   getConfigPath,
 } from './utils/config'
+export {
+  configureClaudeMonitorHooks,
+  getInstalledMonitorDir,
+  prepareClaudeMonitorRuntime,
+  startClaudeMonitor,
+} from './utils/claude-monitor'
 export {
   getWorkflowConfigs,
   getWorkflowById,

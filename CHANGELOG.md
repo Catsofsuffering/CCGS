@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.15] - 2026-04-15
+
+### Changed
+
+- Replaced the maintained local runtime path with the integrated Claude hook monitor and removed `codeagent-wrapper` from the shipped install surface.
+- Reduced the maintained command/template set to the Codex-led OpenSpec path plus current utility commands.
+- Cleaned installer, docs, tests, and release assets to match the single primary workflow.
+
+---
+
 ## [2.1.14] - 2026-04-07
 
 ### 🐛 修复

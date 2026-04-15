@@ -7,62 +7,10 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
-import { getAllCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
+import { prepareClaudeMonitorRuntime } from '../utils/claude-monitor'
+import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
-
-/**
- * Auto-approve codeagent-wrapper Bash commands in settings.json.
- *
- * All platforms use permissions.allow with wildcard pattern (v1.7.89+).
- * Old Hook-based approach and old permission entries are automatically cleaned up.
- */
-async function installHook(settingsPath: string): Promise<'permission'> {
-  let settings: Record<string, any> = {}
-  if (await fs.pathExists(settingsPath)) {
-    settings = await fs.readJSON(settingsPath)
-  }
-
-  // ── All platforms: permissions.allow approach (v1.7.89+) ──
-
-  // Remove old Hook if it exists (migration from ≤v1.7.88)
-  if (settings.hooks?.PreToolUse) {
-    const hookIdx = settings.hooks.PreToolUse.findIndex(
-      (h: any) => h.matcher === 'Bash' && h.hooks?.some((hh: any) => hh.command?.includes('codeagent-wrapper')),
-    )
-    if (hookIdx >= 0) {
-      settings.hooks.PreToolUse.splice(hookIdx, 1)
-      // Clean up empty arrays/objects
-      if (settings.hooks.PreToolUse.length === 0)
-        delete settings.hooks.PreToolUse
-      if (settings.hooks && Object.keys(settings.hooks).length === 0)
-        delete settings.hooks
-    }
-  }
-
-  // Remove old permission entry without leading wildcard (migration from ≤v1.7.88)
-  if (settings.permissions?.allow) {
-    const oldEntry = 'Bash(codeagent-wrapper*)'
-    const oldIdx = settings.permissions.allow.indexOf(oldEntry)
-    if (oldIdx >= 0) {
-      settings.permissions.allow.splice(oldIdx, 1)
-    }
-  }
-
-  // Add permissions.allow entry
-  if (!settings.permissions)
-    settings.permissions = {}
-  if (!settings.permissions.allow)
-    settings.permissions.allow = []
-
-  const permEntry = 'Bash(*codeagent-wrapper*)'
-  if (!settings.permissions.allow.includes(permEntry)) {
-    settings.permissions.allow.push(permEntry)
-  }
-
-  await fs.writeJSON(settingsPath, settings, { spaces: 2 })
-  return 'permission'
-}
 
 /**
  * Write grok-search global prompt to ~/.claude/rules/ccg-grok-search.md
@@ -199,7 +147,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let backendModels: ModelType[] = ['codex']
   let geminiModel = 'gemini-3.1-pro-preview'
   const mode: CollaborationMode = 'smart'
-  const selectedWorkflows = getAllCommandIds()
+  const selectedWorkflows = getDefaultCommandIds()
 
   // Non-interactive mode: preserve existing config
   if (options.skipPrompt) {
@@ -653,7 +601,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   try {
     const activeBackends = [...frontendModels, ...backendModels]
     const usesGemini = activeBackends.includes('gemini')
-    const usesClaudeBackend = activeBackends.includes('claude')
 
     // v1.4.0: Auto-migrate from old directory structure
     if (await needsMigration()) {
@@ -782,33 +729,15 @@ export async function init(options: InitOptions = {}): Promise<void> {
       settings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
       settings.env.CLAUDE_CODE_ATTRIBUTION_HEADER = '0'
       settings.env.MCP_TIMEOUT = '60000'
-      // codeagent-wrapper permission allowlist
-      if (!settings.permissions)
-        settings.permissions = {}
-      if (!settings.permissions.allow)
-        settings.permissions.allow = []
-      const wrapperPerms = [
-        'Bash(~/.claude/bin/codeagent-wrapper --backend codex*)',
-      ]
-      if (usesClaudeBackend) {
-        wrapperPerms.push('Bash(~/.claude/bin/codeagent-wrapper --backend claude*)')
-      }
-      if (usesGemini) {
-        wrapperPerms.push('Bash(~/.claude/bin/codeagent-wrapper --backend gemini*)')
-      }
-      for (const perm of wrapperPerms) {
-        if (!settings.permissions.allow.includes(perm))
-          settings.permissions.allow.push(perm)
-      }
       await fs.writeJSON(settingsPath, settings, { spaces: 2 })
       console.log()
       console.log(`    ${ansis.green('✓')} API ${ansis.gray(`→ ${settingsPath}`)}`)
     }
 
-    // Always install codeagent-wrapper auto-approve via permissions.allow
-    await installHook(settingsPath)
+    const monitorRuntime = await prepareClaudeMonitorRuntime({ installDir })
     console.log()
-    console.log(`    ${ansis.green('✓')} ${i18n.t('init:hooks.installed')} ${ansis.gray('(permissions.allow)')}`)
+    console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(`→ ${monitorRuntime.monitorDir}`)}`)
+    console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(`→ ${monitorRuntime.settingsPath}`)}`)
 
     // Install grok-search MCP if requested
     if (wantGrokSearch && (tavilyKey || firecrawlKey || grokApiUrl || grokApiKey)) {
@@ -853,7 +782,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       // ═══════════════════════════════════════════════════════
       // Sync MCP servers to Codex (~/.codex/config.toml)
-      // Enables /ccg:codex-exec to use MCP tools (grok-search, context7, etc.)
+      // Mirrors MCP tools into Codex so the Codex-led path can use them during planning and review.
       // ═══════════════════════════════════════════════════════
       const codexSyncResult = await syncMcpToCodex()
       if (codexSyncResult.success && codexSyncResult.synced.length > 0) {
@@ -956,77 +885,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log(ansis.gray(`    如仍失败，请提交 issue 并附上以上错误信息`))
         console.log(ansis.gray(`    If still failing, report an issue with the errors above`))
       }
-    }
-
-    // Show binary installation result
-    if (result.binInstalled && result.binPath) {
-      console.log()
-      console.log(ansis.cyan(`  ${i18n.t('init:installedBinary')}`))
-      console.log(`    ${ansis.green('✓')} codeagent-wrapper ${ansis.gray(`→ ${result.binPath}`)}`)
-
-      const platform = process.platform
-
-      if (platform === 'win32') {
-        const windowsPath = result.binPath.replace(/\//g, '\\').replace(/\\$/, '')
-        try {
-          const { execSync } = await import('node:child_process')
-          const psFlags = '-NoProfile -NonInteractive -ExecutionPolicy Bypass'
-          const currentPath = execSync(`powershell ${psFlags} -Command "[System.Environment]::GetEnvironmentVariable('PATH', 'User')"`, { encoding: 'utf-8' }).trim()
-          const currentPathNorm = currentPath.toLowerCase().replace(/\\$/g, '')
-          const windowsPathNorm = windowsPath.toLowerCase()
-
-          if (!currentPathNorm.includes(windowsPathNorm) && !currentPathNorm.includes('.claude\\bin')) {
-            const escapedPath = windowsPath.replace(/'/g, "''")
-            const psScript = currentPath
-              ? `$p=[System.Environment]::GetEnvironmentVariable('PATH','User');[System.Environment]::SetEnvironmentVariable('PATH',($p+';'+'${escapedPath}'),'User')`
-              : `[System.Environment]::SetEnvironmentVariable('PATH','${escapedPath}','User')`
-            execSync(`powershell ${psFlags} -Command "${psScript}"`, { stdio: 'pipe' })
-            console.log(`    ${ansis.green('✓')} PATH ${ansis.gray('→ User env')}`)
-          }
-        }
-        catch {
-          // Silently ignore PATH config errors on Windows
-        }
-      }
-      else if (!options.skipPrompt) {
-        const exportCommand = `export PATH="${result.binPath}:$PATH"`
-        const shell = process.env.SHELL || ''
-        const isZsh = shell.includes('zsh')
-        const isBash = shell.includes('bash')
-        const isMacDefaultZsh = process.platform === 'darwin' && !shell
-
-        if (isZsh || isBash || isMacDefaultZsh) {
-          const shellRc = (isZsh || isMacDefaultZsh) ? join(homedir(), '.zshrc') : join(homedir(), '.bashrc')
-          const shellRcDisplay = (isZsh || isMacDefaultZsh) ? '~/.zshrc' : '~/.bashrc'
-
-          try {
-            let rcContent = ''
-            if (await fs.pathExists(shellRc)) {
-              rcContent = await fs.readFile(shellRc, 'utf-8')
-            }
-
-            if (rcContent.includes(result.binPath) || rcContent.includes('/.claude/bin')) {
-              console.log(`    ${ansis.green('✓')} PATH ${ansis.gray(`→ ${shellRcDisplay} (${i18n.t('init:pathAlreadyConfigured', { file: shellRcDisplay })})`)}`)
-            }
-            else {
-              const configLine = `\n# CCG multi-model collaboration system\n${exportCommand}\n`
-              await fs.appendFile(shellRc, configLine, 'utf-8')
-              console.log(`    ${ansis.green('✓')} PATH ${ansis.gray(`→ ${shellRcDisplay}`)}`)
-            }
-          }
-          catch {
-            // Silently ignore PATH config errors
-          }
-        }
-        else {
-          console.log(`    ${ansis.yellow('⚠')} PATH ${ansis.gray(`→ ${i18n.t('init:addToPathManually')}`)}`)
-          console.log(`      ${ansis.cyan(exportCommand)}`)
-        }
-      }
-    }
-    else {
-      // Binary download failed — show prominent warning with manual fix instructions
-      showBinaryDownloadWarning(join(installDir, 'bin'))
     }
 
     // Show MCP resources if user skipped installation
