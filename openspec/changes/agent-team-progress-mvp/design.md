@@ -1,200 +1,268 @@
 ## Context
 
-`codeagent-wrapper` already has the ingredients for a useful monitoring system:
+The previous iteration of this change improved the wrapper monitor, but that work no longer matches the product direction.
 
-- task IDs and dependency graphs in parallel mode
-- real-time parser callbacks for messages, reasoning, commands, and compact progress lines
-- a short-lived Web UI backed by SSE
-- task results with exit code, log path, changed files, and test counts
+CCGS is now intentionally optimizing for one maintained path:
 
-What it lacks is a first-class execution model. The current Web UI treats monitoring as a text stream tied to the first available session, so it cannot answer the operational questions users actually ask:
+- Codex orchestrates
+- Claude Agent Teams execute
+- Codex reviews and accepts
 
-- What is running right now?
-- Which work package is blocked?
-- What already completed or failed?
-- Where can I inspect the run after it finishes?
+That decision changes the architecture boundary:
 
-The backend also does not expose stable Claude Agent Teams teammate identifiers through the wrapper today. Because of that, the MVP should monitor wrapper-known execution units such as task IDs and work packages instead of inventing fake teammate precision.
+- Monitoring should be attached to Claude-native execution events, not wrapper-managed task abstractions.
+- The primary monitor should be a standalone local service and web app, not a page embedded into a Go execution wrapper.
+- `codeagent-wrapper` is now a compatibility artifact, not a strategic product surface.
+
+The cloned reference repository at `B:\project\Claude-Code-Agent-Monitor` is a better fit for the maintained path because it already implements the missing pieces:
+
+- Claude hook ingestion
+- persistent session/agent/event storage
+- WebSocket-based live UI updates
+- a richer monitoring dashboard and session analytics surface
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Add a structured run/session/task state model inside `codeagent-wrapper`.
-- Surface multi-task live monitoring in the built-in Web UI.
-- Track task lifecycle changes for parallel execution, including blocked states caused by failed dependencies.
-- Persist run state and event history beyond process exit.
-- Reuse existing parser and executor knowledge rather than depending on new backend protocol support.
+- Integrate a Claude hook-based monitor into CCG as the primary monitoring surface.
+- Remove `codeagent-wrapper` from the maintained single-path workflow.
+- Update install/runtime wiring so Claude hook events are configured and the monitor can be started locally.
+- Reuse the upstream monitor architecture where it fits, while trimming it to CCG's supported path.
 
 **Non-Goals:**
 
-- Reverse-engineering exact Claude Agent Teams teammate identity when the backend does not expose it.
-- Building a terminal TUI in this MVP.
-- Creating a long-term database service or external monitoring backend.
-- Replacing existing textual output summaries printed to stdout/stderr.
+- Preserving `codeagent-wrapper` as a first-class product feature.
+- Maintaining multi-backend execution normalization for the primary path.
+- Shipping every ancillary feature from the upstream monitor repository on day one.
+- Keeping the previous embedded wrapper UI alive as a parallel maintained frontend.
 
 ## Decisions
 
-### Decision: Monitor wrapper-managed tasks as the primary execution unit
+### Decision: Move monitoring to Claude-native hooks
 
-The MVP will model progress around wrapper-known tasks and work packages. A task is the strongest execution unit the wrapper can identify reliably because it already has `TaskSpec.ID`, dependency edges, log paths, and final result metadata.
-
-Why this decision:
-
-- The executor already knows task IDs and dependency failures.
-- Task-level state is reliable for Codex-dispatched work packages.
-- Claude teammate identity is not consistently available from current backend events.
-
-Alternatives considered:
-
-- Infer teammate identity from free-form output text.
-  Rejected because it is brittle and would mislead users.
-- Wait for backend-native teammate events before shipping monitoring.
-  Rejected because the wrapper can already provide meaningful progress with existing signals.
-
-### Decision: Replace the single-session Web UI with a run dashboard
-
-The built-in Web UI will become a dashboard that shows run summary cards plus a live task list. Each task panel will display status, dependency information, recent activity, timing, log path, and final result details. The dashboard should move out of an inline HTML string and into a dedicated frontend bundle embedded into the wrapper binary.
+The primary monitoring model will be driven by Claude Code hook events such as session start/end, tool activity, and subagent lifecycle changes.
 
 Why this decision:
 
-- The current page only follows the first session and hides parallel progress.
-- The current inline page in `codeagent-wrapper/server.go` is already becoming too large and brittle to evolve safely.
-- AgentField demonstrates a maintainable pattern for a Go-served, embedded React/Vite UI that we can adapt without adopting its whole product.
-- SSE and JSON endpoints already exist, so the UI can stay self-contained in the wrapper even when the frontend is built separately.
+- The maintained execution path is Claude Agent Teams, so Claude-native events are the most honest source of truth.
+- Hook events give access to session/agent/activity timelines without inventing wrapper-specific task identities.
+- The reference monitor already proves this model end-to-end.
 
 Alternatives considered:
 
-- Keep the current page and add more text to the single stream.
-  Rejected because it still would not communicate per-task state clearly.
-- Build a separate external app that is deployed independently from the wrapper.
-  Rejected because it adds packaging and operational overhead and breaks the current single-binary experience.
+- Keep deriving monitoring state from wrapper execution.
+  Rejected because wrapper state is no longer the maintained runtime.
+- Build a new monitor protocol from scratch.
+  Rejected because the reference implementation already covers the needed local architecture.
 
-### Decision: Use AgentField as a frontend reference and partial donor, not a drop-in control plane
+### Decision: Use the cloned monitor repository as the new primary monitor integration base
 
-The implementation will use the cloned upstream repository at `B:\project\agentfield` as a reference frontend. We will selectively borrow structure, build tooling, and monitor-oriented interaction patterns from `control-plane/web/client`, while keeping CCG's monitoring backend, endpoints, and run model.
+CCG will integrate the `Claude-Code-Agent-Monitor` architecture as its primary dashboard instead of continuing the AgentField-inspired wrapper frontend.
 
 Why this decision:
 
-- `AgentField` already ships an embedded React/Vite frontend through Go `embed`, which solves the maintainability problem better than continuing to grow inline HTML.
-- The upstream dashboard, page shell, SSE hooks, and component organization are more production-grade than the current wrapper page and provide a strong base for a CCG-specific monitoring UI.
-- A full drop-in reuse is not realistic because AgentField expects `/api/ui/v1/*`, API-key auth, many control-plane resources, and domain models that do not exist in `codeagent-wrapper`.
+- It matches the Claude-execution-only direction directly.
+- It includes a mature React UI and a Node service designed around Claude hooks.
+- It removes the need to keep investing in wrapper-specific UI and persistence.
 
 Alternatives considered:
 
-- Rebuild a brand-new monitoring frontend without using AgentField as a reference.
-  Rejected because it discards a strong starting point and increases design churn.
-- Attempt a near-direct transplant of the full AgentField frontend.
-  Rejected because the API/auth/product mismatch is too large and would force unnecessary backend scope expansion.
+- Continue with the AgentField-inspired wrapper monitor.
+  Rejected because it improves the wrong runtime surface.
+- Keep only the current minimal wrapper monitor.
+  Rejected because it still centers the compatibility layer.
 
-### Decision: Persist run snapshots and event history in wrapper-owned temp storage
+### Decision: Remove wrapper-owned monitoring and wrapper-specific install assumptions from the primary workflow
 
-The wrapper will write a run directory under temp storage that contains a summary snapshot and append-only event history. Monitoring history will survive process exit even if transient debug logs are cleaned up separately.
+The maintained install path should configure Claude hooks and the new monitor service, not a wrapper binary and wrapper shell permissions.
 
 Why this decision:
 
-- Current runtime logs are treated as temporary diagnostics and are deleted on normal exit.
-- Users need retained execution history for post-run inspection.
-- Temp storage keeps the MVP self-contained and avoids introducing a new service dependency.
+- The current installer, templates, and docs all still teach a wrapper-first model.
+- Keeping both as equal first-class paths would create unnecessary product ambiguity.
+- The user explicitly wants the single primary path, not an extra layer around it.
 
 Alternatives considered:
 
-- Reuse existing logger files as the history system.
-  Rejected because logger lifecycle and cleanup behavior are optimized for diagnostics, not retained monitoring records.
-- Store history only in memory.
-  Rejected because it disappears when the wrapper exits.
+- Dual-track support with wrapper and hook monitor both treated as primary.
+  Rejected because it preserves complexity without product value.
 
-### Decision: Task status changes should come from executor state, not parsed guesswork
+### Decision: Rebuild the monitor presentation layer on a constrained React + Tailwind + shadcn/ui system
 
-Pending, running, blocked, completed, and failed task states will be driven by executor events. Parser callbacks will enrich activity text and command/message history, but lifecycle truth will come from the executor.
+The integrated monitor client should keep React as the host framework, keep Tailwind CSS as the token and layout layer, and adopt shadcn/ui-compatible primitives for the shared interaction surface.
 
 Why this decision:
 
-- The executor knows when a task starts, when dependency failures cause a block, and when a final result arrives.
-- Parsed text is useful context but not authoritative lifecycle state.
-- This keeps summary statistics deterministic.
+- The current client already runs on React and Tailwind, so the redesign can stay within the existing runtime instead of introducing a second frontend stack.
+- The current UI is still dominated by bespoke page markup, repeated card treatments, and accent usage that do not match the intended product tone.
+- shadcn/ui-compatible primitives give the execution step a bounded component vocabulary without forcing a heavy design system rewrite.
 
 Alternatives considered:
 
-- Derive status only from progress lines or message content.
-  Rejected because message timing is not a reliable representation of task state.
+- Keep the current utility-only component layer and restyle pages ad hoc.
+  Rejected because it would make the redesign inconsistent and harder to review.
+- Rebuild the monitor in another framework.
+  Rejected because it expands the change surface without product benefit.
+
+### Decision: Use a dark industrial editorial language with one accent and one dominant visual per page
+
+The monitor should feel like an operational publication rather than a SaaS card dashboard: restrained, typographic, and high-contrast, with monochrome structure and a single deep-green accent.
+
+Why this decision:
+
+- The current UI uses multiple accent hues, rounded card repetition, and dashboard conventions that work against the requested product character.
+- A Japanese editorial layout model fits a monitoring product that needs hierarchy, rhythm, and discipline instead of decorative density.
+- Constraining type, color, and motion forces clearer page structure and makes review objective.
+
+Alternatives considered:
+
+- Preserve the current dashboard aesthetic and only tweak colors.
+  Rejected because the structural problems would remain.
+- Use multiple status accents to encode more information.
+  Rejected because the requested art direction explicitly limits the UI to one accent color.
+
+## Frontend Experience Constraints
+
+- Framework: React client remains the frontend host, with Tailwind CSS for tokens/layout and shadcn/ui-compatible primitives for shared controls.
+- Palette: neutrals only for the base UI, with one deep-green accent used for focus, live state, and key emphasis.
+- Typography: maximum two font families. Preferred pairing for implementation review is an industrial sans for UI metadata and a Japanese editorial serif for display hierarchy.
+- Layout: avoid card-heavy dashboards. Prefer ruled layouts, tables, list ledgers, split columns, pinned rails, and deliberate white-space blocks.
+- Page composition: each section should do one job. Each page should have one primary visual anchor only.
+- Motion: no more than three motion patterns total across the app. Recommended set is page-enter reveal, live-update signal, and disclosure/expand transitions.
+- Responsiveness: the editorial hierarchy must survive mobile and desktop without collapsing into dense card stacks.
 
 ## Risks / Trade-offs
 
-- [Task-level monitoring is less precise than real teammate-level monitoring] -> Mitigation: document the MVP boundary and name the monitored units as tasks/work packages.
-- [Persisted history in temp storage can accumulate over time] -> Mitigation: keep files compact and scope this MVP to retained local history; cleanup policy can be added later.
-- [A dedicated frontend bundle adds Node/Vite build complexity to a Go wrapper] -> Mitigation: keep the frontend scope narrow, embed production assets into the binary, and reuse AgentField's proven build pattern rather than inventing a custom pipeline.
-- [AgentField-inspired reuse could accidentally expand the project into a control-plane clone] -> Mitigation: explicitly constrain allowed surfaces to monitoring pages and wrapper-owned APIs only.
-- [Parallel execution updates may race] -> Mitigation: route all monitoring mutations through the existing server lock and keep state updates explicit.
+- [Removing wrapper assumptions touches many surfaces at once] -> Mitigation: update OpenSpec boundaries first, then change installer/templates/runtime together.
+- [The upstream monitor is larger than the minimum CCG need] -> Mitigation: integrate only the server/client/hook path required for the maintained workflow.
+- [Existing compatibility flows may still mention wrapper execution] -> Mitigation: relabel or trim compatibility surfaces as part of this change.
+- [Users who relied on wrapper-specific behavior may lose that path] -> Mitigation: this change is explicitly for the maintained single-path workflow; compatibility cleanup can stay bounded and deliberate.
 
 ## Migration Plan
 
-1. Add structured run and task state types in `codeagent-wrapper`.
-2. Teach the executor to register tasks, mark lifecycle transitions, and publish result metadata.
-3. Persist run snapshots and events to a retained history directory.
-4. Replace the single-session page with an embedded frontend bundle that renders a multi-task monitoring dashboard against the existing monitoring endpoints.
-5. Verify state transitions, embedded asset serving, and frontend behavior through targeted tests.
+1. Re-scope CCG docs/specs/install/runtime from wrapper-first to Claude-hook-first monitoring.
+2. Integrate the hook monitor server/client as a local CCG-managed service.
+3. Add installer support for Claude hook registration and monitor runtime assets.
+4. Remove wrapper-owned monitoring/UI and wrapper-specific execution assumptions from the maintained path.
+5. Verify install, hook ingestion, live dashboard behavior, and the revised Codex -> Claude -> Codex loop.
 
 ## Open Questions
 
-- Whether future backend integrations will expose stable teammate identity that can be layered onto the same monitoring model.
-- Whether history retention should later move from temp storage to a configurable application data directory.
+- Whether `codeagent-wrapper` should remain in the repository temporarily as a compatibility artifact even after it leaves the maintained path.
+- Whether the monitor service should be launched explicitly by the user at first, or be managed by a CCG helper command/install-time runtime helper.
 
 ## Execution Handoff Contract
 
 ### Execution Goal
 
-Replace the current inline monitoring page with an embedded, AgentField-inspired frontend for `codeagent-wrapper` while preserving the wrapper's existing monitoring semantics and bounded single-binary delivery.
+Replace the wrapper-owned monitoring path with an integrated Claude hook-based monitor aligned to the maintained Codex -> Claude Agent Teams -> Codex workflow, and remove `codeagent-wrapper` from the primary product path.
 
 ### Upstream Reference
 
-- Cloned repository: `B:\project\agentfield`
-- Relevant upstream surfaces inspected: `control-plane/web/client`, `control-plane/internal/embedded/ui.go`, `control-plane/README.md`
-- Key finding: upstream is a React 19 + Vite + TypeScript SPA embedded into Go binaries, but it targets `/api/ui/v1/*`, API-key auth, and broader control-plane domain models that CCG must not import wholesale.
+- Cloned repository: `B:\project\Claude-Code-Agent-Monitor`
+- Relevant surfaces inspected: `server/`, `client/`, `scripts/install-hooks.js`, `scripts/hook-handler.js`, `server/routes/hooks.js`
+- Key finding: the repository is not just a frontend; it is a complete local monitoring stack built around Claude hooks, persistent state, and a React dashboard.
 
 ### Allowed Change Surface
 
-- `codeagent-wrapper/server.go` and monitoring HTTP route wiring
-- `codeagent-wrapper/monitoring.go` and closely related monitoring DTOs only if the frontend needs small additive fields
-- New frontend workspace under `codeagent-wrapper` for bundled UI assets and build configuration
-- Wrapper-side embedded asset serving code and frontend-aware tests
-- Build/test scripts needed to produce and verify the embedded monitoring UI
+- `src/commands/*`, `src/utils/*`, and related installer/runtime wiring
+- New integrated monitor source paths under the main Node workspace
+- Claude hook installation and monitor runtime configuration
+- Documentation and templates that still present `codeagent-wrapper` as the maintained path
+- Removal of wrapper-owned monitoring/UI assets that no longer belong to the maintained workflow
 
 ### Protected Surface
 
-- Root CLI/install workflow outside what is strictly needed to build or package the wrapper UI
-- Backend selection, task execution semantics, parser meaning, and non-monitoring runtime behavior
+- Unrelated MCP features and optional tool integrations unless required by the new monitor path
 - OpenSpec changes unrelated to `agent-team-progress-mvp`
-- Any attempt to introduce AgentField control-plane resources, auth flows, database assumptions, or non-monitoring pages into CCG
+- Broad product rewrites outside the execution/monitoring path
 
 ### Work Packages
 
-1. Create the dedicated monitoring frontend foundation inside `codeagent-wrapper`, using AgentField's React/Vite embedding pattern as the baseline.
-2. Implement a thin CCG-specific data layer for `/api/state`, `/api/sessions`, `/api/events`, and `/api/stream/:sessionID` without expanding the backend into AgentField API shapes.
-3. Build the monitoring dashboard shell, summary cards, task list, event/activity views, and responsive layout, borrowing patterns from AgentField where useful.
-4. Replace inline HTML serving with embedded static asset serving while keeping the same browser entrypoint behavior for users.
-5. Add frontend and wrapper verification for build, rendering, SSE updates, and embedded asset delivery.
+1. Integrate the monitor server/client foundation from `Claude-Code-Agent-Monitor` into CCG.
+2. Add installer/runtime support for Claude hook registration and local monitor startup.
+3. Repoint CCG docs/templates/config to the single primary path without wrapper-owned monitoring.
+4. Remove wrapper monitoring/frontend assumptions and obsolete wrapper-specific runtime wiring from the maintained path.
+5. Verify the new monitor path with build/test/install/runtime checks.
 
 ### Required Verification
 
-- Frontend production build succeeds inside the new monitoring UI workspace
-- Frontend tests cover initial snapshot rendering and at least one live update path from monitoring events
-- Wrapper tests cover monitoring API compatibility and embedded asset serving
-- `go test ./...` passes in `codeagent-wrapper`
-- Any new JS/TS lint or test command added for the monitoring frontend is run and recorded in the return packet
+- Integrated monitor frontend build succeeds
+- Integrated monitor server tests pass
+- Installer/runtime changes for hook setup are verified locally
+- Root typecheck/build/test pass where still applicable after the integration
+- Any new monitor-specific test command added by this change is run and recorded
 
 ### Rework Triggers
 
-- The proposed frontend requires new backend concepts beyond task/session monitoring to render core screens
-- The implementation attempts to introduce AgentField auth, control-plane navigation, or non-monitoring entities into the wrapper
-- The embedded asset approach breaks the existing one-command local user flow or requires a separately hosted web app
-- Frontend state management depends on polling-only behavior when the existing SSE stream can satisfy the view
+- The integration still depends on `codeagent-wrapper` for the maintained path
+- Installer changes leave Claude hooks unconfigured or inconsistent
+- The resulting monitor cannot represent Claude Agent Teams sessions and agent activity from real hook events
+- The single primary workflow still documents wrapper-owned execution as required
 
 ### Exact Bounded Packet For `ccg-spec-impl`
 
 - Change id: `agent-team-progress-mvp`
-- Execution goal: adopt an AgentField-inspired embedded monitoring frontend for `codeagent-wrapper`, replacing inline HTML while keeping wrapper-owned monitoring APIs and single-binary delivery
-- Allowed boundaries: wrapper monitoring routes/DTOs, new `codeagent-wrapper` frontend workspace, embedded asset serving code, related tests/build scripts
-- Protected boundaries: root product workflow/installer surfaces, backend execution semantics, AgentField auth/control-plane pages, unrelated OpenSpec changes
-- Required verification: frontend build/test, wrapper API/asset tests, `go test ./...` in `codeagent-wrapper`
+- Execution goal: replace wrapper-owned monitoring with an integrated Claude hook-based monitor and remove `codeagent-wrapper` from the maintained path
+- Allowed boundaries: installer/runtime/templates/docs plus new monitor integration surfaces and wrapper-monitor removal
+- Protected boundaries: unrelated optional integrations and unrelated OpenSpec changes
+- Required verification: integrated monitor build/test, local hook/install verification, root verification commands still relevant after integration
+- Next skill: `ccg-spec-impl`
+
+### Frontend Redesign Execution Slice
+
+#### Execution Goal
+
+Redesign the integrated monitor frontend in `claude-monitor/client` so the primary monitoring experience uses React + Tailwind CSS + shadcn/ui primitives, a dark industrial editorial layout, one deep-green accent, at most two fonts, minimal card usage, and only purposeful motion.
+
+#### Allowed Change Surface
+
+- `claude-monitor/client/package.json`
+- `claude-monitor/client/tailwind.config.js`
+- `claude-monitor/client/src/index.css`
+- `claude-monitor/client/src/main.tsx`
+- `claude-monitor/client/src/App.tsx`
+- `claude-monitor/client/src/components/**`
+- `claude-monitor/client/src/pages/**`
+- New shared primitives under `claude-monitor/client/src/components/ui/**`
+
+#### Protected Surface
+
+- `claude-monitor/server/**`
+- Hook ingestion, persistence, and WebSocket protocol files unless a frontend-only type import must be adjusted
+- Data shape contracts in `claude-monitor/client/src/lib/api.ts`, `claude-monitor/client/src/lib/eventBus.ts`, and `claude-monitor/client/src/lib/types.ts` unless required for rendering correctness
+- Root installer/runtime wiring in `src/**`
+- Unrelated OpenSpec changes
+
+#### Work Packages
+
+1. Add the frontend design-system foundation: shadcn/ui-compatible primitives, color/type tokens, and motion utilities inside `claude-monitor/client`.
+2. Redesign the shared shell and navigation so the app establishes the editorial tone without leaning on stacked cards.
+3. Rebuild the primary monitoring pages (`Dashboard`, `Sessions`, `ActivityFeed`, `SessionDetail`) so each section has one responsibility and each page has one dominant visual.
+4. Bring secondary pages into visual alignment without inventing extra hero visuals or new accent colors.
+5. Verify build, tests, responsiveness, reduced-motion behavior, and the constrained visual system.
+
+#### Required Verification
+
+- `pnpm --dir claude-monitor/client build`
+- `pnpm --dir claude-monitor/client test`
+- Manual review of dashboard, sessions, activity feed, and session detail at desktop and mobile widths
+- Manual review that only one accent color is present, no more than two font families are loaded, and animation patterns stay within the approved set
+
+#### Rework Triggers
+
+- The redesign introduces more than one accent color or more than two font families
+- The resulting pages still depend on card grids as their default composition pattern
+- A page contains multiple competing hero visuals or sections without a single clear responsibility
+- Motion is added as decoration rather than communicating load, live state, or disclosure
+- The frontend change requires backend protocol or installer changes to function
+
+#### Exact Bounded Packet For `ccg-spec-impl`
+
+- Change id: `agent-team-progress-mvp`
+- Execution goal: redesign the `claude-monitor/client` monitoring UI to the constrained editorial system defined above
+- Allowed boundaries: `claude-monitor/client` styles, shared components, page components, and new `components/ui` primitives
+- Protected boundaries: server, hook ingestion/runtime wiring, root installer code, and unrelated OpenSpec artifacts
+- Required verification: client build/test plus manual checks for responsiveness, accent/font limits, layout discipline, and sparse motion
 - Next skill: `ccg-spec-impl`

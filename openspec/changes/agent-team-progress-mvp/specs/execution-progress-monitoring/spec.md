@@ -1,68 +1,86 @@
 ## ADDED Requirements
 
-### Requirement: Wrapper-managed tasks SHALL have structured lifecycle state
-The system SHALL track each wrapper-managed execution unit as a structured task with an identifier, dependency metadata, start and finish timestamps, and a lifecycle status of at least pending, running, completed, failed, or blocked.
+### Requirement: The maintained workflow SHALL monitor Claude Agent Teams through Claude hook events
+The system SHALL collect monitoring data for the maintained workflow from Claude Code hook events rather than from wrapper-managed execution state.
 
-#### Scenario: Parallel run is initialized
-- **WHEN** the wrapper prepares a parallel execution run
-- **THEN** it SHALL register each declared task with a pending status before work begins
+#### Scenario: Claude session starts
+- **WHEN** Claude Code emits a session start hook event
+- **THEN** the monitoring system SHALL register or reactivate the corresponding monitored session
 
-#### Scenario: Task starts running
-- **WHEN** the executor begins work on a registered task
-- **THEN** the system SHALL update that task to running and record its start time
+#### Scenario: Claude tools and subagents execute
+- **WHEN** Claude Code emits tool-use or subagent lifecycle hook events
+- **THEN** the monitoring system SHALL update the corresponding session, agent, and activity records
 
-#### Scenario: Task is blocked by failed dependencies
-- **WHEN** a task is skipped because one or more dependencies failed
-- **THEN** the system SHALL mark the task as blocked and retain the blocking dependency identifiers
+#### Scenario: Claude session ends
+- **WHEN** Claude Code emits a session end hook event
+- **THEN** the monitoring system SHALL mark the session as completed or otherwise terminal according to the received event data
 
-#### Scenario: Task completes with a result
-- **WHEN** a task finishes execution
-- **THEN** the system SHALL mark it completed or failed based on the final result and record its finish time
+### Requirement: The primary monitoring UI SHALL be delivered by an integrated local monitor service
+The system SHALL provide the maintained monitoring dashboard through an integrated local service and web UI rather than through the embedded `codeagent-wrapper` page.
 
-### Requirement: The built-in Web UI SHALL present run-level monitoring
-The system SHALL provide a built-in Web dashboard that shows live run summary information and per-task execution state for all monitored tasks in the current run.
+#### Scenario: User opens the monitor UI
+- **WHEN** the integrated monitor service is running locally
+- **THEN** the user SHALL be able to open a dashboard that shows sessions, agent activity, and recent event history
 
-#### Scenario: Dashboard loads an active run
-- **WHEN** a user opens the wrapper Web UI during an active run
-- **THEN** the page SHALL show aggregate counts for task outcomes and a list of monitored tasks with their current status
+#### Scenario: Monitoring data changes live
+- **WHEN** new hook events are received
+- **THEN** the monitoring UI SHALL update without requiring a full page reload
 
-#### Scenario: Dashboard displays recent activity
-- **WHEN** parser callbacks or executor events publish task activity
-- **THEN** the dashboard SHALL update the corresponding task with recent activity information without requiring a full page reload
+### Requirement: Installation SHALL configure Claude hooks for the maintained path
+The system SHALL configure the Claude hook entries needed by the integrated monitor during installation or update of the maintained workflow.
 
-#### Scenario: Dashboard shows final task details
-- **WHEN** a task completes or fails
-- **THEN** the dashboard SHALL show the final status together with available result details such as log path, changed files, or verification counts
+#### Scenario: User installs or updates CCG
+- **WHEN** the maintained workflow is installed or refreshed
+- **THEN** the required Claude hook entries SHALL be present in `~/.claude/settings.json`
 
-### Requirement: The monitoring dashboard SHALL be delivered as an embedded frontend bundle
-The system SHALL serve the monitoring dashboard from a dedicated frontend asset bundle embedded into the wrapper, rather than relying on a large inline HTML document as the primary UI implementation.
+#### Scenario: Existing Claude settings are present
+- **WHEN** hook configuration is written
+- **THEN** existing unrelated Claude settings SHALL be preserved
 
-#### Scenario: Embedded dashboard assets are available
-- **WHEN** the wrapper is built for a release that includes the monitoring UI
-- **THEN** the binary SHALL include the dashboard assets needed to render the monitoring experience without requiring a separately hosted web application
+### Requirement: The maintained primary workflow SHALL not require `codeagent-wrapper`
+The maintained Codex -> Claude Agent Teams -> Codex workflow SHALL not depend on `codeagent-wrapper` as its required execution or monitoring boundary.
 
-#### Scenario: Browser opens monitoring UI
-- **WHEN** a user opens the wrapper Web UI entrypoint
-- **THEN** the wrapper SHALL serve the embedded dashboard shell and the frontend SHALL load task monitoring data from wrapper-owned monitoring endpoints
+#### Scenario: User follows the maintained workflow
+- **WHEN** the user uses the primary CCG path
+- **THEN** execution and monitoring SHALL work without requiring `codeagent-wrapper`
 
-### Requirement: Monitoring history SHALL be retained after process exit
-The system SHALL persist run state and monitoring events to local wrapper-owned storage so users can inspect the final execution record after the live run ends.
+#### Scenario: Product documentation describes the maintained path
+- **WHEN** CCG documents the primary workflow
+- **THEN** it SHALL describe the Claude hook-based monitor path instead of wrapper-owned monitoring as the required default
 
-#### Scenario: Run state is updated
-- **WHEN** the monitoring model changes during execution
-- **THEN** the system SHALL write an updated run snapshot and append a corresponding history event
+### Requirement: The monitoring UI SHALL be implemented as a React frontend using Tailwind CSS and shadcn/ui primitives
+The integrated monitor frontend SHALL remain a React application and SHALL use Tailwind CSS tokens plus shadcn/ui-style primitives for shared UI building blocks instead of ad hoc page-specific styling.
 
-#### Scenario: Run completes
-- **WHEN** the wrapper exits after a monitored run
-- **THEN** the retained monitoring snapshot SHALL still exist independently of transient debug log cleanup
+#### Scenario: Shared UI primitives are needed
+- **WHEN** the monitor frontend needs buttons, inputs, separators, drawers, tables, or similar primitives
+- **THEN** the implementation SHALL define or adopt them through a shared Tailwind + shadcn/ui-compatible component layer in `claude-monitor/client`
 
-### Requirement: Monitoring APIs SHALL expose structured task state
-The system SHALL expose structured monitoring data through the built-in monitoring endpoints so the Web UI and future clients can consume task-level state directly.
+#### Scenario: Primary monitoring pages are rendered
+- **WHEN** the user opens the dashboard, sessions, activity, or session detail pages
+- **THEN** those pages SHALL be rendered by the existing React client using the shared Tailwind + shadcn/ui design system rather than bespoke one-off page shells
 
-#### Scenario: Client requests current monitoring state
-- **WHEN** a client requests the monitoring state endpoint
-- **THEN** the response SHALL include run summary information and the current state of every monitored task
+### Requirement: The monitoring UI SHALL follow a restrained dark editorial visual system
+The integrated monitor UI SHALL present a dark, industrial, Japanese magazine-inspired interface with a monochrome palette, one deep-green accent, and at most two font families.
 
-#### Scenario: Client subscribes to live monitoring updates
-- **WHEN** a client subscribes to the monitoring stream
-- **THEN** the system SHALL emit structured events that identify the affected task and the updated state or activity
+#### Scenario: Color and typography tokens are defined
+- **WHEN** the monitor design system defines its visual tokens
+- **THEN** it SHALL limit colors to black, white, and gray neutrals plus a single deep-green accent color
+- **AND** it SHALL use no more than two font families across the primary interface
+
+#### Scenario: A page section is composed
+- **WHEN** a dashboard or detail section is laid out
+- **THEN** that section SHALL perform one primary job
+- **AND** the page SHALL not introduce multiple competing hero visuals inside the same viewport
+- **AND** unnecessary card grids SHALL be avoided in favor of editorial rails, rules, tables, lists, and typographic grouping
+
+### Requirement: Motion in the monitoring UI SHALL be purposeful and sparse
+The integrated monitor frontend SHALL use no more than two or three intentional motion patterns, and those patterns SHALL communicate state changes, page entry, or content disclosure rather than decorative noise.
+
+#### Scenario: Live monitoring state changes
+- **WHEN** new hook events arrive or a status transitions in the UI
+- **THEN** motion MAY be used to draw attention to the changed item
+- **BUT** the motion set SHALL remain limited to purposeful patterns defined by the shared design system
+
+#### Scenario: Reduced-motion preferences are present
+- **WHEN** the user's environment requests reduced motion
+- **THEN** non-essential animation SHALL be disabled or simplified while preserving usability

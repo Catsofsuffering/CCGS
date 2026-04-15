@@ -39,9 +39,10 @@ description: '需求 -> 约束集合（Codex 主导研究，Gemini 可选补充�
 
 4. **Launch Configured Exploration Calls**
    - The backend exploration call is required and must use `{{BACKEND_PRIMARY}}`.
-   - If a separate frontend perspective is useful, launch a second call with `{{FRONTEND_PRIMARY}}` in the same message using `run_in_background: true`.
+   - If a separate frontend perspective is useful, launch a second call with `{{FRONTEND_PRIMARY}}` as a background exploration.
    - If both roles use the same model, parallel boundary-focused calls are still allowed.
    - Gemini only participates when the configured frontend or backend model is Gemini.
+   - Use the configured prompt assets under `~/.claude/.ccg/prompts/` instead of any wrapper-specific runtime.
 
    **Output Template**
    ```json
@@ -57,30 +58,24 @@ description: '需求 -> 约束集合（Codex 主导研究，Gemini 可选补充�
    }
    ```
 
-   **Backend exploration**
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nExplore backend context boundaries for <change description>:\n- Existing structures and patterns\n- Conventions in use\n- Hard constraints limiting solution space\n- Dependencies and risks\nOUTPUT: JSON using the output template above\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{BACKEND_PRIMARY}}: backend boundary exploration"
-   })
-   ```
-
-   **Frontend exploration**
-   ```
-   Bash({
-     command: "~/.claude/bin/codeagent-wrapper --progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nExplore frontend context boundaries for <change description>:\n- Existing structures and patterns\n- Conventions in use\n- Hard constraints limiting solution space\n- Dependencies and risks\nOUTPUT: JSON using the output template above\nEOF",
-     run_in_background: true,
-     timeout: 300000,
-     description: "{{FRONTEND_PRIMARY}}: frontend boundary exploration"
-   })
+   **Backend exploration brief**
+   ```text
+   Explore backend context boundaries for <change description>:
+   - Existing structures and patterns
+   - Conventions in use
+   - Hard constraints limiting solution space
+   - Dependencies and risks
+   OUTPUT: JSON using the output template above
    ```
 
-   **Wait for results**
-   ```
-   TaskOutput({ task_id: "<backend_task_id>", block: true, timeout: 600000 })
-   TaskOutput({ task_id: "<frontend_task_id>", block: true, timeout: 600000 })
+   **Frontend exploration brief**
+   ```text
+   Explore frontend context boundaries for <change description>:
+   - Existing structures and patterns
+   - Conventions in use
+   - Hard constraints limiting solution space
+   - Dependencies and risks
+   OUTPUT: JSON using the output template above
    ```
 
    - Backend exploration is required; do not continue without it.

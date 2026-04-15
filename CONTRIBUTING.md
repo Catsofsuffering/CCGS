@@ -8,7 +8,6 @@ Thanks for your interest in contributing to CCG! This guide will help you get st
 
 - Node.js 20+
 - pnpm (`npm install -g pnpm`)
-- Go 1.21+ (only for `codeagent-wrapper` changes)
 
 ### Getting Started
 
@@ -39,7 +38,7 @@ skills-v2/
 │   ├── commands/           # 26 slash command templates (.md)
 │   ├── prompts/            # Expert prompts (codex/ + gemini/)
 │   └── skills/             # Quality gates + orchestration
-├── codeagent-wrapper/      # Go binary source
+├── claude-monitor/         # Claude hook monitor server/client
 ├── tests/                  # Vitest test files
 └── bin/                    # Build output + pre-compiled binaries
 ```

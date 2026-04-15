@@ -102,8 +102,8 @@ export interface InstallResult {
   installedRules?: boolean
   errors: string[]
   configPath: string
-  binPath?: string
-  binInstalled?: boolean
+  monitorPath?: string
+  monitorInstalled?: boolean
 }
 
 // ace-tool 配置

@@ -1,19 +1,26 @@
 import type { InstallResult } from '../types'
-import ansis from 'ansis'
 import fs from 'fs-extra'
 import { homedir } from 'node:os'
 import { basename, join } from 'pathe'
-import { getWorkflowById } from './installer-data'
-import { PACKAGE_ROOT, injectConfigVariables, replaceHomePathsInTemplate } from './installer-template'
-import { installSkillCommands } from './skill-registry'
-
-// ═══════════════════════════════════════════════════════
-// Re-exports — all consumers import from './installer'
-// These re-exports preserve backward compatibility.
-// ═══════════════════════════════════════════════════════
+import { installBundledMonitor, removeClaudeMonitorHooks } from './claude-monitor'
+import {
+  getAllCommandIds,
+  getDefaultCommandIds,
+  getWorkflowById,
+  getWorkflowConfigs,
+  getWorkflowPreset,
+  WORKFLOW_PRESETS,
+} from './installer-data'
+import {
+  injectConfigVariables,
+  PACKAGE_ROOT,
+  replaceHomePathsInTemplate,
+} from './installer-template'
+import { collectInvocableSkills, collectSkills, installSkillCommands, parseFrontmatter } from './skill-registry'
 
 export {
   getAllCommandIds,
+  getDefaultCommandIds,
   getWorkflowById,
   getWorkflowConfigs,
   getWorkflowPreset,
@@ -49,21 +56,6 @@ export {
   parseFrontmatter,
 } from './skill-registry'
 export type { SkillMeta } from './skill-registry'
-
-// ═══════════════════════════════════════════════════════
-// Binary version tracking
-// ═══════════════════════════════════════════════════════
-
-/**
- * Expected codeagent-wrapper binary version.
- * Must match the `version` constant in codeagent-wrapper/main.go.
- * When this differs from the installed binary, update triggers re-download.
- */
-const EXPECTED_BINARY_VERSION = '5.10.1'
-
-// ═══════════════════════════════════════════════════════
-// Install context — shared across sub-functions
-// ═══════════════════════════════════════════════════════
 
 interface InstallConfig {
   routing: {
@@ -101,99 +93,6 @@ function routingUsesGemini(routing: InstallConfig['routing']): boolean {
   ].includes('gemini')
 }
 
-// ═══════════════════════════════════════════════════════
-// Binary download
-// ═══════════════════════════════════════════════════════
-
-const GITHUB_REPO = 'fengshao1227/ccg-workflow'
-const RELEASE_TAG = 'preset'
-
-/** Download sources: R2 CDN first (China-friendly) → GitHub fallback (global) */
-const BINARY_SOURCES = [
-  { name: 'Cloudflare CDN', url: 'https://github.20031227.xyz/preset', timeoutMs: 30_000 },
-  { name: 'GitHub Release', url: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}`, timeoutMs: 120_000 },
-]
-
-/**
- * Download binary from a single URL with retry.
- * Uses curl for proxy support (reads HTTPS_PROXY / ALL_PROXY env vars automatically).
- * Falls back to Node.js fetch if curl is unavailable.
- */
-async function downloadFromUrl(url: string, destPath: string, timeoutMs: number, maxAttempts = 2): Promise<boolean> {
-  const timeoutSec = Math.ceil(timeoutMs / 1000)
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      // Prefer curl — auto-reads HTTPS_PROXY / ALL_PROXY for proxy support
-      const { execSync } = await import('node:child_process')
-      execSync(
-        `curl -fsSL --max-time ${timeoutSec} -o "${destPath}" "${url}"`,
-        { stdio: 'pipe', timeout: timeoutMs + 5000 },
-      )
-
-      if (process.platform !== 'win32') {
-        await fs.chmod(destPath, 0o755)
-      }
-      return true
-    }
-    catch {
-      // curl failed — try Node.js fetch as fallback (no proxy support)
-      try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-        const response = await fetch(url, { redirect: 'follow', signal: controller.signal })
-        if (!response.ok) {
-          clearTimeout(timer)
-          if (attempt < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, attempt * 2000))
-            continue
-          }
-          return false
-        }
-
-        const buffer = Buffer.from(await response.arrayBuffer())
-        clearTimeout(timer)
-
-        await fs.writeFile(destPath, buffer)
-        if (process.platform !== 'win32') {
-          await fs.chmod(destPath, 0o755)
-        }
-        return true
-      }
-      catch {
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, attempt * 2000))
-          continue
-        }
-        return false
-      }
-    }
-  }
-  return false
-}
-
-/**
- * Download codeagent-wrapper binary with dual-source fallback.
- * Strategy: R2 mirror (60s) → GitHub Release (120s). Uses curl for proxy support.
- */
-async function downloadBinaryFromRelease(binaryName: string, destPath: string): Promise<boolean> {
-  for (const source of BINARY_SOURCES) {
-    const url = `${source.url}/${binaryName}`
-    const ok = await downloadFromUrl(url, destPath, source.timeoutMs)
-    if (ok) return true
-  }
-  return false
-}
-
-// ═══════════════════════════════════════════════════════
-// Shared file-copy helper
-// ═══════════════════════════════════════════════════════
-
-/**
- * Copy .md templates from srcDir → destDir with optional variable injection.
- * Returns list of installed file stems (filename without .md).
- */
 async function copyMdTemplates(
   ctx: InstallContext,
   srcDir: string,
@@ -202,7 +101,6 @@ async function copyMdTemplates(
 ): Promise<string[]> {
   const installed: string[] = []
   if (!(await fs.pathExists(srcDir))) {
-    // Log warning — helps diagnose "0 commands installed" issues
     console.error(`[CCG] Template source directory not found: ${srcDir}`)
     return installed
   }
@@ -210,33 +108,32 @@ async function copyMdTemplates(
   await fs.ensureDir(destDir)
   const files = await fs.readdir(srcDir)
   for (const file of files) {
-    if (!file.endsWith('.md')) continue
+    if (!file.endsWith('.md'))
+      continue
+
     const destFile = join(destDir, file)
     if (ctx.force || !(await fs.pathExists(destFile))) {
       let content = await fs.readFile(join(srcDir, file), 'utf-8')
-      if (options.inject) content = injectConfigVariables(content, ctx.config)
+      if (options.inject)
+        content = injectConfigVariables(content, ctx.config)
       content = replaceHomePathsInTemplate(content, ctx.installDir)
       await fs.writeFile(destFile, content, 'utf-8')
-      installed.push(file.replace('.md', ''))
     }
+    installed.push(file.replace('.md', ''))
   }
+
   return installed
 }
 
-// ═══════════════════════════════════════════════════════
-// Install sub-steps
-// ═══════════════════════════════════════════════════════
-
-/**
- * Install slash command .md files from templates/commands/
- */
 async function installCommandFiles(ctx: InstallContext, workflowIds: string[]): Promise<void> {
   const commandsDir = join(ctx.installDir, 'commands', 'ccg')
+  await fs.ensureDir(commandsDir)
 
   for (const workflowId of workflowIds) {
     const workflow = getWorkflowById(workflowId)
     if (!workflow) {
       ctx.result.errors.push(`Unknown workflow: ${workflowId}`)
+      ctx.result.success = false
       continue
     }
 
@@ -245,30 +142,20 @@ async function installCommandFiles(ctx: InstallContext, workflowIds: string[]): 
       const destFile = join(commandsDir, `${cmd}.md`)
 
       try {
-        if (await fs.pathExists(srcFile)) {
-          if (ctx.force || !(await fs.pathExists(destFile))) {
-            let content = await fs.readFile(srcFile, 'utf-8')
-            content = injectConfigVariables(content, ctx.config)
-            content = replaceHomePathsInTemplate(content, ctx.installDir)
-            await fs.writeFile(destFile, content, 'utf-8')
-          }
-          // Count as installed whether written or already existing
-          ctx.result.installedCommands.push(cmd)
+        if (!(await fs.pathExists(srcFile))) {
+          ctx.result.errors.push(`Missing command template: templates/commands/${cmd}.md`)
+          ctx.result.success = false
+          continue
         }
-        else {
-          const placeholder = `---
-description: "${workflow.descriptionEn}"
----
 
-# /ccg:${cmd}
-
-${workflow.description}
-
-> This command is part of CCG multi-model collaboration system.
-`
-          await fs.writeFile(destFile, placeholder, 'utf-8')
-          ctx.result.installedCommands.push(cmd)
+        if (ctx.force || !(await fs.pathExists(destFile))) {
+          let content = await fs.readFile(srcFile, 'utf-8')
+          content = injectConfigVariables(content, ctx.config)
+          content = replaceHomePathsInTemplate(content, ctx.installDir)
+          await fs.writeFile(destFile, content, 'utf-8')
         }
+
+        ctx.result.installedCommands.push(cmd)
       }
       catch (error) {
         ctx.result.errors.push(`Failed to install ${cmd}: ${error}`)
@@ -278,9 +165,6 @@ ${workflow.description}
   }
 }
 
-/**
- * Install agent .md files from templates/commands/agents/
- */
 async function installAgentFiles(ctx: InstallContext): Promise<void> {
   try {
     await copyMdTemplates(
@@ -296,21 +180,18 @@ async function installAgentFiles(ctx: InstallContext): Promise<void> {
   }
 }
 
-/**
- * Install expert prompt .md files from templates/prompts/{codex,gemini,claude}/
- */
 async function installPromptFiles(ctx: InstallContext): Promise<void> {
   const promptsTemplateDir = join(ctx.templateDir, 'prompts')
   const promptsDir = join(ctx.installDir, '.ccg', 'prompts')
   if (!(await fs.pathExists(promptsTemplateDir))) {
     ctx.result.errors.push(`Prompts template directory not found: ${promptsTemplateDir}`)
+    ctx.result.success = false
     return
   }
 
   const promptModels = ['codex', 'claude']
-  if (routingUsesGemini(ctx.config.routing)) {
+  if (routingUsesGemini(ctx.config.routing))
     promptModels.push('gemini')
-  }
 
   for (const model of promptModels) {
     try {
@@ -319,9 +200,8 @@ async function installPromptFiles(ctx: InstallContext): Promise<void> {
         join(promptsTemplateDir, model),
         join(promptsDir, model),
       )
-      for (const name of installed) {
+      for (const name of installed)
         ctx.result.installedPrompts.push(`${model}/${name}`)
-      }
     }
     catch (error) {
       ctx.result.errors.push(`Failed to install ${model} prompts: ${error}`)
@@ -330,10 +210,6 @@ async function installPromptFiles(ctx: InstallContext): Promise<void> {
   }
 }
 
-/**
- * Recursively collect skill names (directories containing SKILL.md, excludes root).
- * Used by both install (count) and uninstall (list names).
- */
 async function collectSkillNames(dir: string, depth = 0): Promise<string[]> {
   const names: string[] = []
   try {
@@ -348,71 +224,60 @@ async function collectSkillNames(dir: string, depth = 0): Promise<string[]> {
     }
   }
   catch (error) {
-    // Only suppress ENOENT (dir not found); log other errors that indicate real problems
     const code = (error as NodeJS.ErrnoException).code
-    if (code !== 'ENOENT') {
+    if (code !== 'ENOENT')
       console.error(`[CCG] Failed to read skills directory ${dir}: ${code || error}`)
-    }
   }
   return names
 }
 
-/**
- * Remove a directory and collect .md file stems. Returns [] if dir doesn't exist.
- */
 async function removeDirCollectMdNames(dir: string): Promise<string[]> {
-  if (!(await fs.pathExists(dir))) return []
+  if (!(await fs.pathExists(dir)))
+    return []
+
   const files = await fs.readdir(dir)
-  const names = files.filter(f => f.endsWith('.md')).map(f => f.replace('.md', ''))
+  const names = files.filter(file => file.endsWith('.md')).map(file => file.replace('.md', ''))
   await fs.remove(dir)
   return names
 }
 
-/**
- * Install skill files from templates/skills/ → ~/.claude/skills/ccg/
- * Includes v1.7.73 legacy layout migration.
- */
 async function installSkillFiles(ctx: InstallContext): Promise<void> {
   const skillsTemplateDir = join(ctx.templateDir, 'skills')
   const skillsDestDir = join(ctx.installDir, 'skills', 'ccg')
 
-  // Report error instead of silently returning when template dir is missing
   if (!(await fs.pathExists(skillsTemplateDir))) {
     ctx.result.errors.push(`Skills template directory not found: ${skillsTemplateDir}`)
+    ctx.result.success = false
     return
   }
 
   try {
-    // Migration: move old v1.7.73 layout into skills/ccg/ namespace
     const oldSkillsRoot = join(ctx.installDir, 'skills')
-    const ccgLegacyItems = ['tools', 'orchestration', 'SKILL.md', 'run_skill.js']
+    const legacyItems = ['tools', 'orchestration', 'SKILL.md', 'run_skill.js']
     const needsMigration = !await fs.pathExists(skillsDestDir)
       && await fs.pathExists(join(oldSkillsRoot, 'tools'))
+
     if (needsMigration) {
       await fs.ensureDir(skillsDestDir)
-      for (const item of ccgLegacyItems) {
+      for (const item of legacyItems) {
         const oldPath = join(oldSkillsRoot, item)
         const newPath = join(skillsDestDir, item)
         if (await fs.pathExists(oldPath)) {
           try {
             await fs.move(oldPath, newPath, { overwrite: true })
           }
-          catch (moveErr) {
-            // Windows: file locking can cause move to fail — log but continue
-            ctx.result.errors.push(`Skills migration: failed to move ${item}: ${moveErr}`)
+          catch (error) {
+            ctx.result.errors.push(`Skills migration: failed to move ${item}: ${error}`)
           }
         }
       }
     }
 
-    // Recursive copy: preserves full directory tree
-    // Always overwrite to ensure fresh install gets all files
     await fs.copy(skillsTemplateDir, skillsDestDir, {
       overwrite: true,
       errorOnExist: false,
     })
 
-    // Post-copy: apply template variable replacement to .md files
     const replacePathsInDir = async (dir: string): Promise<void> => {
       const entries = await fs.readdir(dir, { withFileTypes: true })
       for (const entry of entries) {
@@ -423,24 +288,19 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
         else if (entry.name.endsWith('.md')) {
           const content = await fs.readFile(fullPath, 'utf-8')
           const processed = replaceHomePathsInTemplate(content, ctx.installDir)
-          if (processed !== content) {
+          if (processed !== content)
             await fs.writeFile(fullPath, processed, 'utf-8')
-          }
         }
       }
     }
+
     await replacePathsInDir(skillsDestDir)
 
-    // Post-copy validation: verify at least one SKILL.md was actually copied
     const installedSkills = await collectSkillNames(skillsDestDir)
     ctx.result.installedSkills = installedSkills.length
-
     if (installedSkills.length === 0) {
-      ctx.result.errors.push(
-        `Skills copy completed but no SKILL.md found in ${skillsDestDir}. `
-        + `Possible cause: file locking (antivirus), permission denied, or path too long. `
-        + `Try running as administrator or disabling antivirus real-time scanning temporarily.`,
-      )
+      ctx.result.errors.push(`Skills copy completed but no SKILL.md was found in ${skillsDestDir}`)
+      ctx.result.success = false
     }
   }
   catch (error) {
@@ -449,10 +309,6 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
   }
 }
 
-/**
- * Install Codex-native workflow skills from templates/codex-skills/ -> ~/.codex/skills/
- * Each skill is installed as a top-level directory so Codex can discover it directly.
- */
 async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
   const skillsTemplateDir = join(ctx.templateDir, 'codex-skills')
   const codexSkillsDir = join(ctx.codexHomeDir, 'skills')
@@ -469,15 +325,14 @@ async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
 
     for (const skillName of CODEX_WORKFLOW_SKILLS) {
       const srcDir = join(skillsTemplateDir, skillName)
-      const destDir = join(codexSkillsDir, skillName)
       const skillFile = join(srcDir, 'SKILL.md')
-
       if (!(await fs.pathExists(skillFile))) {
         ctx.result.errors.push(`Missing Codex workflow skill template: ${skillFile}`)
         ctx.result.success = false
         continue
       }
 
+      const destDir = join(codexSkillsDir, skillName)
       await fs.ensureDir(destDir)
       let content = await fs.readFile(skillFile, 'utf-8')
       content = injectConfigVariables(content, ctx.config)
@@ -494,34 +349,25 @@ async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
   }
 }
 
-/**
- * Auto-generate slash commands for user-invocable skills via Skill Registry.
- *
- * Scans templates/skills/ for SKILL.md files with `user-invocable: true` frontmatter,
- * then generates ~/.claude/commands/ccg/{name}.md for each — SKIPPING any name that
- * already exists in installer-data.ts to avoid conflicts with complex multi-model commands.
- */
 async function installSkillGeneratedCommands(ctx: InstallContext): Promise<void> {
   const skillsTemplateDir = join(ctx.templateDir, 'skills')
   const skillsInstallDir = join(ctx.installDir, 'skills', 'ccg')
   const commandsDir = join(ctx.installDir, 'commands', 'ccg')
 
-  if (!(await fs.pathExists(skillsTemplateDir))) return
+  if (!(await fs.pathExists(skillsTemplateDir)))
+    return
 
   try {
-    // Collect names of commands already installed by installer-data.ts
     const existingCommandNames = new Set<string>()
     const existingFiles = await fs.readdir(commandsDir).catch(() => [] as string[])
-    for (const f of existingFiles) {
-      if (f.endsWith('.md')) {
-        existingCommandNames.add(basename(f, '.md'))
-      }
+    for (const file of existingFiles) {
+      if (file.endsWith('.md'))
+        existingCommandNames.add(basename(file, '.md'))
     }
 
     const skipCategories: import('./skill-registry').SkillCategory[] = []
-    if (ctx.config.skipImpeccable) {
+    if (ctx.config.skipImpeccable)
       skipCategories.push('impeccable')
-    }
 
     const generated = await installSkillCommands(
       skillsTemplateDir,
@@ -537,14 +383,10 @@ async function installSkillGeneratedCommands(ctx: InstallContext): Promise<void>
     }
   }
   catch (error) {
-    // Non-fatal: skill command generation failure shouldn't block installation
     ctx.result.errors.push(`Skill Registry command generation warning: ${error}`)
   }
 }
 
-/**
- * Install rule .md files from templates/rules/ → ~/.claude/rules/
- */
 async function installRuleFiles(ctx: InstallContext): Promise<void> {
   try {
     const installed = await copyMdTemplates(
@@ -552,175 +394,14 @@ async function installRuleFiles(ctx: InstallContext): Promise<void> {
       join(ctx.templateDir, 'rules'),
       join(ctx.installDir, 'rules'),
     )
-    if (installed.length > 0) ctx.result.installedRules = true
+    if (installed.length > 0)
+      ctx.result.installedRules = true
   }
   catch (error) {
     ctx.result.errors.push(`Failed to install rules: ${error}`)
+    ctx.result.success = false
   }
 }
-
-/** Resolve platform-specific binary name. Returns null for unsupported platforms. */
-function getBinaryName(): string | null {
-  const osMap: Record<string, string> = { darwin: 'darwin', linux: 'linux', win32: 'windows' }
-  const os = osMap[process.platform]
-  if (!os) return null
-  const arch = process.arch === 'arm64' ? 'arm64' : 'amd64'
-  const ext = process.platform === 'win32' ? '.exe' : ''
-  return `codeagent-wrapper-${os}-${arch}${ext}`
-}
-
-/**
- * Check if codeagent-wrapper binary exists and is functional.
- * Returns true if the binary passes `--version` check.
- */
-export async function verifyBinary(installDir: string): Promise<boolean> {
-  const binDir = join(installDir, 'bin')
-  const wrapperName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
-  const wrapperPath = join(binDir, wrapperName)
-
-  if (!(await fs.pathExists(wrapperPath))) return false
-
-  try {
-    const { execSync } = await import('node:child_process')
-    execSync(`"${wrapperPath}" --version`, { stdio: 'pipe' })
-    return true
-  }
-  catch {
-    return false
-  }
-}
-
-/**
- * Check if installed binary version matches expected version.
- * Returns true if version matches, false if outdated or unreadable.
- */
-export async function verifyBinaryVersion(installDir: string): Promise<boolean> {
-  const binDir = join(installDir, 'bin')
-  const wrapperName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
-  const wrapperPath = join(binDir, wrapperName)
-
-  try {
-    const { execSync } = await import('node:child_process')
-    const output = execSync(`"${wrapperPath}" --version`, { stdio: 'pipe' }).toString().trim()
-    const version = output.replace(/^.*version\s*/, '')
-    return version === EXPECTED_BINARY_VERSION
-  }
-  catch {
-    return false
-  }
-}
-
-/**
- * Show prominent red-box warning when codeagent-wrapper binary download failed.
- * Used by both init and update flows to provide manual fix instructions.
- */
-export function showBinaryDownloadWarning(binDir: string): void {
-  const binaryExt = process.platform === 'win32' ? '.exe' : ''
-  const platformLabel = process.platform === 'darwin'
-    ? (process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-amd64')
-    : process.platform === 'linux'
-      ? (process.arch === 'arm64' ? 'linux-arm64' : 'linux-amd64')
-      : (process.arch === 'arm64' ? 'windows-arm64' : 'windows-amd64')
-  const binaryFileName = `codeagent-wrapper-${platformLabel}${binaryExt}`
-  const destFileName = `codeagent-wrapper${binaryExt}`
-  const releaseUrl = `https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`
-
-  console.log()
-  console.log(ansis.red.bold(`  ╔════════════════════════════════════════════════════════════╗`))
-  console.log(ansis.red.bold(`  ║  ⚠  codeagent-wrapper 下载失败                            ║`))
-  console.log(ansis.red.bold(`  ║     Binary download failed (network issue)                 ║`))
-  console.log(ansis.red.bold(`  ╚════════════════════════════════════════════════════════════╝`))
-  console.log()
-  console.log(ansis.yellow(`  多模型协作命令 (/ccg:workflow, /ccg:plan 等) 需要此文件才能工作。`))
-  console.log(ansis.yellow(`  Multi-model commands require this binary to work.`))
-  console.log()
-  console.log(ansis.cyan(`  手动修复 / Manual fix:`))
-  console.log()
-  console.log(ansis.white(`    1. 下载 / Download:`))
-  console.log(ansis.cyan(`       ${releaseUrl}`))
-  console.log(ansis.gray(`       → 找到 ${ansis.white(binaryFileName)} 并下载`))
-  console.log()
-  console.log(ansis.white(`    2. 放到 / Place at:`))
-  const displayPath = process.platform === 'win32'
-    ? `${binDir.replace(/\//g, '\\')}\\${destFileName}`
-    : `${binDir}/${destFileName}`
-  console.log(ansis.cyan(`       ${displayPath}`))
-  console.log()
-  if (process.platform !== 'win32') {
-    console.log(ansis.white(`    3. 加权限 / Make executable:`))
-    console.log(ansis.cyan(`       chmod +x "${binDir}/${destFileName}"`))
-    console.log()
-  }
-  console.log(ansis.white(`    或重新安装 / Or re-install:`))
-  console.log(ansis.cyan(`       npx ccg-workflow@latest`))
-  console.log()
-}
-
-/**
- * Download and install codeagent-wrapper binary for current platform.
- * Skips download if binary already exists and passes `--version` check.
- */
-async function installBinaryFile(ctx: InstallContext): Promise<void> {
-  try {
-    const binDir = join(ctx.installDir, 'bin')
-    await fs.ensureDir(binDir)
-
-    const binaryName = getBinaryName()
-    if (!binaryName) {
-      ctx.result.errors.push(`Unsupported platform: ${process.platform}`)
-      ctx.result.success = false
-      return
-    }
-
-    const destBinary = join(binDir, process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
-
-    // Check if binary exists, is functional, AND version matches
-    if (await fs.pathExists(destBinary)) {
-      try {
-        const { execSync } = await import('node:child_process')
-        const versionOutput = execSync(`"${destBinary}" --version`, { stdio: 'pipe' }).toString().trim()
-        const installedVersion = versionOutput.replace(/^.*version\s*/, '')
-
-        // Compare with expected version from package
-        const expectedVersion = EXPECTED_BINARY_VERSION
-        if (installedVersion === expectedVersion) {
-          // Binary exists, works, and version matches — skip download
-          ctx.result.binPath = binDir
-          ctx.result.binInstalled = true
-          return
-        }
-        // Version mismatch — fall through to re-download
-      }
-      catch {
-        // Binary exists but broken — fall through to re-download
-      }
-    }
-
-    const installed = await downloadBinaryFromRelease(binaryName, destBinary)
-
-    if (installed) {
-      try {
-        const { execSync } = await import('node:child_process')
-        execSync(`"${destBinary}" --version`, { stdio: 'pipe' })
-        ctx.result.binPath = binDir
-        ctx.result.binInstalled = true
-      }
-      catch (verifyError) {
-        ctx.result.errors.push(`Binary verification failed (non-blocking): ${verifyError}`)
-      }
-    }
-    else {
-      ctx.result.errors.push(`Failed to download binary: ${binaryName} from GitHub Release (after 3 attempts). Check network or visit https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`)
-    }
-  }
-  catch (error) {
-    ctx.result.errors.push(`Failed to install codeagent-wrapper (non-blocking): ${error}`)
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// Public API: install / uninstall
-// ═══════════════════════════════════════════════════════
 
 export async function installWorkflows(
   workflowIds: string[],
@@ -738,7 +419,6 @@ export async function installWorkflows(
     mcpProvider?: string
     skipImpeccable?: boolean
     codexHomeDir?: string
-    skipBinary?: boolean
   },
 ): Promise<InstallResult> {
   const ctx: InstallContext = {
@@ -767,25 +447,17 @@ export async function installWorkflows(
     },
   }
 
-  // ── Pre-flight: validate template directory exists ──
-  // This is the #1 root cause of "silent install failure" on Windows:
-  // if PACKAGE_ROOT resolved wrong, templateDir doesn't exist and every
-  // sub-step silently returns empty results while reporting success.
   if (!(await fs.pathExists(ctx.templateDir))) {
-    const errorMsg = `Template directory not found: ${ctx.templateDir} (PACKAGE_ROOT=${PACKAGE_ROOT}). `
-      + `This usually means the npm package is incomplete or the cache is corrupted. `
-      + `Try: npm cache clean --force && npx ccg-workflow@latest`
-    ctx.result.errors.push(errorMsg)
+    ctx.result.errors.push(
+      `Template directory not found: ${ctx.templateDir} (PACKAGE_ROOT=${PACKAGE_ROOT})`,
+    )
     ctx.result.success = false
     return ctx.result
   }
 
-  // Ensure base directories
   await fs.ensureDir(join(installDir, 'commands', 'ccg'))
-  await fs.ensureDir(join(installDir, '.ccg'))
   await fs.ensureDir(join(installDir, '.ccg', 'prompts'))
 
-  // Execute each install step
   await installCommandFiles(ctx, workflowIds)
   await installAgentFiles(ctx)
   await installPromptFiles(ctx)
@@ -793,28 +465,24 @@ export async function installWorkflows(
   await installCodexWorkflowSkills(ctx)
   await installSkillGeneratedCommands(ctx)
   await installRuleFiles(ctx)
-  if (!config?.skipBinary) {
-    await installBinaryFile(ctx)
+
+  try {
+    ctx.result.monitorPath = await installBundledMonitor(installDir)
+    ctx.result.monitorInstalled = true
+  }
+  catch (error) {
+    ctx.result.errors.push(`Failed to install Claude monitor assets: ${error}`)
+    ctx.result.success = false
   }
 
-  // ── Post-flight: validate installation produced results ──
-  // Catch the case where all sub-steps silently returned empty
   if (ctx.result.installedCommands.length === 0 && ctx.result.errors.length === 0) {
-    ctx.result.errors.push(
-      `No commands were installed (expected ${workflowIds.length}). `
-      + `Template dir: ${ctx.templateDir}. `
-      + `This may indicate a corrupted package or file permission issue.`,
-    )
+    ctx.result.errors.push(`No commands were installed (expected ${workflowIds.length})`)
     ctx.result.success = false
   }
 
   ctx.result.configPath = join(installDir, 'commands', 'ccg')
   return ctx.result
 }
-
-// ═══════════════════════════════════════════════════════
-// Uninstall
-// ═══════════════════════════════════════════════════════
 
 export interface UninstallResult {
   success: boolean
@@ -824,17 +492,12 @@ export interface UninstallResult {
   removedSkills: string[]
   removedCodexSkills: string[]
   removedRules: boolean
-  removedBin: boolean
   errors: string[]
 }
 
-/**
- * Uninstall workflows by removing their command files.
- * @param options.preserveBinary – when true, skip binary removal (used during update)
- */
 export async function uninstallWorkflows(
   installDir: string,
-  options?: { preserveBinary?: boolean, codexHomeDir?: string },
+  options?: { codexHomeDir?: string },
 ): Promise<UninstallResult> {
   const result: UninstallResult = {
     success: true,
@@ -844,7 +507,6 @@ export async function uninstallWorkflows(
     removedSkills: [],
     removedCodexSkills: [],
     removedRules: false,
-    removedBin: false,
     errors: [],
   }
 
@@ -852,11 +514,9 @@ export async function uninstallWorkflows(
   const agentsDir = join(installDir, 'agents', 'ccg')
   const skillsDir = join(installDir, 'skills', 'ccg')
   const rulesDir = join(installDir, 'rules')
-  const binDir = join(installDir, 'bin')
   const ccgConfigDir = join(installDir, '.ccg')
   const codexSkillsDir = join(options?.codexHomeDir || join(homedir(), '.codex'), 'skills')
 
-  // Remove CCG commands directory
   try {
     result.removedCommands = await removeDirCollectMdNames(commandsDir)
   }
@@ -865,7 +525,6 @@ export async function uninstallWorkflows(
     result.success = false
   }
 
-  // Remove CCG agents directory
   try {
     result.removedAgents = await removeDirCollectMdNames(agentsDir)
   }
@@ -874,7 +533,6 @@ export async function uninstallWorkflows(
     result.success = false
   }
 
-  // Remove CCG skills directory only (skills/ccg/) — preserves user's own skills
   if (await fs.pathExists(skillsDir)) {
     try {
       result.removedSkills = await collectSkillNames(skillsDir)
@@ -886,7 +544,6 @@ export async function uninstallWorkflows(
     }
   }
 
-  // Remove only CCG-owned Codex workflow skills
   for (const skillName of CODEX_WORKFLOW_SKILLS) {
     const skillDir = join(codexSkillsDir, skillName)
     try {
@@ -901,7 +558,6 @@ export async function uninstallWorkflows(
     }
   }
 
-  // Remove CCG rules files
   if (await fs.pathExists(rulesDir)) {
     try {
       for (const ruleFile of ['ccg-skills.md', 'ccg-grok-search.md', 'ccg-skill-routing.md']) {
@@ -914,26 +570,10 @@ export async function uninstallWorkflows(
     }
     catch (error) {
       result.errors.push(`Failed to remove rules: ${error}`)
-    }
-  }
-
-  // Remove codeagent-wrapper binary (skip during update to avoid unnecessary re-download)
-  if (!options?.preserveBinary && await fs.pathExists(binDir)) {
-    try {
-      const wrapperName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
-      const wrapperPath = join(binDir, wrapperName)
-      if (await fs.pathExists(wrapperPath)) {
-        await fs.remove(wrapperPath)
-        result.removedBin = true
-      }
-    }
-    catch (error) {
-      result.errors.push(`Failed to remove binary: ${error}`)
       result.success = false
     }
   }
 
-  // Remove .ccg config directory
   if (await fs.pathExists(ccgConfigDir)) {
     try {
       await fs.remove(ccgConfigDir)
@@ -941,7 +581,16 @@ export async function uninstallWorkflows(
     }
     catch (error) {
       result.errors.push(`Failed to remove .ccg directory: ${error}`)
+      result.success = false
     }
+  }
+
+  try {
+    await removeClaudeMonitorHooks(installDir)
+  }
+  catch (error) {
+    result.errors.push(`Failed to remove Claude monitor hooks: ${error}`)
+    result.success = false
   }
 
   return result

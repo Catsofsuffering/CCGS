@@ -1,13 +1,6 @@
 # Build outputs
-codeagent-wrapper/codeagent-wrapper
-codeagent-wrapper/*.exe
 *.exe
 dist/
-!codeagent-wrapper/webui/dist/
-!codeagent-wrapper/webui/dist/**
-
-# Pre-compiled binaries (hosted on GitHub Release, not tracked in git)
-bin/codeagent-wrapper-*
 node_modules/
 
 # Python

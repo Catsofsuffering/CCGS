@@ -1,20 +1,28 @@
-## 1. Frontend Foundation
+## 1. Monitor Integration
 
-- [x] 1.1 Create a dedicated monitoring frontend workspace under `codeagent-wrapper` using the AgentField React/Vite embedding pattern as the starting point.
-- [x] 1.2 Add wrapper-side asset embedding/serving so the monitoring UI is no longer assembled from inline HTML strings in `server.go`.
+- [x] 1.1 Integrate the minimum viable server/client/hook assets from `B:\project\Claude-Code-Agent-Monitor` into the CCG workspace.
+- [x] 1.2 Wire the integrated monitor to run as the primary local dashboard for Claude Agent Teams activity.
 
-## 2. Monitoring Data Adapter
+## 2. Install And Runtime Wiring
 
-- [x] 2.1 Implement typed frontend access for `/api/state`, `/api/sessions`, `/api/events`, and `/api/stream/:sessionID`.
-- [x] 2.2 Keep the backend contract bounded to wrapper-managed run/session/task data; only make additive DTO changes if the new UI cannot be implemented otherwise.
+- [x] 2.1 Update installation logic so CCG writes the required Claude hook configuration into `~/.claude/settings.json`.
+- [x] 2.2 Add any runtime helpers or commands needed to start/use the monitor without relying on `codeagent-wrapper`.
 
-## 3. Dashboard Experience
+## 3. Primary Path Simplification
 
-- [x] 3.1 Build the new monitoring shell, summary cards, live task list, and recent-event surfaces using AgentField-inspired layout and component patterns.
-- [x] 3.2 Render dependency, timing, logs/history pointers, current activity, and final result metadata for each monitored task in responsive desktop/mobile layouts.
+- [x] 3.1 Remove wrapper-owned monitoring/frontend code from the maintained path.
+- [x] 3.2 Update command templates, runtime assumptions, and docs so the maintained workflow is explicitly `Codex orchestrates -> Claude Agent Teams execute -> Codex reviews`.
 
 ## 4. Verification
 
-- [x] 4.1 Add frontend-focused tests for snapshot rendering, event-driven updates, and disconnect/reconnect behavior.
-- [x] 4.2 Add wrapper tests for embedded asset serving and monitoring API compatibility with the new frontend.
-- [x] 4.3 Run the full bounded verification set for this slice: frontend build/test plus `go test ./...` in `codeagent-wrapper`.
+- [x] 4.1 Add or adapt tests for hook installation/configuration and monitor runtime behavior.
+- [x] 4.2 Run the relevant build/test/typecheck verification for the integrated monitor and CCG root workspace.
+- [x] 4.3 Validate the revised local installation path on this machine after the integration changes land.
+
+## 5. Monitoring UI Redesign
+
+- [ ] 5.1 Add shadcn/ui-compatible frontend foundations in `claude-monitor/client` for shared primitives, monochrome tokens, deep-green accent rules, typography, and constrained motion utilities.
+- [ ] 5.2 Redesign the shared shell (`App.tsx`, `Layout.tsx`, `Sidebar.tsx`, and global styles) into a dark industrial editorial structure that avoids default dashboard card stacks.
+- [ ] 5.3 Rebuild `Dashboard.tsx`, `Sessions.tsx`, `ActivityFeed.tsx`, and `SessionDetail.tsx` so each section serves one job and each page has one primary visual anchor.
+- [ ] 5.4 Bring remaining monitor pages into the same system without introducing extra accent colors, extra fonts, or decorative animations.
+- [ ] 5.5 Verify `pnpm --dir claude-monitor/client build` and `pnpm --dir claude-monitor/client test`, then manually confirm desktop/mobile responsiveness, reduced-motion behavior, and the visual constraints from the spec.

@@ -25,7 +25,7 @@ This repository no longer uses the upstream README as its product story. Upstrea
 - OpenSpec is required for the maintained path, not an optional afterthought.
 - Claude remains important, but primarily as the execution layer.
 - MCP, reusable skills, and Gemini are optional integrations rather than baseline requirements.
-- Legacy and upstream-compatible command surfaces stay available while the Codex-led path matures.
+- Legacy surfaces are not part of the maintained product path.
 
 ## Primary Workflow
 
@@ -54,19 +54,6 @@ After install, CCGS also places Codex-native skills under `~/.codex/skills/`:
 
 That means the maintained path can start directly inside Codex instead of relying on Claude as the shell host.
 
-## Compatibility Flows
-
-These flows still exist, but they are compatibility or secondary paths rather than the main product story:
-
-- `/ccg:workflow`
-- `/ccg:plan`
-- `/ccg:execute`
-- `/ccg:team-research`
-- `/ccg:frontend`
-- `/ccg:codex-exec`
-
-Utility commands such as `/ccg:backend`, `/ccg:debug`, `/ccg:review`, `/ccg:test`, `/ccg:commit`, and `/ccg:worktree` remain available as well.
-
 ## Installation
 
 ### Prerequisites
@@ -85,12 +72,13 @@ Optional:
 
 ```bash
 npx ccg-workflow
-```
+``` 
 
 You can also run:
 
 ```bash
 npx ccg-workflow init
+npx ccg-workflow monitor
 npx ccg-workflow menu
 npx ccg-workflow update
 ```
@@ -104,7 +92,8 @@ Current install behavior keeps compatibility with existing environments:
 - Claude-facing commands and assets are installed under `~/.claude/`
 - Codex-native workflow skills are installed under `~/.codex/skills/`
 - Workflow configuration is stored under `~/.claude/.ccg/`
-- `codeagent-wrapper` remains the backend invocation boundary
+- The Claude hook monitor is installed under `~/.claude/.ccg/claude-monitor`
+- Claude hook entries are written into `~/.claude/settings.json`
 
 ## Repository Landmarks
 
@@ -124,8 +113,10 @@ templates/
 openspec/
 └── changes/
 
-codeagent-wrapper/
-└── main.go
+claude-monitor/
+├── server/
+├── client/
+└── scripts/
 ```
 
 ## Architecture
@@ -150,7 +141,7 @@ graph TD
 - Prefer OpenSpec-first changes over direct ad hoc edits.
 - Keep compatibility flows labeled as compatibility before removing them.
 - Do not assume MCP, skills, or Gemini are mandatory in new product language.
-- If you change Go code under `codeagent-wrapper/`, keep the wrapper version in sync with `src/utils/installer.ts`.
+- Keep the maintained path centered on Codex orchestration, Claude Agent Teams execution, and Codex review.
 
 Project workflow and project guidance are documented in [AGENTS.md](./AGENTS.md).
 

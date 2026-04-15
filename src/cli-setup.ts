@@ -5,6 +5,7 @@ import { version } from '../package.json'
 import { configMcp } from './commands/config-mcp'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
 import { init } from './commands/init'
+import { installMonitorHooks, installMonitorRuntime, startMonitor } from './commands/monitor'
 import { showMainMenu } from './commands/menu'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
@@ -20,6 +21,7 @@ function customizeHelp(sections: any[]): any[] {
     body: [
       `  ${ansis.cyan('ccg')}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
       `  ${ansis.cyan('ccg init')} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
+      `  ${ansis.cyan('ccg monitor')}      Start the Claude monitor`,
       `  ${ansis.cyan('ccg config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
       `  ${ansis.cyan('ccg diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
       `  ${ansis.cyan('ccg fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
@@ -135,6 +137,29 @@ export async function setupCommands(cli: CAC): Promise<void> {
         console.log(ansis.red(i18n.t('common:unknownSubcommand', { subcommand })))
         console.log(ansis.gray(i18n.t('common:availableSubcommands', { list: 'mcp' })))
       }
+    })
+
+  cli
+    .command('monitor [action]', 'Manage the Claude hook monitor')
+    .option('--detach', 'Start monitor in detached mode')
+    .action(async (action: string | undefined, options: { detach?: boolean }) => {
+      if (!action || action === 'start') {
+        await startMonitor(Boolean(options.detach))
+        return
+      }
+
+      if (action === 'install') {
+        await installMonitorRuntime()
+        return
+      }
+
+      if (action === 'hooks') {
+        await installMonitorHooks()
+        return
+      }
+
+      console.log(ansis.red(`Unknown monitor action: ${action}`))
+      console.log(ansis.gray('Available actions: start, install, hooks'))
     })
 
   cli.help(sections => customizeHelp(sections))

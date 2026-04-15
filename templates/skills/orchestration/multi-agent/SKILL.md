@@ -149,7 +149,7 @@ TeamCreate ─── Phase 2: spawn Architect → shutdown
 ```
 
 **推荐入口**：`/ccg:team <需求描述>` — 一键跑完 8 阶段。
-**分步入口**（兼容）：`/ccg:team-research` → `/ccg:team-plan` → `/ccg:team-exec` → `/ccg:team-review`
+**分步入口**：`/ccg:spec-plan` → `/ccg:team-plan` → `/ccg:team-exec` → `/ccg:team-review`
 
 ---
 

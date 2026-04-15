@@ -58,17 +58,24 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
      - Check `.claude/commands/opsx/` contains OPSX commands
    - Report any errors with remediation steps.
 
-4. **Validate Multi-Model MCP Tools**
-   - Check `codeagent-wrapper` availability: `~/.claude/bin/codeagent-wrapper --version`
-   - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。如果用户通过 `/add-dir` 添加了多个工作区，先确定任务相关的工作区。
-   - Test {{BACKEND_PRIMARY}} backend:
+4. **Validate Claude Execution And Monitor Tooling**
+   - Check Claude Code availability:
      ```bash
-     echo "echo test" | ~/.claude/bin/codeagent-wrapper --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- "{{WORKDIR}}"
+     claude --version
      ```
-   - Test {{FRONTEND_PRIMARY}} backend:
+   - Verify monitor helper availability:
      ```bash
-     echo "echo test" | ~/.claude/bin/codeagent-wrapper --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- "{{WORKDIR}}"
+     ccg monitor hooks
      ```
+   - If the runtime has not been prepared yet, install it:
+     ```bash
+     ccg monitor install
+     ```
+   - If the user wants an immediate UI check, start the local dashboard:
+     ```bash
+     ccg monitor start --detach
+     ```
+   - Confirm `~/.claude/settings.json` now contains the Claude hook entries managed by the monitor.
    - For each unavailable tool, display warning with installation instructions.
 
 5. **Summary Report**
@@ -79,9 +86,9 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
    OpenSpec (OPSX) CLI       ✓/✗
    Project initialized       ✓/✗
    OPSX Skills               ✓/✗
-   codeagent-wrapper         ✓/✗
-   {{BACKEND_PRIMARY}} backend             ✓/✗
-   {{FRONTEND_PRIMARY}} backend            ✓/✗
+   Claude Code CLI           ✓/✗
+   Claude monitor runtime    ✓/✗
+   Claude hook config        ✓/✗
    ```
 
    **Next Steps (Use CCG Encapsulated Commands)**
@@ -96,6 +103,6 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
 - CCG Workflow: `npx ccg-workflow`
-- 后端/前端模型 MCP: Bundled with codeagent-wrapper
+- Claude monitor helper: `ccg monitor <install|start|hooks>`
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->
