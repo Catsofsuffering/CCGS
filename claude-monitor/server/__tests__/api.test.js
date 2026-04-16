@@ -36,6 +36,7 @@ const EXPECTED_API_PATHS = [
   "/api/pricing/cost/{sessionId}",
   "/api/workflows",
   "/api/workflows/session/{id}",
+  "/api/openspec/changes",
   "/api/settings/info",
   "/api/settings/clear-data",
   "/api/settings/reimport",
@@ -141,6 +142,24 @@ describe("OpenAPI / Swagger", () => {
   });
 });
 
+describe("OpenSpec API", () => {
+  it("should return board data for local OpenSpec changes", async () => {
+    const res = await fetch("/api/openspec/changes");
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body.stages));
+    assert.ok(Array.isArray(res.body.changes));
+    assert.ok(typeof res.body.workspaceRoot === "string");
+
+    const change = res.body.changes.find((item) => item.name === "agent-team-progress-mvp");
+    assert.ok(change, "expected known OpenSpec change to be present");
+    assert.equal(typeof change.stage, "string");
+    assert.ok(Array.isArray(change.artifacts));
+    assert.ok(change.taskProgress);
+    assert.equal(typeof change.taskProgress.percent, "number");
+    assert.equal(typeof change.readyToApply, "boolean");
+  });
+});
+
 // ============================================================
 // Sessions CRUD
 // ============================================================
@@ -182,6 +201,60 @@ describe("Sessions API", () => {
     assert.equal(res.body.session.id, "sess-1");
     assert.ok(Array.isArray(res.body.agents));
     assert.ok(Array.isArray(res.body.events));
+    assert.ok(res.body.outputs);
+    assert.ok(Array.isArray(res.body.outputs.agents));
+  });
+
+  it("should include transcript-backed output feeds in session detail", async () => {
+    const transcriptPath = path.join(os.tmpdir(), `session-output-${Date.now()}.jsonl`);
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({
+          type: "user",
+          timestamp: "2026-03-20T09:00:00.000Z",
+          message: { role: "user", content: "Summarize the work" },
+        }),
+        JSON.stringify({
+          type: "assistant",
+          uuid: "assistant-msg-1",
+          timestamp: "2026-03-20T09:00:05.000Z",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "# Summary\n\n- latest finding" }],
+            model: "claude-sonnet-4-20250514",
+            usage: { input_tokens: 20, output_tokens: 30 },
+          },
+        }),
+      ].join("\n") + "\n"
+    );
+
+    try {
+      await post("/api/hooks/event", {
+        hook_type: "Stop",
+        data: {
+          session_id: "sess-output-1",
+          cwd: "/tmp",
+          transcript_path: transcriptPath,
+          last_assistant_message: "# Summary\n\n- latest finding",
+        },
+      });
+
+      const res = await fetch("/api/sessions/sess-output-1");
+      assert.equal(res.status, 200);
+      assert.equal(res.body.outputs.latest_output_agent_id, "sess-output-1-main");
+      assert.equal(res.body.outputs.agents.length, 1);
+      assert.equal(res.body.outputs.agents[0].agent_id, "sess-output-1-main");
+      assert.equal(res.body.outputs.agents[0].output_count, 1);
+      assert.equal(res.body.outputs.agents[0].latest_output.markdown, "# Summary\n\n- latest finding");
+      assert.equal(res.body.outputs.agents[0].latest_output.source, "transcript");
+    } finally {
+      try {
+        fs.unlinkSync(transcriptPath);
+      } catch {
+        // ignore cleanup errors
+      }
+    }
   });
 
   it("should return 404 for nonexistent session", async () => {

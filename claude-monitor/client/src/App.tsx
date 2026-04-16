@@ -9,6 +9,7 @@ import { useCallback } from "react";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { KanbanBoard } from "./pages/KanbanBoard";
+import { OpenSpecBoard } from "./pages/OpenSpecBoard";
 import { Sessions } from "./pages/Sessions";
 import { SessionDetail } from "./pages/SessionDetail";
 import { ActivityFeed } from "./pages/ActivityFeed";
@@ -35,6 +36,7 @@ export default function App() {
         <Route element={<Layout wsConnected={connected} />}>
           <Route index element={<Dashboard />} />
           <Route path="kanban" element={<KanbanBoard />} />
+          <Route path="openspec" element={<OpenSpecBoard />} />
           <Route path="sessions" element={<Sessions />} />
           <Route path="sessions/:id" element={<SessionDetail />} />
           <Route path="activity" element={<ActivityFeed />} />

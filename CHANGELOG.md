@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.18] - 2026-04-16
+
+### Changed
+
+- Added an `OpenSpec Board` view to the integrated Claude monitor, including a read-only OpenSpec API, workflow-stage columns, and installed-runtime workspace detection fixes.
+
+---
+
+## [2.1.17] - 2026-04-16
+
+### Changed
+
+- Refreshed the local release package after the latest Claude monitor feature additions so the bundled runtime and installer assets match the current workspace state.
+
+---
+
+## [2.1.16] - 2026-04-16
+
+### Changed
+
+- Added a transcript-backed agent output reader to the Claude monitor session page, with Markdown rendering, newest-output prioritization, and per-agent output history.
+
+---
+
 ## [2.1.15] - 2026-04-15
 
 ### Changed

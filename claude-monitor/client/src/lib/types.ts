@@ -49,6 +49,28 @@ export interface DashboardEvent {
   created_at: string;
 }
 
+export interface AgentOutputMessage {
+  id: string;
+  agent_id: string;
+  timestamp: string | null;
+  markdown: string;
+  source: "transcript" | "hook";
+}
+
+export interface AgentOutputFeed {
+  agent_id: string;
+  transcript_path: string | null;
+  latest_output: AgentOutputMessage | null;
+  latest_timestamp: string | null;
+  output_count: number;
+  outputs: AgentOutputMessage[];
+}
+
+export interface SessionOutputs {
+  agents: AgentOutputFeed[];
+  latest_output_agent_id: string | null;
+}
+
 export interface Stats {
   total_sessions: number;
   active_sessions: number;
@@ -115,6 +137,60 @@ export interface WSMessage {
   type: "session_created" | "session_updated" | "agent_created" | "agent_updated" | "new_event";
   data: Session | Agent | DashboardEvent;
   timestamp: string;
+}
+
+export type OpenSpecStage =
+  | "proposal"
+  | "design"
+  | "specs"
+  | "tasks"
+  | "implementing"
+  | "complete";
+
+export interface OpenSpecArtifact {
+  id: string;
+  outputPath: string;
+  status: string;
+  done: boolean;
+}
+
+export interface OpenSpecTaskProgress {
+  completed: number;
+  total: number;
+  remaining: number;
+  percent: number;
+}
+
+export interface OpenSpecChange {
+  name: string;
+  status: string;
+  stage: OpenSpecStage;
+  stageLabel: string;
+  lastModified: string | null;
+  nextArtifact: string | null;
+  readyToApply: boolean;
+  applyRequires: string[];
+  artifactSummary: {
+    done: number;
+    total: number;
+  };
+  taskProgress: OpenSpecTaskProgress;
+  completedTasks: number;
+  totalTasks: number;
+  changePath: string;
+  artifacts: OpenSpecArtifact[];
+}
+
+export interface OpenSpecStageSummary {
+  id: OpenSpecStage;
+  label: string;
+  count: number;
+}
+
+export interface OpenSpecBoardData {
+  workspaceRoot: string;
+  stages: OpenSpecStageSummary[];
+  changes: OpenSpecChange[];
 }
 
 // ── Workflow types ──

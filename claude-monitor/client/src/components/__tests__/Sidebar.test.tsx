@@ -32,6 +32,7 @@ describe("Sidebar", () => {
     renderSidebar(true);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Agent Board")).toBeInTheDocument();
+    expect(screen.getByText("OpenSpec Board")).toBeInTheDocument();
     expect(screen.getByText("Sessions")).toBeInTheDocument();
     expect(screen.getByText("Activity Feed")).toBeInTheDocument();
   });
@@ -57,6 +58,7 @@ describe("Sidebar", () => {
     const hrefs = links.map((link) => link.getAttribute("href"));
     expect(hrefs).toContain("/");
     expect(hrefs).toContain("/kanban");
+    expect(hrefs).toContain("/openspec");
     expect(hrefs).toContain("/sessions");
     expect(hrefs).toContain("/activity");
   });

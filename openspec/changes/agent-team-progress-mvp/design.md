@@ -29,6 +29,7 @@ The cloned reference repository at `B:\project\Claude-Code-Agent-Monitor` is a b
 - Remove `codeagent-wrapper` from the maintained single-path workflow.
 - Update install/runtime wiring so Claude hook events are configured and the monitor can be started locally.
 - Reuse the upstream monitor architecture where it fits, while trimming it to CCG's supported path.
+- Surface OpenSpec change progression inside the monitor so Codex can inspect active changes without leaving the operational dashboard.
 
 **Non-Goals:**
 
@@ -122,6 +123,23 @@ Alternatives considered:
 - Use multiple status accents to encode more information.
   Rejected because the requested art direction explicitly limits the UI to one accent color.
 
+### Decision: Add an OpenSpec board as a first-class monitor page
+
+The integrated monitor should expose an OpenSpec board that groups changes by workflow stage and summarizes artifact readiness and task progress.
+
+Why this decision:
+
+- Codex owns change progression, so the maintained monitor should show OpenSpec state alongside Claude execution state.
+- A board view matches the existing monitor navigation model and gives a quick operational read of which changes are still in artifact creation versus implementation.
+- OpenSpec already provides authoritative change and artifact status through its CLI, so the monitor can remain read-only and avoid inventing a second source of truth.
+
+Alternatives considered:
+
+- Keep OpenSpec inspection in the terminal only.
+  Rejected because it forces the operator to leave the monitor for a common workflow check.
+- Show OpenSpec changes as a flat table on an existing page.
+  Rejected because the requested interaction is explicitly board-like and should remain visually parallel to the existing Agent Board.
+
 ## Frontend Experience Constraints
 
 - Framework: React client remains the frontend host, with Tailwind CSS for tokens/layout and shadcn/ui-compatible primitives for shared controls.
@@ -131,6 +149,7 @@ Alternatives considered:
 - Page composition: each section should do one job. Each page should have one primary visual anchor only.
 - Motion: no more than three motion patterns total across the app. Recommended set is page-enter reveal, live-update signal, and disclosure/expand transitions.
 - Responsiveness: the editorial hierarchy must survive mobile and desktop without collapsing into dense card stacks.
+- OpenSpec board: group changes into workflow-stage columns derived from artifact completion and task progress; each change tile should emphasize stage, task completion, and next artifact rather than generic dashboard metrics.
 
 ## Risks / Trade-offs
 
@@ -226,6 +245,9 @@ Redesign the integrated monitor frontend in `claude-monitor/client` so the prima
 - `claude-monitor/client/src/components/**`
 - `claude-monitor/client/src/pages/**`
 - New shared primitives under `claude-monitor/client/src/components/ui/**`
+- `claude-monitor/server/routes/**`
+- `claude-monitor/server/index.js`
+- `claude-monitor/server/openapi.js`
 
 #### Protected Surface
 
@@ -235,19 +257,26 @@ Redesign the integrated monitor frontend in `claude-monitor/client` so the prima
 - Root installer/runtime wiring in `src/**`
 - Unrelated OpenSpec changes
 
+Exception for this slice:
+
+- A read-only server route may be added under `claude-monitor/server` if needed to expose OpenSpec board data without modifying hook ingestion, persistence, or runtime wiring.
+
 #### Work Packages
 
 1. Add the frontend design-system foundation: shadcn/ui-compatible primitives, color/type tokens, and motion utilities inside `claude-monitor/client`.
 2. Redesign the shared shell and navigation so the app establishes the editorial tone without leaning on stacked cards.
 3. Rebuild the primary monitoring pages (`Dashboard`, `Sessions`, `ActivityFeed`, `SessionDetail`) so each section has one responsibility and each page has one dominant visual.
 4. Bring secondary pages into visual alignment without inventing extra hero visuals or new accent colors.
-5. Verify build, tests, responsiveness, reduced-motion behavior, and the constrained visual system.
+5. Add a read-only OpenSpec board route/page that groups changes by stage and summarizes artifact/task progress.
+6. Verify build, tests, responsiveness, reduced-motion behavior, and the constrained visual system.
 
 #### Required Verification
 
 - `pnpm --dir claude-monitor/client build`
 - `pnpm --dir claude-monitor/client test`
+- `pnpm --dir claude-monitor/server test`
 - Manual review of dashboard, sessions, activity feed, and session detail at desktop and mobile widths
+- Manual review of the OpenSpec board with repositories that contain active and completed changes
 - Manual review that only one accent color is present, no more than two font families are loaded, and animation patterns stay within the approved set
 
 #### Rework Triggers
@@ -257,6 +286,7 @@ Redesign the integrated monitor frontend in `claude-monitor/client` so the prima
 - A page contains multiple competing hero visuals or sections without a single clear responsibility
 - Motion is added as decoration rather than communicating load, live state, or disclosure
 - The frontend change requires backend protocol or installer changes to function
+- The OpenSpec board becomes a writable editor or diverges from `openspec` CLI state instead of reflecting it
 
 #### Exact Bounded Packet For `ccg-spec-impl`
 

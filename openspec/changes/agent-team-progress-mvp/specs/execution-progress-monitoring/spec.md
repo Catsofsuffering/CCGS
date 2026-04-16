@@ -73,6 +73,24 @@ The integrated monitor UI SHALL present a dark, industrial, Japanese magazine-in
 - **AND** the page SHALL not introduce multiple competing hero visuals inside the same viewport
 - **AND** unnecessary card grids SHALL be avoided in favor of editorial rails, rules, tables, lists, and typographic grouping
 
+### Requirement: The monitoring UI SHALL expose OpenSpec change progression in a board view
+The integrated monitor UI SHALL provide an OpenSpec board that groups changes by workflow stage and summarizes artifact readiness and task completion without becoming a second source of truth.
+
+#### Scenario: User opens the OpenSpec board
+- **WHEN** the repository contains OpenSpec changes and the monitor UI is open
+- **THEN** the user SHALL be able to open a dedicated OpenSpec board page from monitor navigation
+- **AND** the page SHALL group changes into workflow-stage columns derived from OpenSpec artifact completion and overall change status
+
+#### Scenario: User inspects a change tile
+- **WHEN** a change is rendered on the OpenSpec board
+- **THEN** the tile SHALL show the change name, current stage, artifact completion summary, and task completion progress
+- **AND** the tile SHALL indicate the next artifact or whether the change is already in implementation/completed state
+
+#### Scenario: OpenSpec state cannot be loaded
+- **WHEN** the monitor cannot read OpenSpec state from the local workspace
+- **THEN** the OpenSpec board SHALL fail read-only with an explanatory empty or error state
+- **AND** the rest of the monitor UI SHALL remain usable
+
 ### Requirement: Motion in the monitoring UI SHALL be purposeful and sparse
 The integrated monitor frontend SHALL use no more than two or three intentional motion patterns, and those patterns SHALL communicate state changes, page entry, or content disclosure rather than decorative noise.
 

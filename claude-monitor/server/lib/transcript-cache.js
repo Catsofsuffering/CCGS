@@ -46,6 +46,7 @@ class TranscriptCache {
           compaction: result ? this._cloneCompaction(result.compaction) : null,
           errors: result?.errors ? [...result.errors] : null,
           turnDurations: result?.turnDurations ? [...result.turnDurations] : null,
+          assistantMessages: result?.assistantMessages ? this._cloneMessages(result.assistantMessages) : null,
           thinkingBlockCount: result?.thinkingBlockCount || 0,
           usageExtras: result ? this._cloneUsageExtras(result.usageExtras) : null,
           result,
@@ -61,6 +62,8 @@ class TranscriptCache {
           const merged = this._merge(cached, incremental);
           const hasTokens = Object.keys(merged.tokensByModel).length > 0;
           const hasTurnDurations = merged.turnDurations && merged.turnDurations.length > 0;
+          const hasAssistantMessages =
+            merged.assistantMessages && merged.assistantMessages.length > 0;
           const hasUsageExtras =
             merged.usageExtras &&
             (merged.usageExtras.service_tiers.length > 0 ||
@@ -71,6 +74,7 @@ class TranscriptCache {
             compaction: merged.compaction,
             errors: merged.errors,
             turnDurations: hasTurnDurations ? merged.turnDurations : null,
+            assistantMessages: hasAssistantMessages ? merged.assistantMessages : null,
             thinkingBlockCount: merged.thinkingBlockCount || 0,
             usageExtras: hasUsageExtras ? merged.usageExtras : null,
           };
@@ -79,6 +83,7 @@ class TranscriptCache {
             !result.compaction &&
             !result.errors &&
             !result.turnDurations &&
+            !result.assistantMessages &&
             !result.thinkingBlockCount &&
             !result.usageExtras
           ) {
@@ -90,6 +95,7 @@ class TranscriptCache {
               compaction: null,
               errors: null,
               turnDurations: null,
+              assistantMessages: null,
               thinkingBlockCount: 0,
               usageExtras: null,
               result: null,
@@ -104,6 +110,7 @@ class TranscriptCache {
             compaction: this._cloneCompaction(result.compaction),
             errors: result.errors ? [...result.errors] : null,
             turnDurations: result.turnDurations ? [...result.turnDurations] : null,
+            assistantMessages: this._cloneMessages(result.assistantMessages),
             thinkingBlockCount: result.thinkingBlockCount || 0,
             usageExtras: this._cloneUsageExtras(result.usageExtras),
             result,
@@ -131,6 +138,7 @@ class TranscriptCache {
         compaction: result ? this._cloneCompaction(result.compaction) : null,
         errors: result?.errors ? [...result.errors] : null,
         turnDurations: result?.turnDurations ? [...result.turnDurations] : null,
+        assistantMessages: result?.assistantMessages ? this._cloneMessages(result.assistantMessages) : null,
         thinkingBlockCount: result?.thinkingBlockCount || 0,
         usageExtras: result ? this._cloneUsageExtras(result.usageExtras) : null,
         result,
@@ -177,6 +185,7 @@ class TranscriptCache {
     let compaction = null;
     const errors = [];
     const turnDurations = [];
+    const assistantMessages = [];
     let thinkingBlockCount = 0;
     const usageExtras = { service_tiers: new Set(), speeds: new Set(), inference_geos: new Set() };
 
@@ -184,6 +193,13 @@ class TranscriptCache {
       if (!line) continue;
       try {
         const entry = JSON.parse(line);
+        const msg = entry.message || entry;
+        const entryTs = entry.timestamp
+          ? typeof entry.timestamp === "number"
+            ? new Date(entry.timestamp).toISOString()
+            : entry.timestamp
+          : null;
+
         if (entry.isCompactSummary) {
           if (!compaction) compaction = { count: 0, entries: [] };
           compaction.count++;
@@ -195,22 +211,16 @@ class TranscriptCache {
 
         // Turn duration tracking (system entries with subtype "turn_duration")
         if (entry.type === "system" && entry.subtype === "turn_duration" && entry.durationMs) {
-          const turnTs = entry.timestamp
-            ? typeof entry.timestamp === "number"
-              ? new Date(entry.timestamp).toISOString()
-              : entry.timestamp
-            : null;
-          turnDurations.push({ durationMs: entry.durationMs, timestamp: turnTs });
+          turnDurations.push({ durationMs: entry.durationMs, timestamp: entryTs });
         }
 
         // Detect API errors in transcript: error responses from Claude API
         // (quota limits, rate limits, overloaded, auth errors, etc.)
-        const msg = entry.message || entry;
         if (msg.type === "error" && msg.error) {
           errors.push({
             type: msg.error.type || "unknown_error",
             message: msg.error.message || "Unknown API error",
-            timestamp: entry.timestamp || null,
+            timestamp: entryTs,
           });
           continue;
         }
@@ -222,9 +232,18 @@ class TranscriptCache {
           errors.push({
             type: entry.error || "unknown_error",
             message: errText,
-            timestamp: entry.timestamp || null,
+            timestamp: entryTs,
           });
           continue;
+        }
+
+        const assistantMarkdown = this._extractAssistantMarkdown(msg);
+        if (assistantMarkdown) {
+          assistantMessages.push({
+            id: entry.uuid || msg.id || `${assistantMessages.length + 1}`,
+            timestamp: entryTs,
+            markdown: assistantMarkdown,
+          });
         }
 
         const model = msg.model;
@@ -258,6 +277,7 @@ class TranscriptCache {
     const hasTokens = Object.keys(tokensByModel).length > 0;
     const hasErrors = errors.length > 0;
     const hasTurnDurations = turnDurations.length > 0;
+    const hasAssistantMessages = assistantMessages.length > 0;
     const hasUsageExtras =
       usageExtras.service_tiers.size > 0 ||
       usageExtras.speeds.size > 0 ||
@@ -267,6 +287,7 @@ class TranscriptCache {
       !compaction &&
       !hasErrors &&
       !hasTurnDurations &&
+      !hasAssistantMessages &&
       !thinkingBlockCount &&
       !hasUsageExtras
     )
@@ -285,6 +306,7 @@ class TranscriptCache {
       compaction,
       errors: hasErrors ? errors : null,
       turnDurations: hasTurnDurations ? turnDurations : null,
+      assistantMessages: hasAssistantMessages ? assistantMessages : null,
       thinkingBlockCount,
       usageExtras: serializedExtras,
     };
@@ -323,6 +345,12 @@ class TranscriptCache {
       turnDurations.push(...incremental.turnDurations);
     }
 
+    let assistantMessages = cached.assistantMessages ? [...cached.assistantMessages] : null;
+    if (incremental && incremental.assistantMessages) {
+      if (!assistantMessages) assistantMessages = [];
+      assistantMessages.push(...incremental.assistantMessages);
+    }
+
     const thinkingBlockCount =
       (cached.thinkingBlockCount || 0) + (incremental?.thinkingBlockCount || 0);
 
@@ -350,7 +378,15 @@ class TranscriptCache {
       };
     }
 
-    return { tokensByModel, compaction, errors, turnDurations, thinkingBlockCount, usageExtras };
+    return {
+      tokensByModel,
+      compaction,
+      errors,
+      turnDurations,
+      assistantMessages,
+      thinkingBlockCount,
+      usageExtras,
+    };
   }
 
   _cloneTokens(tokensByModel) {
@@ -374,6 +410,30 @@ class TranscriptCache {
       speeds: [...(extras.speeds || [])],
       inference_geos: [...(extras.inference_geos || [])],
     };
+  }
+
+  _cloneMessages(messages) {
+    if (!messages) return null;
+    return messages.map((message) => ({ ...message }));
+  }
+
+  _extractAssistantMarkdown(msg) {
+    if (!msg || msg.role !== "assistant") return null;
+
+    if (typeof msg.content === "string") {
+      const trimmed = msg.content.trim();
+      return trimmed || null;
+    }
+
+    if (!Array.isArray(msg.content)) return null;
+
+    const blocks = msg.content
+      .filter((block) => block?.type === "text" && typeof block.text === "string")
+      .map((block) => block.text.trim())
+      .filter(Boolean);
+
+    if (blocks.length === 0) return null;
+    return blocks.join("\n\n");
   }
 
   /** Set cache entry with LRU eviction when at capacity */

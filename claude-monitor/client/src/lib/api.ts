@@ -10,7 +10,9 @@ import type {
   CostResult,
   DashboardEvent,
   ModelPricing,
+  OpenSpecBoardData,
   Session,
+  SessionOutputs,
   SessionDrillIn,
   Stats,
   WorkflowData,
@@ -45,8 +47,12 @@ export const api = {
       return request<{ sessions: Session[] }>(`/sessions${q ? `?${q}` : ""}`);
     },
     get: (id: string) =>
-      request<{ session: Session; agents: Agent[]; events: DashboardEvent[] }>(
+      request<{ session: Session; agents: Agent[]; events: DashboardEvent[]; outputs: SessionOutputs }>(
         `/sessions/${encodeURIComponent(id)}`
+      ),
+    outputs: (id: string) =>
+      request<{ outputs: SessionOutputs }>(
+        `/sessions/${encodeURIComponent(id)}/outputs`
       ),
   },
 
@@ -118,6 +124,10 @@ export const api = {
       request<WorkflowData>(`/workflows${status && status !== "all" ? `?status=${status}` : ""}`),
     session: (id: string) =>
       request<SessionDrillIn>(`/workflows/session/${encodeURIComponent(id)}`),
+  },
+
+  openspec: {
+    list: () => request<OpenSpecBoardData>("/openspec/changes"),
   },
 
   pricing: {

@@ -79,6 +79,14 @@
   .divider {
     @apply border-t border-border;
   }
+
+  .markdown-output {
+    @apply space-y-4;
+  }
+
+  .markdown-output > * + * {
+    @apply mt-4;
+  }
 }
 
 /* Respect reduced-motion preferences */

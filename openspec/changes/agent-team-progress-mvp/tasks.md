@@ -25,4 +25,5 @@
 - [ ] 5.2 Redesign the shared shell (`App.tsx`, `Layout.tsx`, `Sidebar.tsx`, and global styles) into a dark industrial editorial structure that avoids default dashboard card stacks.
 - [ ] 5.3 Rebuild `Dashboard.tsx`, `Sessions.tsx`, `ActivityFeed.tsx`, and `SessionDetail.tsx` so each section serves one job and each page has one primary visual anchor.
 - [ ] 5.4 Bring remaining monitor pages into the same system without introducing extra accent colors, extra fonts, or decorative animations.
-- [ ] 5.5 Verify `pnpm --dir claude-monitor/client build` and `pnpm --dir claude-monitor/client test`, then manually confirm desktop/mobile responsiveness, reduced-motion behavior, and the visual constraints from the spec.
+- [x] 5.5 Add an `OpenSpec Board` page and supporting read-only monitor API so OpenSpec changes can be reviewed in a Kanban-style workflow view.
+- [ ] 5.6 Verify `pnpm --dir claude-monitor/client build`, `pnpm --dir claude-monitor/client test`, and `pnpm --dir claude-monitor/server test`, then manually confirm desktop/mobile responsiveness, reduced-motion behavior, and the visual constraints from the spec.

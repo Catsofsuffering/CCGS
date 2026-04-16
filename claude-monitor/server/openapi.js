@@ -63,6 +63,7 @@ function createOpenApiSpec() {
       { name: "Hooks", description: "Claude hook ingestion endpoint" },
       { name: "Pricing", description: "Model pricing and token cost calculations" },
       { name: "Workflows", description: "Workflow intelligence and session drill-in" },
+      { name: "OpenSpec", description: "Read-only OpenSpec change board data" },
       { name: "Settings", description: "Operational maintenance endpoints" },
       { name: "Documentation", description: "OpenAPI/Swagger endpoints" },
     ],
@@ -1382,6 +1383,100 @@ function createOpenApiSpec() {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/MessageErrorResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/openspec/changes": {
+        get: {
+          tags: ["OpenSpec"],
+          summary: "List OpenSpec changes for the board view",
+          operationId: "listOpenSpecChanges",
+          responses: {
+            200: {
+              description: "OpenSpec board payload",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["workspaceRoot", "stages", "changes"],
+                    properties: {
+                      workspaceRoot: { type: "string" },
+                      stages: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          required: ["id", "label", "count"],
+                          properties: {
+                            id: { type: "string" },
+                            label: { type: "string" },
+                            count: { type: "integer" },
+                          },
+                        },
+                      },
+                      changes: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          required: ["name", "status", "stage", "stageLabel", "artifacts"],
+                          properties: {
+                            name: { type: "string" },
+                            status: { type: "string" },
+                            stage: { type: "string" },
+                            stageLabel: { type: "string" },
+                            lastModified: { type: "string", format: "date-time", nullable: true },
+                            nextArtifact: { type: "string", nullable: true },
+                            readyToApply: { type: "boolean" },
+                            applyRequires: {
+                              type: "array",
+                              items: { type: "string" },
+                            },
+                            artifactSummary: {
+                              type: "object",
+                              properties: {
+                                done: { type: "integer" },
+                                total: { type: "integer" },
+                              },
+                            },
+                            taskProgress: {
+                              type: "object",
+                              properties: {
+                                completed: { type: "integer" },
+                                total: { type: "integer" },
+                                remaining: { type: "integer" },
+                                percent: { type: "integer" },
+                              },
+                            },
+                            completedTasks: { type: "integer" },
+                            totalTasks: { type: "integer" },
+                            changePath: { type: "string" },
+                            artifacts: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  id: { type: "string" },
+                                  outputPath: { type: "string" },
+                                  status: { type: "string" },
+                                  done: { type: "boolean" },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            503: {
+              description: "OpenSpec state unavailable",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
             },

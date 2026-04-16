@@ -361,6 +361,48 @@ describe("TranscriptCache", () => {
     assert.strictEqual(result.tokensByModel["m1"].input, 100);
   });
 
+  it("should extract assistant markdown messages", () => {
+    const file = path.join(tmpDir, "assistant.jsonl");
+    writeJsonl(file, [
+      {
+        type: "assistant",
+        uuid: "assistant-1",
+        timestamp: "2026-03-20T09:00:00.000Z",
+        message: {
+          role: "assistant",
+          content: [{ type: "thinking", thinking: "internal" }],
+          model: "claude-sonnet-4-20250514",
+          usage: { input_tokens: 10, output_tokens: 0 },
+        },
+      },
+      {
+        type: "assistant",
+        uuid: "assistant-2",
+        timestamp: "2026-03-20T09:00:05.000Z",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "# Heading" },
+            { type: "text", text: "- bullet" },
+          ],
+          model: "claude-sonnet-4-20250514",
+          usage: { input_tokens: 10, output_tokens: 20 },
+        },
+      },
+    ]);
+
+    const cache = new TranscriptCache();
+    const result = cache.extract(file);
+
+    assert.deepStrictEqual(result.assistantMessages, [
+      {
+        id: "assistant-2",
+        timestamp: "2026-03-20T09:00:05.000Z",
+        markdown: "# Heading\n\n- bullet",
+      },
+    ]);
+  });
+
   it("should evict oldest entries when exceeding maxEntries", () => {
     const cache = new TranscriptCache(3); // max 3 entries
     const files = [];

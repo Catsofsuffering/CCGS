@@ -235,6 +235,8 @@ export async function startClaudeMonitor(options?: {
       ...process.env,
       DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
       CLAUDE_DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
+      CCG_WORKSPACE_ROOT: process.cwd(),
+      OPENSPEC_WORKSPACE_ROOT: process.cwd(),
     },
     stdio: options?.detached ? 'ignore' : 'inherit',
     detached: options?.detached ?? false,

@@ -7,6 +7,7 @@ const { Router } = require("express");
 const { stmts, db } = require("../db");
 const { broadcast } = require("../websocket");
 const { calculateCost } = require("./pricing");
+const { getSessionOutputs } = require("../lib/session-outputs");
 
 const router = Router();
 
@@ -61,7 +62,18 @@ router.get("/:id", (req, res) => {
   }
   const agents = stmts.listAgentsBySession.all(req.params.id);
   const events = stmts.listEventsBySession.all(req.params.id);
-  res.json({ session, agents, events });
+  const outputs = getSessionOutputs(session, agents, events);
+  res.json({ session, agents, events, outputs });
+});
+
+router.get("/:id/outputs", (req, res) => {
+  const session = stmts.getSession.get(req.params.id);
+  if (!session) {
+    return res.status(404).json({ error: { code: "NOT_FOUND", message: "Session not found" } });
+  }
+  const agents = stmts.listAgentsBySession.all(req.params.id);
+  const events = stmts.listEventsBySession.all(req.params.id);
+  res.json({ outputs: getSessionOutputs(session, agents, events) });
 });
 
 router.post("/", (req, res) => {
