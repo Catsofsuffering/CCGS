@@ -1,6 +1,6 @@
 {
-  "name": "ccg-workflow",
-  "version": "2.1.18",
+  "name": "ccgs-workflow",
+  "version": "2.1.19",
   "description": "Codex-led OpenSpec workflow with Claude Agent Teams execution and local Claude hook monitoring",
   "type": "module",
   "packageManager": "pnpm@10.17.1",
@@ -19,12 +19,14 @@
     "workflow"
   ],
   "bin": {
+    "ccgs": "bin/ccgs.mjs",
     "ccg": "bin/ccg.mjs"
   },
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.mts",
   "files": [
+    "bin/ccgs.mjs",
     "bin/ccg.mjs",
     "claude-monitor/",
     "dist",
@@ -64,7 +66,7 @@
     "monitor:build": "npm --prefix claude-monitor/client run build",
     "monitor:start": "node claude-monitor/server/index.js",
     "monitor:test": "node --test claude-monitor/server/__tests__/*.test.js && npm --prefix claude-monitor/client run test",
-    "start": "node bin/ccg.mjs",
+    "start": "node bin/ccgs.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",

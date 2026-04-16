@@ -168,7 +168,7 @@ Specific style variant specs with CSS tokens and component patterns:
 
 ## Command System (20 Impeccable Commands)
 
-All commands are in `~/.claude/skills/ccg/impeccable/`. Each invokes this skill's guidelines first.
+All commands are in `~/.claude/skills/ccgs/impeccable/`. Each invokes this skill's guidelines first.
 
 ### Quality & Audit
 | Command | What it does |

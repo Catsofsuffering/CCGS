@@ -1,6 +1,6 @@
 # CCGS
 
-`ccg-workflow` 的 Codex 主控分支。
+`ccgs-workflow` 是当前原生的 Codex 主控工作流包。
 
 当前主路径已经收敛为：
 
@@ -14,29 +14,29 @@
 ## 主工作流
 
 ```bash
-/ccg:spec-init
-/ccg:spec-research <需求>
-/ccg:spec-plan
-/ccg:team-plan
-/ccg:team-exec
-/ccg:team-review
-/ccg:spec-review
+/ccgs:spec-init
+/ccgs:spec-research <需求>
+/ccgs:spec-plan
+/ccgs:team-plan
+/ccgs:team-exec
+/ccgs:team-review
+/ccgs:spec-review
 openspec archive <change-id>
 ```
 
 如果你希望从 Codex 里直接把 Claude 执行和最终验收串起来，可以使用：
 
 ```bash
-/ccg:spec-impl
+/ccgs:spec-impl
 ```
 
 ## Codex 原生入口
 
 安装后会把以下 skills 放到 `~/.codex/skills/`：
 
-- `ccg-spec-init`
-- `ccg-spec-plan`
-- `ccg-spec-impl`
+- `ccgs-spec-init`
+- `ccgs-spec-plan`
+- `ccgs-spec-impl`
 
 这意味着主路径可以直接从 Codex 启动，不需要把 Claude 作为宿主入口。
 
@@ -51,18 +51,18 @@ openspec archive <change-id>
 安装命令：
 
 ```bash
-npx ccg-workflow
+npx ccgs-workflow
 ```
 
 也可以显式执行：
 
 ```bash
-npx ccg-workflow init
-npx ccg-workflow menu
-npx ccg-workflow update
-npx ccg-workflow monitor install
-npx ccg-workflow monitor hooks
-npx ccg-workflow monitor start --detach
+npx ccgs-workflow init
+npx ccgs-workflow menu
+npx ccgs-workflow update
+npx ccgs-workflow monitor install
+npx ccgs-workflow monitor hooks
+npx ccgs-workflow monitor start --detach
 ```
 
 ## 安装结果
@@ -71,7 +71,7 @@ npx ccg-workflow monitor start --detach
 
 - Claude 侧命令、prompts、rules、skills 到 `~/.claude/`
 - Codex 原生 workflow skills 到 `~/.codex/skills/`
-- Claude monitor 到 `~/.claude/.ccg/claude-monitor`
+- Claude monitor 到 `~/.claude/.ccgs/claude-monitor`
 - Claude hooks 写入 `~/.claude/settings.json`
 
 当前维护的本地监控面板是 Claude hook monitor。

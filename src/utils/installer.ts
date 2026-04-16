@@ -12,6 +12,16 @@ import {
   WORKFLOW_PRESETS,
 } from './installer-data'
 import {
+  ALL_CODEX_SKILL_NAMES,
+  ALL_RULE_FILES,
+  CANONICAL_CODEX_SKILL_NAMES,
+  CANONICAL_NAMESPACE,
+  CANONICAL_RUNTIME_DIRNAME,
+  CANONICAL_RULE_FILES,
+  LEGACY_NAMESPACE,
+  LEGACY_RUNTIME_DIRNAME,
+} from './identity'
+import {
   injectConfigVariables,
   PACKAGE_ROOT,
   replaceHomePathsInTemplate,
@@ -79,12 +89,6 @@ interface InstallContext {
   result: InstallResult
 }
 
-const CODEX_WORKFLOW_SKILLS = [
-  'ccg-spec-init',
-  'ccg-spec-plan',
-  'ccg-spec-impl',
-] as const
-
 function routingUsesGemini(routing: InstallConfig['routing']): boolean {
   return [
     ...(routing.frontend?.models || []),
@@ -101,7 +105,7 @@ async function copyMdTemplates(
 ): Promise<string[]> {
   const installed: string[] = []
   if (!(await fs.pathExists(srcDir))) {
-    console.error(`[CCG] Template source directory not found: ${srcDir}`)
+    console.error(`[CCGS] Template source directory not found: ${srcDir}`)
     return installed
   }
 
@@ -126,7 +130,7 @@ async function copyMdTemplates(
 }
 
 async function installCommandFiles(ctx: InstallContext, workflowIds: string[]): Promise<void> {
-  const commandsDir = join(ctx.installDir, 'commands', 'ccg')
+  const commandsDir = join(ctx.installDir, 'commands', CANONICAL_NAMESPACE)
   await fs.ensureDir(commandsDir)
 
   for (const workflowId of workflowIds) {
@@ -170,7 +174,7 @@ async function installAgentFiles(ctx: InstallContext): Promise<void> {
     await copyMdTemplates(
       ctx,
       join(ctx.templateDir, 'commands', 'agents'),
-      join(ctx.installDir, 'agents', 'ccg'),
+      join(ctx.installDir, 'agents', CANONICAL_NAMESPACE),
       { inject: true },
     )
   }
@@ -182,7 +186,7 @@ async function installAgentFiles(ctx: InstallContext): Promise<void> {
 
 async function installPromptFiles(ctx: InstallContext): Promise<void> {
   const promptsTemplateDir = join(ctx.templateDir, 'prompts')
-  const promptsDir = join(ctx.installDir, '.ccg', 'prompts')
+  const promptsDir = join(ctx.installDir, CANONICAL_RUNTIME_DIRNAME, 'prompts')
   if (!(await fs.pathExists(promptsTemplateDir))) {
     ctx.result.errors.push(`Prompts template directory not found: ${promptsTemplateDir}`)
     ctx.result.success = false
@@ -226,7 +230,7 @@ async function collectSkillNames(dir: string, depth = 0): Promise<string[]> {
   catch (error) {
     const code = (error as NodeJS.ErrnoException).code
     if (code !== 'ENOENT')
-      console.error(`[CCG] Failed to read skills directory ${dir}: ${code || error}`)
+      console.error(`[CCGS] Failed to read skills directory ${dir}: ${code || error}`)
   }
   return names
 }
@@ -243,7 +247,7 @@ async function removeDirCollectMdNames(dir: string): Promise<string[]> {
 
 async function installSkillFiles(ctx: InstallContext): Promise<void> {
   const skillsTemplateDir = join(ctx.templateDir, 'skills')
-  const skillsDestDir = join(ctx.installDir, 'skills', 'ccg')
+  const skillsDestDir = join(ctx.installDir, 'skills', CANONICAL_NAMESPACE)
 
   if (!(await fs.pathExists(skillsTemplateDir))) {
     ctx.result.errors.push(`Skills template directory not found: ${skillsTemplateDir}`)
@@ -323,7 +327,7 @@ async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
     await fs.ensureDir(codexSkillsDir)
     const installed: string[] = []
 
-    for (const skillName of CODEX_WORKFLOW_SKILLS) {
+    for (const skillName of CANONICAL_CODEX_SKILL_NAMES) {
       const srcDir = join(skillsTemplateDir, skillName)
       const skillFile = join(srcDir, 'SKILL.md')
       if (!(await fs.pathExists(skillFile))) {
@@ -351,8 +355,8 @@ async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
 
 async function installSkillGeneratedCommands(ctx: InstallContext): Promise<void> {
   const skillsTemplateDir = join(ctx.templateDir, 'skills')
-  const skillsInstallDir = join(ctx.installDir, 'skills', 'ccg')
-  const commandsDir = join(ctx.installDir, 'commands', 'ccg')
+  const skillsInstallDir = join(ctx.installDir, 'skills', CANONICAL_NAMESPACE)
+  const commandsDir = join(ctx.installDir, 'commands', CANONICAL_NAMESPACE)
 
   if (!(await fs.pathExists(skillsTemplateDir)))
     return
@@ -394,6 +398,11 @@ async function installRuleFiles(ctx: InstallContext): Promise<void> {
       join(ctx.templateDir, 'rules'),
       join(ctx.installDir, 'rules'),
     )
+    for (const legacyRuleFile of ALL_RULE_FILES.filter(ruleFile => !CANONICAL_RULE_FILES.includes(ruleFile as typeof CANONICAL_RULE_FILES[number]))) {
+      const legacyRulePath = join(ctx.installDir, 'rules', legacyRuleFile)
+      if (await fs.pathExists(legacyRulePath))
+        await fs.remove(legacyRulePath)
+    }
     if (installed.length > 0)
       ctx.result.installedRules = true
   }
@@ -455,8 +464,8 @@ export async function installWorkflows(
     return ctx.result
   }
 
-  await fs.ensureDir(join(installDir, 'commands', 'ccg'))
-  await fs.ensureDir(join(installDir, '.ccg', 'prompts'))
+  await fs.ensureDir(join(installDir, 'commands', CANONICAL_NAMESPACE))
+  await fs.ensureDir(join(installDir, CANONICAL_RUNTIME_DIRNAME, 'prompts'))
 
   await installCommandFiles(ctx, workflowIds)
   await installAgentFiles(ctx)
@@ -480,7 +489,7 @@ export async function installWorkflows(
     ctx.result.success = false
   }
 
-  ctx.result.configPath = join(installDir, 'commands', 'ccg')
+  ctx.result.configPath = join(installDir, 'commands', CANONICAL_NAMESPACE)
   return ctx.result
 }
 
@@ -510,41 +519,59 @@ export async function uninstallWorkflows(
     errors: [],
   }
 
-  const commandsDir = join(installDir, 'commands', 'ccg')
-  const agentsDir = join(installDir, 'agents', 'ccg')
-  const skillsDir = join(installDir, 'skills', 'ccg')
+  const commandsDirs = [
+    join(installDir, 'commands', CANONICAL_NAMESPACE),
+    join(installDir, 'commands', LEGACY_NAMESPACE),
+  ]
+  const agentsDirs = [
+    join(installDir, 'agents', CANONICAL_NAMESPACE),
+    join(installDir, 'agents', LEGACY_NAMESPACE),
+  ]
+  const skillsDirs = [
+    join(installDir, 'skills', CANONICAL_NAMESPACE),
+    join(installDir, 'skills', LEGACY_NAMESPACE),
+  ]
   const rulesDir = join(installDir, 'rules')
-  const ccgConfigDir = join(installDir, '.ccg')
+  const runtimeDirs = [
+    join(installDir, CANONICAL_RUNTIME_DIRNAME),
+    join(installDir, LEGACY_RUNTIME_DIRNAME),
+  ]
   const codexSkillsDir = join(options?.codexHomeDir || join(homedir(), '.codex'), 'skills')
 
-  try {
-    result.removedCommands = await removeDirCollectMdNames(commandsDir)
-  }
-  catch (error) {
-    result.errors.push(`Failed to remove commands directory: ${error}`)
-    result.success = false
-  }
-
-  try {
-    result.removedAgents = await removeDirCollectMdNames(agentsDir)
-  }
-  catch (error) {
-    result.errors.push(`Failed to remove agents directory: ${error}`)
-    result.success = false
-  }
-
-  if (await fs.pathExists(skillsDir)) {
+  for (const commandsDir of commandsDirs) {
     try {
-      result.removedSkills = await collectSkillNames(skillsDir)
-      await fs.remove(skillsDir)
+      result.removedCommands.push(...await removeDirCollectMdNames(commandsDir))
     }
     catch (error) {
-      result.errors.push(`Failed to remove skills: ${error}`)
+      result.errors.push(`Failed to remove commands directory ${commandsDir}: ${error}`)
       result.success = false
     }
   }
 
-  for (const skillName of CODEX_WORKFLOW_SKILLS) {
+  for (const agentsDir of agentsDirs) {
+    try {
+      result.removedAgents.push(...await removeDirCollectMdNames(agentsDir))
+    }
+    catch (error) {
+      result.errors.push(`Failed to remove agents directory ${agentsDir}: ${error}`)
+      result.success = false
+    }
+  }
+
+  for (const skillsDir of skillsDirs) {
+    if (await fs.pathExists(skillsDir)) {
+      try {
+        result.removedSkills.push(...await collectSkillNames(skillsDir))
+        await fs.remove(skillsDir)
+      }
+      catch (error) {
+        result.errors.push(`Failed to remove skills ${skillsDir}: ${error}`)
+        result.success = false
+      }
+    }
+  }
+
+  for (const skillName of ALL_CODEX_SKILL_NAMES) {
     const skillDir = join(codexSkillsDir, skillName)
     try {
       if (await fs.pathExists(skillDir)) {
@@ -560,7 +587,7 @@ export async function uninstallWorkflows(
 
   if (await fs.pathExists(rulesDir)) {
     try {
-      for (const ruleFile of ['ccg-skills.md', 'ccg-grok-search.md', 'ccg-skill-routing.md']) {
+      for (const ruleFile of ALL_RULE_FILES) {
         const rulePath = join(rulesDir, ruleFile)
         if (await fs.pathExists(rulePath)) {
           await fs.remove(rulePath)
@@ -574,14 +601,16 @@ export async function uninstallWorkflows(
     }
   }
 
-  if (await fs.pathExists(ccgConfigDir)) {
-    try {
-      await fs.remove(ccgConfigDir)
-      result.removedPrompts.push('ALL_PROMPTS_AND_CONFIGS')
-    }
-    catch (error) {
-      result.errors.push(`Failed to remove .ccg directory: ${error}`)
-      result.success = false
+  for (const runtimeDir of runtimeDirs) {
+    if (await fs.pathExists(runtimeDir)) {
+      try {
+        await fs.remove(runtimeDir)
+        result.removedPrompts.push(basename(runtimeDir))
+      }
+      catch (error) {
+        result.errors.push(`Failed to remove runtime directory ${runtimeDir}: ${error}`)
+        result.success = false
+      }
     }
   }
 

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/ccg-workflow.svg)](https://www.npmjs.com/package/ccg-workflow)
+[![npm version](https://img.shields.io/npm/v/ccgs-workflow.svg)](https://www.npmjs.com/package/ccgs-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Primary Path](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
 
@@ -10,7 +10,7 @@
 
 </div>
 
-CCGS is the Codex-led fork of `ccg-workflow`. In this fork, the extra `S` stands for `Spec`: OpenSpec is the backbone, Codex owns workflow progression, Claude Agent Teams handle bounded execution, and Codex performs review, testing, acceptance, and archive decisions.
+CCGS is the native Codex-led workflow package. The extra `S` stands for `Spec`: OpenSpec is the backbone, Codex owns workflow progression, Claude Agent Teams handle bounded execution, and Codex performs review, testing, acceptance, and archive decisions.
 
 This repository no longer uses the upstream README as its product story. Upstream compatibility remains valuable, but the maintained default path in this fork is:
 
@@ -32,25 +32,25 @@ This repository no longer uses the upstream README as its product story. Upstrea
 The recommended end-to-end flow is:
 
 ```bash
-/ccg:spec-init
-/ccg:spec-research <request>
-/ccg:spec-plan
-/ccg:team-plan
-/ccg:team-exec
-/ccg:team-review
-/ccg:spec-review
+/ccgs:spec-init
+/ccgs:spec-research <request>
+/ccgs:spec-plan
+/ccgs:team-plan
+/ccgs:team-exec
+/ccgs:team-review
+/ccgs:spec-review
 openspec archive <change-id>
 ```
 
-`/ccg:spec-impl` is the managed shortcut when you want Codex to dispatch Claude execution and keep acceptance inside the same Codex-led loop.
+`/ccgs:spec-impl` is the managed shortcut when you want Codex to dispatch Claude execution and keep acceptance inside the same Codex-led loop.
 
 ## Codex-Native Entrypoint
 
 After install, CCGS also places Codex-native skills under `~/.codex/skills/`:
 
-- `ccg-spec-init`
-- `ccg-spec-plan`
-- `ccg-spec-impl`
+- `ccgs-spec-init`
+- `ccgs-spec-plan`
+- `ccgs-spec-impl`
 
 That means the maintained path can start directly inside Codex instead of relying on Claude as the shell host.
 
@@ -71,16 +71,16 @@ Optional:
 ### Install
 
 ```bash
-npx ccg-workflow
+npx ccgs-workflow
 ``` 
 
 You can also run:
 
 ```bash
-npx ccg-workflow init
-npx ccg-workflow monitor
-npx ccg-workflow menu
-npx ccg-workflow update
+npx ccgs-workflow init
+npx ccgs-workflow monitor
+npx ccgs-workflow menu
+npx ccgs-workflow update
 ```
 
 During setup, the installer asks who orchestrates the workspace before frontend/backend model selection. Codex is the recommended default, but Claude can still be selected for compatibility.
@@ -91,9 +91,19 @@ Current install behavior keeps compatibility with existing environments:
 
 - Claude-facing commands and assets are installed under `~/.claude/`
 - Codex-native workflow skills are installed under `~/.codex/skills/`
-- Workflow configuration is stored under `~/.claude/.ccg/`
-- The Claude hook monitor is installed under `~/.claude/.ccg/claude-monitor`
+- Workflow configuration is stored under `~/.claude/.ccgs/`
+- The Claude hook monitor is installed under `~/.claude/.ccgs/claude-monitor`
 - Claude hook entries are written into `~/.claude/settings.json`
+
+## Compatibility Policy
+
+`ccgs` is the canonical maintained namespace. The remaining `ccg` surfaces exist only as migration bridges:
+
+- package and binary aliases such as `ccg-workflow` and `ccg`
+- pre-existing runtime directories such as `~/.claude/.ccg/`
+- pre-existing installed assets under `commands/ccg`, `agents/ccg`, `skills/ccg`, and older Codex workflow skill names
+
+New installs write canonical assets under `ccgs` and `.ccgs`. Existing `ccg` assets are detected, migrated, or read as compatibility inputs when needed, but they are no longer the maintained default path.
 
 ## Repository Landmarks
 

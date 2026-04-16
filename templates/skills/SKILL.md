@@ -1,5 +1,5 @@
 ---
-name: ccg-skills
+name: ccgs-skills
 description: CCG Skills - Quality gates, documentation generator, and multi-agent orchestration. Auto-installed by CCG workflow system.
 license: MIT
 user-invocable: false
@@ -59,14 +59,14 @@ Refactoring:    refactor → /verify-change → /verify-quality → /verify-secu
 
 ```bash
 # Unified runner
-node ~/.claude/skills/ccg/run_skill.js <skill-name> [args...]
+node ~/.claude/skills/ccgs/run_skill.js <skill-name> [args...]
 
 # Examples
-node ~/.claude/skills/ccg/run_skill.js verify-security ./src
-node ~/.claude/skills/ccg/run_skill.js verify-quality ./src -v
-node ~/.claude/skills/ccg/run_skill.js verify-change --mode staged
-node ~/.claude/skills/ccg/run_skill.js verify-module ./my-module
-node ~/.claude/skills/ccg/run_skill.js gen-docs ./new-module --force
+node ~/.claude/skills/ccgs/run_skill.js verify-security ./src
+node ~/.claude/skills/ccgs/run_skill.js verify-quality ./src -v
+node ~/.claude/skills/ccgs/run_skill.js verify-change --mode staged
+node ~/.claude/skills/ccgs/run_skill.js verify-module ./my-module
+node ~/.claude/skills/ccgs/run_skill.js gen-docs ./new-module --force
 ```
 
 ---
@@ -88,5 +88,5 @@ Provides:
 
 ## Installed by CCG
 
-These skills are automatically installed during `npx ccg-workflow` initialization.
-To update: run `npx ccg-workflow update` or `npx ccg-workflow` again.
+These skills are automatically installed during `npx ccgs-workflow` initialization.
+To update: run `npx ccgs-workflow update` or `npx ccgs-workflow` again.

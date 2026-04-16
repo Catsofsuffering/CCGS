@@ -18,7 +18,7 @@ Use MCP when you want better codebase retrieval or library documentation lookup 
 Open the interactive setup:
 
 ```bash
-npx ccg-workflow menu
+npx ccgs-workflow menu
 ```
 
 Then choose `Configure MCP`.

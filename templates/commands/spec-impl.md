@@ -10,7 +10,7 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
 **Guardrails**
 - 不直接把外部模型输出当成最终实现。
 - 不在验收通过前 archive。
-- 当建议下一步时，始终使用 `/ccg:*` 命令。
+- 当建议下一步时，始终使用 `/ccgs:*` 命令。
 - `tasks.md` 必须持续保持 checkbox 格式。
 
 **Steps**
@@ -21,7 +21,7 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
 
 2. 进入实现前检查
    - 内部调用 `/opsx:apply` 进入实现上下文。
-   - 若 state 为 `blocked` 或 tasks 不可解析，停止并提示重新运行 `/ccg:spec-plan`。
+   - 若 state 为 `blocked` 或 tasks 不可解析，停止并提示重新运行 `/ccgs:spec-plan`。
 
 3. 读取执行契约
    - 读取 `proposal.md`、`design.md`、`tasks.md`、`specs/**/*.md`。
@@ -33,8 +33,8 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
      - rework triggers
 
 4. 调度 Claude 执行
-   - 如果还没有执行计划，先运行 `/ccg:team-plan`，基于 handoff contract 生成 Claude Agent Teams 计划。
-   - 然后运行 `/ccg:team-exec` 让 Claude Agent Teams 干活。
+   - 如果还没有执行计划，先运行 `/ccgs:team-plan`，基于 handoff contract 生成 Claude Agent Teams 计划。
+   - 然后运行 `/ccgs:team-exec` 让 Claude Agent Teams 干活。
    - Claude 返回后，必须回收一份 return packet，至少包含：
      - changed files
      - tests run
@@ -44,7 +44,7 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
 5. Codex 进行验收
    - 基于 return packet、自身代码审查和本地验证做验收。
    - 运行 handoff contract 里要求的测试/检查。
-   - 必要时运行 `/ccg:spec-review` 作为独立验收门禁。
+   - 必要时运行 `/ccgs:spec-review` 作为独立验收门禁。
 
 6. 失败时打回
    - 若出现任一情况，必须打回执行层：
@@ -57,7 +57,7 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
      - violated constraints
      - files requiring rework
      - specific return conditions
-   - 指示下一步：`/ccg:team-exec` 或 `/ccg:spec-impl`
+   - 指示下一步：`/ccgs:team-exec` 或 `/ccgs:spec-impl`
 
 7. 通过时归档
    - 仅当 Codex 验收通过时，才允许 archive。
@@ -86,7 +86,7 @@ description: 'Codex 调度 Claude 执行，并在通过验收后决定 archive'
 - file scope: ...
 - required fix: ...
 
-Next: /ccg:team-exec
+Next: /ccgs:team-exec
 ```
 
 **Exit Criteria**

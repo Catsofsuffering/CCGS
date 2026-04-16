@@ -8,17 +8,18 @@ import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { prepareClaudeMonitorRuntime } from '../utils/claude-monitor'
+import { CANONICAL_NAMESPACE, CANONICAL_RULE_FILES, PRODUCT_NAME, getCanonicalNpxLatestCommand } from '../utils/identity'
 import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 
 /**
- * Write grok-search global prompt to ~/.claude/rules/ccg-grok-search.md
+ * Write grok-search global prompt to ~/.claude/rules/ccgs-grok-search.md
  * Uses rules/ directory for modularity — avoids bloating CLAUDE.md
  */
 async function appendGrokSearchPrompt(): Promise<void> {
   const rulesDir = join(homedir(), '.claude', 'rules')
-  const rulePath = join(rulesDir, 'ccg-grok-search.md')
+  const rulePath = join(rulesDir, CANONICAL_RULE_FILES[2])
 
   // Also clean up legacy CLAUDE.md injection if present
   const claudeMdPath = join(homedir(), '.claude', 'CLAUDE.md')
@@ -99,7 +100,7 @@ async function installGrokSearchMcp(keys: {
 
 export async function init(options: InitOptions = {}): Promise<void> {
   console.log()
-  console.log(ansis.cyan.bold(`  CCG - Codex Orchestrated Workflow`))
+  console.log(ansis.cyan.bold(`  ${PRODUCT_NAME} - Codex Orchestrated Workflow`))
   console.log(ansis.gray(`  Codex plans and accepts, Claude executes`))
   console.log()
 
@@ -750,11 +751,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
       })
 
       if (grokResult.success) {
-        // Write global prompt to ~/.claude/rules/ccg-grok-search.md
+        // Write global prompt to ~/.claude/rules/ccgs-grok-search.md
         await appendGrokSearchPrompt()
         console.log()
         console.log(`    ${ansis.green('✓')} grok-search MCP ${ansis.gray('→ ~/.claude.json')}`)
-        console.log(`    ${ansis.green('✓')} ${i18n.t('init:grok.promptAppended')} ${ansis.gray('→ ~/.claude/rules/ccg-grok-search.md')}`)
+        console.log(`    ${ansis.green('✓')} ${i18n.t('init:grok.promptAppended')} ${ansis.gray(`→ ~/.claude/rules/${CANONICAL_RULE_FILES[2]}`)}`)
       }
       else {
         console.log()
@@ -818,7 +819,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
     console.log()
     console.log(ansis.cyan(`  ${i18n.t('init:installedCommands')}`))
     result.installedCommands.forEach((cmd) => {
-      console.log(`    ${ansis.green('✓')} /ccg:${cmd}`)
+      console.log(`    ${ansis.green('✓')} /${CANONICAL_NAMESPACE}:${cmd}`)
     })
 
     // Show installed prompts
@@ -860,7 +861,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log()
       console.log(ansis.cyan('  Rules:'))
       console.log(`    ${ansis.green('✓')} quality gate auto-trigger rules`)
-      console.log(ansis.gray('       → ~/.claude/rules/ccg-skills.md'))
+      console.log(ansis.gray(`       → ~/.claude/rules/${CANONICAL_RULE_FILES[0]}`))
     }
 
     // Show errors if any
@@ -881,7 +882,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if (!result.success) {
         console.log()
         console.log(ansis.yellow(`  尝试修复 / Try to fix:`))
-        console.log(ansis.cyan(`    npx ccg-workflow@latest init --force`))
+        console.log(ansis.cyan(`    ${getCanonicalNpxLatestCommand(['init', '--force'])}`))
         console.log(ansis.gray(`    如仍失败，请提交 issue 并附上以上错误信息`))
         console.log(ansis.gray(`    If still failing, report an issue with the errors above`))
       }

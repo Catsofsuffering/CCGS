@@ -2,6 +2,10 @@ import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import fs from 'fs-extra'
 import { dirname, join } from 'pathe'
+import {
+  CANONICAL_RUNTIME_DIRNAME,
+  LEGACY_RUNTIME_DIRNAME,
+} from './identity'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -19,7 +23,7 @@ function findPackageRoot(startDir: string): string {
   }
 
   console.error(
-    `[CCG] PACKAGE_ROOT resolution failed.\n`
+    `[CCGS] PACKAGE_ROOT resolution failed.\n`
     + `  Start dir: ${startDir}\n`
     + `  Last checked: ${dir}\n`
     + `  The package must contain both package.json and templates/.`,
@@ -76,9 +80,9 @@ export function injectConfigVariables(content: string, config: {
     processed = processed.replace(/,\s*\{\{MCP_SEARCH_TOOL\}\}/g, '')
     processed = processed.replace(
       /```\n\{\{MCP_SEARCH_TOOL\}\}[\s\S]*?\n```/g,
-      '> MCP 未配置。使用 `Glob` 定位文件 + `Grep` 搜索关键符号 + `Read` 读取文件内容。',
+      '> MCP is not configured. Use `Glob` to locate files, `Grep` to search symbols, and `Read` to inspect file content.',
     )
-    processed = processed.replace(/`\{\{MCP_SEARCH_TOOL\}\}`/g, '`Glob + Grep`（MCP 未配置）')
+    processed = processed.replace(/`\{\{MCP_SEARCH_TOOL\}\}`/g, '`Glob + Grep` (MCP not configured)')
     processed = processed.replace(/\{\{MCP_SEARCH_TOOL\}\}/g, 'Glob + Grep')
     processed = processed.replace(/\{\{MCP_SEARCH_PARAM\}\}/g, '')
     return processed
@@ -92,15 +96,21 @@ export function injectConfigVariables(content: string, config: {
 
 export function replaceHomePathsInTemplate(content: string, installDir: string): string {
   const userHome = homedir()
-  const ccgDir = join(installDir, '.ccg')
+  const canonicalRuntimeDir = join(installDir, CANONICAL_RUNTIME_DIRNAME)
+  const legacyRuntimeDir = join(installDir, LEGACY_RUNTIME_DIRNAME)
   const hostDir = installDir
   const toForwardSlash = (path: string) => path.replace(/\\/g, '/')
 
   let processed = content
-  processed = processed.replace(/~\/\.claude\/\.ccg/g, toForwardSlash(ccgDir))
-  processed = processed.replace(/~\/\.codex\/\.ccg/g, toForwardSlash(ccgDir))
+  processed = processed.replace(/~\/\.claude\/\.ccgs/g, toForwardSlash(canonicalRuntimeDir))
+  processed = processed.replace(/~\/\.claude\/\.ccg/g, toForwardSlash(canonicalRuntimeDir))
+  processed = processed.replace(/~\/\.codex\/\.ccgs/g, toForwardSlash(canonicalRuntimeDir))
+  processed = processed.replace(/~\/\.codex\/\.ccg/g, toForwardSlash(canonicalRuntimeDir))
+  processed = processed.replace(/\.\.\/\.ccgs/g, '../.ccgs')
+  processed = processed.replace(/\.\.\/\.ccg/g, '../.ccgs')
   processed = processed.replace(/~\/\.claude/g, toForwardSlash(hostDir))
   processed = processed.replace(/~\/\.codex/g, toForwardSlash(hostDir))
   processed = processed.replace(/~\//g, `${toForwardSlash(userHome)}/`)
+  processed = processed.replace(new RegExp(toForwardSlash(legacyRuntimeDir), 'g'), toForwardSlash(canonicalRuntimeDir))
   return processed
 }

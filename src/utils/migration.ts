@@ -1,11 +1,21 @@
 /**
- * Migration utilities for v1.4.0
- * Handles automatic migration from old directory structure to new one
+ * Migration utilities for v1.4.0+
+ * Handles migration from legacy ccg-owned runtime/layout paths to canonical ccgs-owned paths.
  */
 
 import fs from 'fs-extra'
 import { homedir } from 'node:os'
-import { join } from 'pathe'
+import { dirname, join } from 'pathe'
+import {
+  CANONICAL_CODEX_SKILL_NAMES,
+  CANONICAL_NAMESPACE,
+  CANONICAL_RULE_FILES,
+  CANONICAL_RUNTIME_DIRNAME,
+  LEGACY_CODEX_SKILL_NAMES,
+  LEGACY_NAMESPACE,
+  LEGACY_RULE_FILES,
+  LEGACY_RUNTIME_DIRNAME,
+} from './identity'
 
 export interface MigrationResult {
   success: boolean
@@ -14,13 +24,33 @@ export interface MigrationResult {
   skipped: string[]
 }
 
-/**
- * Migrate from v1.3.x to v1.4.0
- *
- * Changes:
- * 1. ~/.ccg/ → ~/.claude/.ccg/
- * 2. ~/.claude/prompts/ccg/ → ~/.claude/.ccg/prompts/
- */
+async function copyIfMissing(
+  source: string,
+  target: string,
+  label: string,
+  result: MigrationResult,
+): Promise<void> {
+  if (!await fs.pathExists(source)) {
+    result.skipped.push(`${label} (does not exist)`)
+    return
+  }
+
+  if (await fs.pathExists(target)) {
+    result.skipped.push(`${label} (canonical target already exists)`)
+    return
+  }
+
+  try {
+    await fs.ensureDir(dirname(target))
+    await fs.copy(source, target)
+    result.migratedFiles.push(`${label} -> ${target}`)
+  }
+  catch (error) {
+    result.errors.push(`Failed to migrate ${label}: ${error}`)
+    result.success = false
+  }
+}
+
 export async function migrateToV1_4_0(): Promise<MigrationResult> {
   const result: MigrationResult = {
     success: true,
@@ -29,90 +59,54 @@ export async function migrateToV1_4_0(): Promise<MigrationResult> {
     skipped: [],
   }
 
-  const oldCcgDir = join(homedir(), '.ccg')
-  const newCcgDir = join(homedir(), '.claude', '.ccg')
-  const oldPromptsDir = join(homedir(), '.claude', 'prompts', 'ccg')
-  const newPromptsDir = join(newCcgDir, 'prompts')
+  const claudeDir = join(homedir(), '.claude')
+  const codexSkillsDir = join(homedir(), '.codex', 'skills')
+  const canonicalRuntimeDir = join(claudeDir, CANONICAL_RUNTIME_DIRNAME)
 
   try {
-    // Ensure new config directory exists
-    await fs.ensureDir(newCcgDir)
+    await copyIfMissing(join(homedir(), '.ccg'), canonicalRuntimeDir, '~/.ccg', result)
+    await copyIfMissing(join(claudeDir, LEGACY_RUNTIME_DIRNAME), canonicalRuntimeDir, `~/.claude/${LEGACY_RUNTIME_DIRNAME}`, result)
+    await copyIfMissing(
+      join(claudeDir, 'prompts', LEGACY_NAMESPACE),
+      join(canonicalRuntimeDir, 'prompts'),
+      `~/.claude/prompts/${LEGACY_NAMESPACE}`,
+      result,
+    )
+    await copyIfMissing(
+      join(claudeDir, 'commands', LEGACY_NAMESPACE),
+      join(claudeDir, 'commands', CANONICAL_NAMESPACE),
+      `~/.claude/commands/${LEGACY_NAMESPACE}`,
+      result,
+    )
+    await copyIfMissing(
+      join(claudeDir, 'agents', LEGACY_NAMESPACE),
+      join(claudeDir, 'agents', CANONICAL_NAMESPACE),
+      `~/.claude/agents/${LEGACY_NAMESPACE}`,
+      result,
+    )
+    await copyIfMissing(
+      join(claudeDir, 'skills', LEGACY_NAMESPACE),
+      join(claudeDir, 'skills', CANONICAL_NAMESPACE),
+      `~/.claude/skills/${LEGACY_NAMESPACE}`,
+      result,
+    )
 
-    // 1. Migrate ~/.ccg/ → ~/.claude/.ccg/
-    if (await fs.pathExists(oldCcgDir)) {
-      const files = await fs.readdir(oldCcgDir)
-      for (const file of files) {
-        const srcFile = join(oldCcgDir, file)
-        const destFile = join(newCcgDir, file)
-
-        try {
-          // Skip if destination already exists (don't overwrite)
-          if (await fs.pathExists(destFile)) {
-            result.skipped.push(`~/.ccg/${file} (already exists in new location)`)
-            continue
-          }
-
-          // Copy file or directory
-          await fs.copy(srcFile, destFile)
-          result.migratedFiles.push(`~/.ccg/${file} → ~/.claude/.ccg/${file}`)
-        }
-        catch (error) {
-          result.errors.push(`Failed to migrate ${file}: ${error}`)
-          result.success = false
-        }
-      }
-
-      // Remove old directory (only if migration succeeded and it's empty)
-      try {
-        const remaining = await fs.readdir(oldCcgDir)
-        if (remaining.length === 0) {
-          await fs.remove(oldCcgDir)
-          result.migratedFiles.push('Removed old ~/.ccg/ directory')
-        }
-        else {
-          result.skipped.push(`~/.ccg/ (not empty, keeping for safety)`)
-        }
-      }
-      catch (error) {
-        // It's okay if we can't remove the old directory
-        result.skipped.push(`~/.ccg/ (could not remove: ${error})`)
-      }
-    }
-    else {
-      result.skipped.push('~/.ccg/ (does not exist, nothing to migrate)')
+    for (let i = 0; i < LEGACY_RULE_FILES.length; i++) {
+      await copyIfMissing(
+        join(claudeDir, 'rules', LEGACY_RULE_FILES[i]),
+        join(claudeDir, 'rules', CANONICAL_RULE_FILES[i]),
+        `~/.claude/rules/${LEGACY_RULE_FILES[i]}`,
+        result,
+      )
     }
 
-    // 2. Migrate ~/.claude/prompts/ccg/ → ~/.claude/.ccg/prompts/
-    if (await fs.pathExists(oldPromptsDir)) {
-      try {
-        // Skip if destination already exists
-        if (await fs.pathExists(newPromptsDir)) {
-          result.skipped.push('~/.claude/prompts/ccg/ (already exists in new location)')
-        }
-        else {
-          await fs.copy(oldPromptsDir, newPromptsDir)
-          result.migratedFiles.push('~/.claude/prompts/ccg/ → ~/.claude/.ccg/prompts/')
-
-          // Remove old directory
-          await fs.remove(oldPromptsDir)
-          result.migratedFiles.push('Removed old ~/.claude/prompts/ccg/ directory')
-
-          // Try to remove parent directory if empty
-          const promptsParentDir = join(homedir(), '.claude', 'prompts')
-          const remaining = await fs.readdir(promptsParentDir)
-          if (remaining.length === 0) {
-            await fs.remove(promptsParentDir)
-            result.migratedFiles.push('Removed empty ~/.claude/prompts/ directory')
-          }
-        }
-      }
-      catch (error) {
-        result.errors.push(`Failed to migrate prompts: ${error}`)
-        result.success = false
-      }
-    }
-    else {
-      result.skipped.push('~/.claude/prompts/ccg/ (does not exist, nothing to migrate)')
+    for (let i = 0; i < LEGACY_CODEX_SKILL_NAMES.length; i++) {
+      await copyIfMissing(
+        join(codexSkillsDir, LEGACY_CODEX_SKILL_NAMES[i]),
+        join(codexSkillsDir, CANONICAL_CODEX_SKILL_NAMES[i]),
+        `~/.codex/skills/${LEGACY_CODEX_SKILL_NAMES[i]}`,
+        result,
+      )
     }
   }
   catch (error) {
@@ -123,17 +117,21 @@ export async function migrateToV1_4_0(): Promise<MigrationResult> {
   return result
 }
 
-/**
- * Check if migration is needed
- */
 export async function needsMigration(): Promise<boolean> {
-  const oldCcgDir = join(homedir(), '.ccg')
-  const oldPromptsDir = join(homedir(), '.claude', 'prompts', 'ccg')
-  const oldConfigFile = join(homedir(), '.claude', 'commands', 'ccg', '_config.md')
+  const claudeDir = join(homedir(), '.claude')
+  const legacyPaths = [
+    join(homedir(), '.ccg'),
+    join(claudeDir, LEGACY_RUNTIME_DIRNAME),
+    join(claudeDir, 'prompts', LEGACY_NAMESPACE),
+    join(claudeDir, 'commands', LEGACY_NAMESPACE),
+    join(claudeDir, 'agents', LEGACY_NAMESPACE),
+    join(claudeDir, 'skills', LEGACY_NAMESPACE),
+  ]
 
-  const hasOldCcgDir = await fs.pathExists(oldCcgDir)
-  const hasOldPromptsDir = await fs.pathExists(oldPromptsDir)
-  const hasOldConfigFile = await fs.pathExists(oldConfigFile)
+  for (const legacyPath of legacyPaths) {
+    if (await fs.pathExists(legacyPath))
+      return true
+  }
 
-  return hasOldCcgDir || hasOldPromptsDir || hasOldConfigFile
+  return false
 }

@@ -1,5 +1,5 @@
 ---
-name: ccg-spec-impl
+name: ccgs-spec-impl
 description: Dispatch Claude execution from Codex and keep acceptance in Codex. Use when the change is planned and ready for implementation.
 license: MIT
 ---

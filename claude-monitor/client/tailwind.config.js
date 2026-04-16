@@ -4,34 +4,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Industrial dark surfaces — neutral only, no tint
         surface: {
-          0: "#06060a",
-          1: "#0c0c14",
-          2: "#13131e",
-          3: "#1a1a28",
-          4: "#222233",
-          5: "#2a2a3d",
+          0: "rgb(var(--surface-0) / <alpha-value>)",
+          1: "rgb(var(--surface-1) / <alpha-value>)",
+          2: "rgb(var(--surface-2) / <alpha-value>)",
+          3: "rgb(var(--surface-3) / <alpha-value>)",
+          4: "rgb(var(--surface-4) / <alpha-value>)",
+          5: "rgb(var(--surface-5) / <alpha-value>)",
         },
         border: {
-          DEFAULT: "#2a2a3d",
-          light: "#363650",
+          DEFAULT: "rgb(var(--border) / <alpha-value>)",
+          light: "rgb(var(--border-light) / <alpha-value>)",
         },
-        // Deep-green accent — the ONE accent color
         accent: {
-          DEFAULT: "#16a34a",
-          hover: "#22c55e",
-          muted: "rgba(22, 163, 74, 0.12)",
-          dim: "rgba(22, 163, 74, 0.06)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          hover: "rgb(var(--accent-hover) / <alpha-value>)",
+          muted: "rgb(var(--accent) / 0.12)",
+          dim: "rgb(var(--accent) / 0.06)",
         },
       },
       fontFamily: {
-        // Two font families: editorial sans + industrial mono
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
       },
       animation: {
-        // Three purposeful motion patterns total
         "fade-in": "fadeIn 0.25s ease-out",
         "slide-up": "slideUp 0.25s ease-out",
         "live-pulse": "livePulse 2s ease-in-out infinite",

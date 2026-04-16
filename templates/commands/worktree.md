@@ -1,5 +1,5 @@
 ---
-description: '管理 Git Worktree：在 ../.ccg/项目名/ 目录创建，支持 IDE 集成和内容迁移'
+description: '管理 Git Worktree：在 ../.ccgs/项目名/ 目录创建，支持 IDE 集成和内容迁移'
 ---
 
 # Worktree - Git Worktree 管理
@@ -43,7 +43,7 @@ parent-directory/
 ├── your-project/           # 主项目
 │   ├── .git/
 │   └── src/
-└── .ccg/                   # worktree 管理目录
+└── .ccgs/                  # worktree 管理目录
     └── your-project/
         ├── feature-ui/     # 功能分支
         ├── hotfix/         # 修复分支
@@ -59,7 +59,7 @@ parent-directory/
 `[模式：创建]`
 
 1. 验证 Git 仓库
-2. 计算路径：`../.ccg/项目名/<path>`
+2. 计算路径：`../.ccgs/项目名/<path>`
 3. 创建 worktree
 4. 自动复制环境文件（`.env` 等）
 5. 可选：用 IDE 打开
@@ -103,7 +103,7 @@ parent-directory/
 ## 输出示例
 
 ```
-✅ Worktree created at ../.ccg/项目名/feature-ui
+✅ Worktree created at ../.ccgs/项目名/feature-ui
 ✅ 已复制 .env
 ✅ 已复制 .env.local
 📋 已从 .gitignore 复制 2 个环境文件

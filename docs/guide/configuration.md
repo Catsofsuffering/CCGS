@@ -4,28 +4,28 @@
 
 ```text
 ~/.claude/
-├── commands/ccg/
-├── agents/ccg/
-├── skills/ccg/
+├── commands/ccgs/
+├── agents/ccgs/
+├── skills/ccgs/
 ├── rules/
 ├── settings.json
-└── .ccg/
+└── .ccgs/
     ├── config.toml
     ├── prompts/
     └── claude-monitor/
 
 ~/.codex/
 └── skills/
-    ├── ccg-spec-init/
-    ├── ccg-spec-plan/
-    └── ccg-spec-impl/
+    ├── ccgs-spec-init/
+    ├── ccgs-spec-plan/
+    └── ccgs-spec-impl/
 ```
 
 ## 关键文件
 
-- `~/.claude/.ccg/config.toml`：CCG 配置
+- `~/.claude/.ccgs/config.toml`：CCGS 配置
 - `~/.claude/settings.json`：Claude 环境变量和 hooks
-- `~/.claude/.ccg/claude-monitor`：本地监控运行时
+- `~/.claude/.ccgs/claude-monitor`：本地监控运行时
 
 ## 模型路由
 
@@ -42,9 +42,9 @@ Gemini 是可选增强，不再是默认流程前提。
 监控运行时和命令模板分开管理：
 
 ```bash
-ccg monitor install
-ccg monitor hooks
-ccg monitor start --detach
+ccgs monitor install
+ccgs monitor hooks
+ccgs monitor start --detach
 ```
 
 ## 常见问题
@@ -54,7 +54,7 @@ ccg monitor start --detach
 运行：
 
 ```bash
-ccg monitor start --detach
+ccgs monitor start --detach
 ```
 
 **hooks 丢了**
@@ -62,5 +62,5 @@ ccg monitor start --detach
 运行：
 
 ```bash
-ccg monitor hooks
+ccgs monitor hooks
 ```

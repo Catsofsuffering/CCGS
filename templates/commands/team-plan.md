@@ -63,7 +63,7 @@ description: 'Codex 为 Claude Agent Teams 生成执行计划与 handoff 文件'
 
 4. 用户确认
    - 展示 work package 数量、并行层次、关键限制。
-   - 提示下一步运行 `/ccg:team-exec`。
+   - 提示下一步运行 `/ccgs:team-exec`。
 
 **Exit Criteria**
 - [ ] 计划文件已生成

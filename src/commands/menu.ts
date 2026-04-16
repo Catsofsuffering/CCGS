@@ -12,6 +12,7 @@ import { version } from '../../package.json'
 import { configMcp } from './config-mcp'
 import { i18n } from '../i18n'
 import { uninstallWorkflows } from '../utils/installer'
+import { CANONICAL_NAMESPACE, CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME, getCanonicalGlobalUninstallCommand, getCanonicalNpxCommand } from '../utils/identity'
 import { getConfigPath, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { init } from './init'
 import { update } from './update'
@@ -237,38 +238,38 @@ function showHelp(): void {
 
   // Development Workflows
   section(i18n.t('menu:help.sections.devWorkflow'))
-  cmd('/ccg:context', isZh ? '项目上下文管理' : 'Project context management')
-  cmd('/ccg:enhance', isZh ? 'Prompt 增强' : 'Prompt enhancement')
+  cmd(`/${CANONICAL_NAMESPACE}:context`, isZh ? '项目上下文管理' : 'Project context management')
+  cmd(`/${CANONICAL_NAMESPACE}:enhance`, isZh ? 'Prompt 增强' : 'Prompt enhancement')
   console.log()
 
   // Agent Teams
   section(isZh ? 'Agent Teams 并行实施:' : 'Agent Teams Parallel:')
-  cmd('/ccg:team-plan', isZh ? '约束 → 并行计划' : 'Constraints → Parallel plan')
-  cmd('/ccg:team-exec', isZh ? '并行实施' : 'Parallel execution')
-  cmd('/ccg:team-review', isZh ? '双模型审查' : 'Dual-model review')
+  cmd(`/${CANONICAL_NAMESPACE}:team-plan`, isZh ? '约束 → 并行计划' : 'Constraints → Parallel plan')
+  cmd(`/${CANONICAL_NAMESPACE}:team-exec`, isZh ? '并行实施' : 'Parallel execution')
+  cmd(`/${CANONICAL_NAMESPACE}:team-review`, isZh ? '双模型审查' : 'Dual-model review')
   console.log()
 
   // OpenSpec Workflows
   section(i18n.t('menu:help.sections.opsx'))
-  cmd('/ccg:spec-init', i18n.t('menu:help.descriptions.specInit'))
-  cmd('/ccg:spec-research', i18n.t('menu:help.descriptions.specResearch'))
-  cmd('/ccg:spec-plan', isZh ? 'Codex 收敛 proposal 并生成执行交接契约' : 'Codex refines proposal and creates the execution handoff')
-  cmd('/ccg:spec-impl', isZh ? 'Codex 调度 Claude 执行并决定验收/归档' : 'Codex dispatches Claude execution and decides acceptance/archive')
-  cmd('/ccg:spec-review', isZh ? 'Codex 最终验收门禁' : 'Codex final acceptance gate')
+  cmd(`/${CANONICAL_NAMESPACE}:spec-init`, i18n.t('menu:help.descriptions.specInit'))
+  cmd(`/${CANONICAL_NAMESPACE}:spec-research`, i18n.t('menu:help.descriptions.specResearch'))
+  cmd(`/${CANONICAL_NAMESPACE}:spec-plan`, isZh ? 'Codex 收敛 proposal 并生成执行交接契约' : 'Codex refines proposal and creates the execution handoff')
+  cmd(`/${CANONICAL_NAMESPACE}:spec-impl`, isZh ? 'Codex 调度 Claude 执行并决定验收/归档' : 'Codex dispatches Claude execution and decides acceptance/archive')
+  cmd(`/${CANONICAL_NAMESPACE}:spec-review`, isZh ? 'Codex 最终验收门禁' : 'Codex final acceptance gate')
   console.log()
 
   // Git Tools
   section(i18n.t('menu:help.sections.gitTools'))
-  cmd('/ccg:commit', i18n.t('menu:help.descriptions.commit'))
-  cmd('/ccg:rollback', i18n.t('menu:help.descriptions.rollback'))
-  cmd('/ccg:clean-branches', i18n.t('menu:help.descriptions.cleanBranches'))
-  cmd('/ccg:worktree', i18n.t('menu:help.descriptions.worktree'))
+  cmd(`/${CANONICAL_NAMESPACE}:commit`, i18n.t('menu:help.descriptions.commit'))
+  cmd(`/${CANONICAL_NAMESPACE}:rollback`, i18n.t('menu:help.descriptions.rollback'))
+  cmd(`/${CANONICAL_NAMESPACE}:clean-branches`, i18n.t('menu:help.descriptions.cleanBranches'))
+  cmd(`/${CANONICAL_NAMESPACE}:worktree`, i18n.t('menu:help.descriptions.worktree'))
   console.log()
 
   // Project Init
   section(i18n.t('menu:help.sections.projectMgmt'))
-  cmd('/ccg:init', i18n.t('menu:help.descriptions.init'))
-  cmd('/ccg:enhance', isZh ? 'Prompt 增强' : 'Prompt enhancement')
+  cmd(`/${CANONICAL_NAMESPACE}:init`, i18n.t('menu:help.descriptions.init'))
+  cmd(`/${CANONICAL_NAMESPACE}:enhance`, isZh ? 'Prompt 增强' : 'Prompt enhancement')
   console.log()
 
   console.log(ansis.gray(`  ${i18n.t('menu:help.hint')}`))
@@ -505,7 +506,7 @@ async function configModelRouting(): Promise<void> {
   const spinner = ora(i18n.t('init:model.reinstalling')).start()
   try {
     const { execSync } = await import('node:child_process')
-    execSync('npx --yes ccg-workflow init --force --skip-prompt --skip-mcp', {
+    execSync(getCanonicalNpxCommand(['init', '--force', '--skip-prompt', '--skip-mcp']), {
       timeout: 300000,
       stdio: 'pipe',
       env: { ...process.env, CCG_UPDATE_MODE: 'true' },
@@ -694,13 +695,19 @@ async function handleInstallClaude(): Promise<void> {
  * Check if CCG is installed globally via npm
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
-  try {
-    const { stdout } = await execAsync('npm list -g ccg-workflow --depth=0', { timeout: 5000 })
-    return stdout.includes('ccg-workflow@')
+  for (const packageName of [CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME]) {
+    try {
+      const { stdout } = await execAsync(`npm list -g ${packageName} --depth=0`, { timeout: 5000 })
+      if (stdout.includes(`${packageName}@`)) {
+        return true
+      }
+    }
+    catch {
+      continue
+    }
   }
-  catch {
-    return false
-  }
+
+  return false
 }
 
 async function uninstall(): Promise<void> {
@@ -745,7 +752,7 @@ async function uninstall(): Promise<void> {
       console.log()
       console.log(ansis.cyan(`  ${i18n.t('menu:uninstall.removedCommands')}`))
       for (const cmd of result.removedCommands) {
-        console.log(`    ${ansis.gray('•')} /ccg:${cmd}`)
+        console.log(`    ${ansis.gray('•')} /${CANONICAL_NAMESPACE}:${cmd}`)
       }
     }
 
@@ -770,7 +777,7 @@ async function uninstall(): Promise<void> {
       console.log()
       console.log(`  ${i18n.t('menu:uninstall.runInNewTerminal')}`)
       console.log()
-      console.log(ansis.cyan.bold('    npm uninstall -g ccg-workflow'))
+      console.log(ansis.cyan.bold(`    ${getCanonicalGlobalUninstallCommand()}`))
       console.log()
       console.log(ansis.gray(`  (${i18n.t('menu:uninstall.afterDone')})`))
     }

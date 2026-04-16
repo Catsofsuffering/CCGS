@@ -1,11 +1,30 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (() => {
+        const key = "claude-monitor-theme";
+        let saved = null;
+        try {
+          saved = localStorage.getItem(key);
+        } catch {}
+
+        const theme =
+          saved === "light" || saved === "dark"
+            ? saved
+            : window.matchMedia?.("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    <meta name="theme-color" content="#6366f1" />
+    <meta name="theme-color" content="#16181d" />
     <title>Agent Dashboard - Claude Code Monitor</title>
     <meta
       name="description"
@@ -52,7 +71,6 @@
         "description": "Real-time monitoring platform for Claude Code agent activity. Tracks sessions, agents, tool events, token usage analytics, cost tracking, and browser notifications via native hooks with live WebSocket push.",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Windows, macOS, Linux",
-        "softwareVersion": "1.0.0",
         "license": "https://opensource.org/licenses/MIT",
         "author": {
           "@type": "Person",

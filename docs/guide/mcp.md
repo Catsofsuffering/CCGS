@@ -18,7 +18,7 @@ MCP 在当前维护路径里是可选增强，不是必需前提。
 打开交互式菜单：
 
 ```bash
-npx ccg-workflow menu
+npx ccgs-workflow menu
 ```
 
 然后选择 `配置 MCP`。

@@ -12,7 +12,13 @@ import { Sidebar } from "../Sidebar";
 function renderSidebar(wsConnected: boolean, collapsed = false) {
   return render(
     <MemoryRouter>
-      <Sidebar wsConnected={wsConnected} collapsed={collapsed} onToggle={() => {}} />
+      <Sidebar
+        wsConnected={wsConnected}
+        collapsed={collapsed}
+        onToggle={() => {}}
+        theme="dark"
+        onThemeToggle={() => {}}
+      />
     </MemoryRouter>
   );
 }
@@ -49,7 +55,7 @@ describe("Sidebar", () => {
 
   it("should show version number", () => {
     renderSidebar(true);
-    expect(screen.getByText("v1.0.0")).toBeInTheDocument();
+    expect(screen.getByText(`v${__CCGS_VERSION__}`)).toBeInTheDocument();
   });
 
   it("should have correct navigation hrefs", () => {

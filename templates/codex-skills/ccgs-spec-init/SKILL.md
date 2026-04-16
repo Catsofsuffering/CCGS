@@ -1,10 +1,10 @@
 ---
-name: ccg-spec-init
-description: Start or resume a CCG change from Codex. Use when you want Codex to own change selection and artifact progression from the first step.
+name: ccgs-spec-init
+description: Start or resume a CCGS change from Codex. Use when you want Codex to own change selection and artifact progression from the first step.
 license: MIT
 ---
 
-Start or resume a CCG change from Codex.
+Start or resume a CCGS change from Codex.
 
 **Core contract**
 
@@ -26,7 +26,7 @@ Start or resume a CCG change from Codex.
 - active change id
 - current artifact status
 - the next artifact Codex should create
-- next skill: `ccg-spec-plan`
+- next skill: `ccgs-spec-plan`
 
 **Guardrails**
 

@@ -4,28 +4,28 @@
 
 ```text
 ~/.claude/
-├── commands/ccg/
-├── agents/ccg/
-├── skills/ccg/
+├── commands/ccgs/
+├── agents/ccgs/
+├── skills/ccgs/
 ├── rules/
 ├── settings.json
-└── .ccg/
+└── .ccgs/
     ├── config.toml
     ├── prompts/
     └── claude-monitor/
 
 ~/.codex/
 └── skills/
-    ├── ccg-spec-init/
-    ├── ccg-spec-plan/
-    └── ccg-spec-impl/
+    ├── ccgs-spec-init/
+    ├── ccgs-spec-plan/
+    └── ccgs-spec-impl/
 ```
 
 ## Key files
 
-- `~/.claude/.ccg/config.toml`: CCG config
+- `~/.claude/.ccgs/config.toml`: CCGS config
 - `~/.claude/settings.json`: Claude env and hook config
-- `~/.claude/.ccg/claude-monitor`: local monitor runtime
+- `~/.claude/.ccgs/claude-monitor`: local monitor runtime
 
 ## Model routing
 
@@ -42,9 +42,9 @@ Gemini remains optional for secondary analysis or prompt assets.
 The monitor is installed and managed separately from the command templates:
 
 ```bash
-ccg monitor install
-ccg monitor hooks
-ccg monitor start --detach
+ccgs monitor install
+ccgs monitor hooks
+ccgs monitor start --detach
 ```
 
 ## FAQ
@@ -54,7 +54,7 @@ ccg monitor start --detach
 Run:
 
 ```bash
-ccg monitor start --detach
+ccgs monitor start --detach
 ```
 
 **Hooks are missing**
@@ -62,5 +62,5 @@ ccg monitor start --detach
 Run:
 
 ```bash
-ccg monitor hooks
+ccgs monitor hooks
 ```

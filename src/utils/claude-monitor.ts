@@ -2,7 +2,12 @@ import { spawn } from 'node:child_process'
 import { homedir } from 'node:os'
 import { dirname, join } from 'pathe'
 import fs from 'fs-extra'
+import { version as workspaceVersion } from '../../package.json'
 import { PACKAGE_ROOT } from './installer-template'
+import {
+  CANONICAL_RUNTIME_DIRNAME,
+  LEGACY_RUNTIME_DIRNAME,
+} from './identity'
 
 export const DEFAULT_MONITOR_PORT = 4820
 
@@ -19,7 +24,18 @@ export function getBundledMonitorDir(): string {
 }
 
 export function getInstalledMonitorDir(installDir = join(homedir(), '.claude')): string {
-  return join(installDir, '.ccg', 'claude-monitor')
+  return join(installDir, CANONICAL_RUNTIME_DIRNAME, 'claude-monitor')
+}
+
+function getLegacyMonitorDir(installDir = join(homedir(), '.claude')): string {
+  return join(installDir, LEGACY_RUNTIME_DIRNAME, 'claude-monitor')
+}
+
+async function resolveInstalledMonitorDir(installDir = join(homedir(), '.claude')): Promise<string> {
+  const canonicalDir = getInstalledMonitorDir(installDir)
+  if (await fs.pathExists(canonicalDir))
+    return canonicalDir
+  return getLegacyMonitorDir(installDir)
 }
 
 export function getClaudeSettingsPath(installDir = join(homedir(), '.claude')): string {
@@ -104,7 +120,7 @@ export async function installBundledMonitor(installDir = join(homedir(), '.claud
     throw new Error(`Bundled monitor source not found: ${sourceDir}`)
   }
 
-  await fs.ensureDir(join(installDir, '.ccg'))
+  await fs.ensureDir(join(installDir, CANONICAL_RUNTIME_DIRNAME))
   await fs.copy(sourceDir, targetDir, {
     overwrite: true,
     errorOnExist: false,
@@ -119,6 +135,13 @@ export async function installBundledMonitor(installDir = join(homedir(), '.claud
         && !normalized.endsWith('.tsbuildinfo')
     },
   })
+
+  const monitorPackagePath = join(targetDir, 'package.json')
+  if (await fs.pathExists(monitorPackagePath)) {
+    const monitorPackage = await fs.readJson(monitorPackagePath)
+    monitorPackage.version = workspaceVersion
+    await fs.writeJson(monitorPackagePath, monitorPackage, { spaces: 2 })
+  }
 
   return targetDir
 }
@@ -223,7 +246,7 @@ export async function startClaudeMonitor(options?: {
   detached?: boolean
 }): Promise<{ url: string, monitorDir: string }> {
   const installDir = options?.installDir || join(homedir(), '.claude')
-  const monitorDir = getInstalledMonitorDir(installDir)
+  const monitorDir = await resolveInstalledMonitorDir(installDir)
 
   if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {
     throw new Error(`Claude monitor is not installed at ${monitorDir}`)

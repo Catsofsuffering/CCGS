@@ -10,7 +10,7 @@ import {
 } from '../claude-monitor'
 
 describe('claude monitor integration helpers', () => {
-  const tempRoot = join(tmpdir(), `ccg-monitor-test-${Date.now()}`)
+  const tempRoot = join(tmpdir(), `ccgs-monitor-test-${Date.now()}`)
 
   afterAll(async () => {
     await fs.remove(tempRoot)

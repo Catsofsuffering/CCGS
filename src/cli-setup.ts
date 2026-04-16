@@ -9,25 +9,26 @@ import { installMonitorHooks, installMonitorRuntime, startMonitor } from './comm
 import { showMainMenu } from './commands/menu'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
+import { CANONICAL_BINARY_NAME, CANONICAL_PACKAGE_NAME, PRODUCT_NAME } from './utils/identity'
 
 function customizeHelp(sections: any[]): any[] {
   sections.unshift({
     title: '',
-    body: ansis.cyan.bold(`CCG - Codex Orchestrates, Claude Executes v${version}`),
+    body: ansis.cyan.bold(`${PRODUCT_NAME} - Codex Orchestrates, Claude Executes v${version}`),
   })
 
   sections.push({
     title: ansis.yellow(i18n.t('cli:help.commands')),
     body: [
-      `  ${ansis.cyan('ccg')}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
-      `  ${ansis.cyan('ccg init')} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
-      `  ${ansis.cyan('ccg monitor')}      Start the Claude monitor`,
-      `  ${ansis.cyan('ccg config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
-      `  ${ansis.cyan('ccg diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
-      `  ${ansis.cyan('ccg fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
+      `  ${ansis.cyan(CANONICAL_BINARY_NAME)}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} init`)} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} monitor`)}      Start the Claude monitor`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} config mcp`)}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} diagnose-mcp`)} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} fix-mcp`)}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
       '',
       ansis.gray(`  ${i18n.t('cli:help.shortcuts')}`),
-      `  ${ansis.cyan('ccg i')}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} i`)}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
     ].join('\n'),
   })
 
@@ -53,17 +54,17 @@ function customizeHelp(sections: any[]): any[] {
     title: ansis.yellow(i18n.t('cli:help.examples')),
     body: [
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.showInteractiveMenu')}`),
-      `  ${ansis.cyan('npx ccg')}`,
+      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME}`)}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.runFullInitialization')}`),
-      `  ${ansis.cyan('npx ccg init')}`,
-      `  ${ansis.cyan('npx ccg i')}`,
+      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} init`)}`,
+      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i`)}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.customModels')}`),
-      `  ${ansis.cyan('npx ccg i --frontend gemini,codex --backend codex,gemini')}`,
+      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i --frontend gemini,codex --backend codex,gemini`)}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.parallelMode')}`),
-      `  ${ansis.cyan('npx ccg i --mode parallel')}`,
+      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i --mode parallel`)}`,
       '',
     ].join('\n'),
   })

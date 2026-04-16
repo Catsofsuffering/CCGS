@@ -92,17 +92,17 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
    ```
 
    **Next Steps (Use CCG Encapsulated Commands)**
-   1. Start Research: `/ccg:spec-research "description"`
-   2. Plan & Design: `/ccg:spec-plan`
-   3. Implement: `/ccg:spec-impl` (Includes auto-review & archive)
+   1. Start Research: `/ccgs:spec-research "description"`
+   2. Plan & Design: `/ccgs:spec-plan`
+   3. Implement: `/ccgs:spec-impl` (Includes auto-review & archive)
 
    **Standalone Tools (Available Anytime)**
-   - Code Review: `/ccg:spec-review` (Independent dual-model review)
+   - Code Review: `/ccgs:spec-review` (Independent dual-model review)
 
 **Reference**
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
-- CCG Workflow: `npx ccg-workflow`
+- CCGS Workflow: `npx ccgs-workflow`
 - Claude monitor helper: `ccg monitor <install|start|hooks>`
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->

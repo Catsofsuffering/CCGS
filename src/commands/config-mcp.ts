@@ -4,6 +4,7 @@ import { i18n } from '../i18n'
 import fs from 'fs-extra'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
+import { CANONICAL_RULE_FILES } from '../utils/identity'
 import { installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, removeFastContextPrompt, syncMcpToCodex, syncMcpToGemini, uninstallAceTool, uninstallContextWeaver, uninstallFastContext, uninstallMcpServer, writeFastContextPrompt } from '../utils/installer'
 
 /**
@@ -241,7 +242,7 @@ For example, when using the \\\`fastapi\\\` library to encapsulate an API endpoi
 
 async function writeGrokPromptToRules(): Promise<void> {
   const rulesDir = join(homedir(), '.claude', 'rules')
-  const rulePath = join(rulesDir, 'ccg-grok-search.md')
+  const rulePath = join(rulesDir, CANONICAL_RULE_FILES[2])
 
   // Clean up legacy CLAUDE.md injection if present
   const claudeMdPath = join(homedir(), '.claude', 'CLAUDE.md')
@@ -301,7 +302,7 @@ async function handleGrokSearch(): Promise<void> {
   if (result.success) {
     await writeGrokPromptToRules()
     console.log(ansis.green('✓ grok-search MCP 配置成功！'))
-    console.log(ansis.green('✓ 全局搜索提示词已写入 ~/.claude/rules/ccg-grok-search.md'))
+    console.log(ansis.green(`✓ 全局搜索提示词已写入 ~/.claude/rules/${CANONICAL_RULE_FILES[2]}`))
     await syncMcpMirrors()
     console.log(ansis.gray('  重启 Claude Code CLI 使配置生效'))
   }

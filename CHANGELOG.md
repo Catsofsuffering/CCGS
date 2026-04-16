@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.19] - 2026-04-16
+
+### Changed
+
+- Nativeized the maintained workflow surface to `ccgs`, including canonical install/runtime paths, slash-command/help/docs/template naming, Codex skill/rule templates, compatibility migration handling, and regression checks for accidental `ccg` default-path leaks.
+
+---
+
 ## [2.1.18] - 2026-04-16
 
 ### Changed

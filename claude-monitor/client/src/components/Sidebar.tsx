@@ -20,7 +20,10 @@ import {
   Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  SunMedium,
+  MoonStar,
 } from "lucide-react";
+import type { Theme } from "../lib/theme";
 
 const NAV_ITEMS = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -47,9 +50,15 @@ interface SidebarProps {
   wsConnected: boolean;
   collapsed: boolean;
   onToggle: () => void;
+  theme: Theme;
+  onThemeToggle: () => void;
 }
 
-export function Sidebar({ wsConnected, collapsed, onToggle }: SidebarProps) {
+const SIDEBAR_VERSION = `v${__CCGS_VERSION__}`;
+
+export function Sidebar({ wsConnected, collapsed, onToggle, theme, onThemeToggle }: SidebarProps) {
+  const nextThemeLabel = theme === "dark" ? "Day mode" : "Night mode";
+
   return (
     <aside
       className={`fixed left-0 top-0 bottom-0 bg-surface-1 border-r border-border flex flex-col z-30 overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
@@ -96,7 +105,7 @@ export function Sidebar({ wsConnected, collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Collapse toggle */}
-      <div className="px-2 py-2">
+      <div className="px-2 py-2 space-y-2">
         <button
           onClick={onToggle}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-surface-3 transition-colors"
@@ -108,6 +117,23 @@ export function Sidebar({ wsConnected, collapsed, onToggle }: SidebarProps) {
             <>
               <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
               <span>Collapse</span>
+            </>
+          )}
+        </button>
+        <button
+          onClick={onThemeToggle}
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-surface-3 transition-colors"
+          title={nextThemeLabel}
+        >
+          {theme === "dark" ? (
+            <>
+              <SunMedium className={`w-4 h-4 flex-shrink-0 ${collapsed ? "mx-auto" : ""}`} />
+              {!collapsed && <span>{nextThemeLabel}</span>}
+            </>
+          ) : (
+            <>
+              <MoonStar className={`w-4 h-4 flex-shrink-0 ${collapsed ? "mx-auto" : ""}`} />
+              {!collapsed && <span>{nextThemeLabel}</span>}
             </>
           )}
         </button>
@@ -129,7 +155,7 @@ export function Sidebar({ wsConnected, collapsed, onToggle }: SidebarProps) {
               {!collapsed && <span className="text-gray-600">Disconnected</span>}
             </>
           )}
-          {!collapsed && <span className="ml-auto text-gray-600">v1.0.0</span>}
+          {!collapsed && <span className="ml-auto text-gray-600">{SIDEBAR_VERSION}</span>}
         </div>
         {!collapsed && (
           <div className="flex items-center gap-3">

@@ -38,7 +38,7 @@ You are a senior code reviewer specializing in backend code quality, security, a
 - [ ] Graceful error recovery
 - [ ] Idempotency where needed
 
-## Scoring Format (for /ccg:bugfix)
+## Scoring Format (for /ccgs:bugfix)
 
 ```
 VALIDATION REPORT

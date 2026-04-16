@@ -24,7 +24,7 @@ function collectMdFiles(dir: string): string[] {
 }
 
 describe('installWorkflows E2E - mcpProvider="skip"', () => {
-  const tmpDir = join(tmpdir(), `ccg-test-skip-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccgs-test-skip-${Date.now()}`)
 
   afterAll(async () => {
     await fs.remove(tmpDir)
@@ -40,7 +40,7 @@ describe('installWorkflows E2E - mcpProvider="skip"', () => {
   })
 
   it('generated command files contain no MCP placeholders', () => {
-    const files = collectMdFiles(join(tmpDir, 'commands', 'ccg'))
+    const files = collectMdFiles(join(tmpDir, 'commands', 'ccgs'))
     expect(files.length).toBeGreaterThan(0)
 
     for (const file of files) {
@@ -51,19 +51,19 @@ describe('installWorkflows E2E - mcpProvider="skip"', () => {
   })
 
   it('spec-research contains Glob + Grep fallback guidance', () => {
-    const content = readFileSync(join(tmpDir, 'commands', 'ccg', 'spec-research.md'), 'utf-8')
+    const content = readFileSync(join(tmpDir, 'commands', 'ccgs', 'spec-research.md'), 'utf-8')
     expect(content).toContain('Glob + Grep')
   })
 
   it('planner frontmatter drops the MCP tool from the tools declaration', () => {
-    const content = readFileSync(join(tmpDir, 'agents', 'ccg', 'planner.md'), 'utf-8')
+    const content = readFileSync(join(tmpDir, 'agents', 'ccgs', 'planner.md'), 'utf-8')
     const toolsLine = content.split('\n').find(line => line.startsWith('tools:'))
     expect(toolsLine).toBe('tools: Read, Write')
   })
 })
 
 describe('installWorkflows E2E - mcpProvider="ace-tool"', () => {
-  const tmpDir = join(tmpdir(), `ccg-test-ace-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccgs-test-ace-${Date.now()}`)
   const e2eTimeout = process.platform === 'win32' ? 60_000 : 20_000
 
   afterAll(async () => {
@@ -79,13 +79,13 @@ describe('installWorkflows E2E - mcpProvider="ace-tool"', () => {
   })
 
   it('generated command files contain ace-tool references', () => {
-    const content = readFileSync(join(tmpDir, 'commands', 'ccg', 'spec-research.md'), 'utf-8')
+    const content = readFileSync(join(tmpDir, 'commands', 'ccgs', 'spec-research.md'), 'utf-8')
     expect(content).toContain('mcp__ace-tool__search_context')
     expect(content).not.toContain('{{MCP_SEARCH_TOOL}}')
   })
 
   it('generated agent files contain ace-tool references', () => {
-    const content = readFileSync(join(tmpDir, 'agents', 'ccg', 'planner.md'), 'utf-8')
+    const content = readFileSync(join(tmpDir, 'agents', 'ccgs', 'planner.md'), 'utf-8')
     expect(content).toContain('mcp__ace-tool__search_context')
     expect(content).not.toContain('{{MCP_SEARCH_TOOL}}')
   })

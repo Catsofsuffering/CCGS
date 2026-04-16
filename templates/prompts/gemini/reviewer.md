@@ -44,7 +44,7 @@ You are a senior UI reviewer specializing in frontend code quality, accessibilit
 - [ ] Works on desktop
 - [ ] No horizontal scroll issues
 
-## Scoring Format (for /ccg:bugfix)
+## Scoring Format (for /ccgs:bugfix)
 
 ```
 VALIDATION REPORT

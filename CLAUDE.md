@@ -12,30 +12,30 @@ CCG is maintained around one default workflow:
 3. Claude Agent Teams execute bounded implementation work.
 4. Codex performs review, testing, acceptance, and archive decisions.
 
-The maintained local runtime monitor is the Claude hook monitor under `~/.claude/.ccg/claude-monitor`.
+The maintained local runtime monitor is the Claude hook monitor under `~/.claude/.ccgs/claude-monitor`.
 
 ## Maintained Command Surface
 
 Primary path:
 
-- `/ccg:spec-init`
-- `/ccg:spec-research`
-- `/ccg:spec-plan`
-- `/ccg:team-plan`
-- `/ccg:team-exec`
-- `/ccg:team-review`
-- `/ccg:spec-review`
-- `/ccg:spec-impl`
+- `/ccgs:spec-init`
+- `/ccgs:spec-research`
+- `/ccgs:spec-plan`
+- `/ccgs:team-plan`
+- `/ccgs:team-exec`
+- `/ccgs:team-review`
+- `/ccgs:spec-review`
+- `/ccgs:spec-impl`
 
 Utility commands:
 
-- `/ccg:context`
-- `/ccg:enhance`
-- `/ccg:commit`
-- `/ccg:rollback`
-- `/ccg:clean-branches`
-- `/ccg:worktree`
-- `/ccg:init`
+- `/ccgs:context`
+- `/ccgs:enhance`
+- `/ccgs:commit`
+- `/ccgs:rollback`
+- `/ccgs:clean-branches`
+- `/ccgs:worktree`
+- `/ccgs:init`
 
 ## Runtime Notes
 

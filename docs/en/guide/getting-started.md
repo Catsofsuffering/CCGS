@@ -9,7 +9,7 @@ CCG is now maintained around one default path:
 3. Claude Agent Teams execute the scoped implementation.
 4. Codex reviews, tests, accepts, and archives.
 
-The local runtime monitor is the Claude hook monitor under `~/.claude/.ccg/claude-monitor`.
+The local runtime monitor is the Claude hook monitor under `~/.claude/.ccgs/claude-monitor`.
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Optional:
 ## Install
 
 ```bash
-npx ccg-workflow
+npx ccgs-workflow
 ```
 
 Useful follow-up commands:
 
 ```bash
-npx ccg-workflow init
-npx ccg-workflow menu
-npx ccg-workflow monitor install
-npx ccg-workflow monitor hooks
-npx ccg-workflow monitor start --detach
+npx ccgs-workflow init
+npx ccgs-workflow menu
+npx ccgs-workflow monitor install
+npx ccgs-workflow monitor hooks
+npx ccgs-workflow monitor start --detach
 ```
 
 ## First run
@@ -44,19 +44,19 @@ npx ccg-workflow monitor start --detach
 The maintained flow is:
 
 ```bash
-/ccg:spec-init
-/ccg:spec-research implement a bounded feature
-/ccg:spec-plan
-/ccg:team-plan
-/ccg:team-exec
-/ccg:team-review
-/ccg:spec-review
+/ccgs:spec-init
+/ccgs:spec-research implement a bounded feature
+/ccgs:spec-plan
+/ccgs:team-plan
+/ccgs:team-exec
+/ccgs:team-review
+/ccgs:spec-review
 ```
 
 If you want the managed shortcut:
 
 ```bash
-/ccg:spec-impl
+/ccgs:spec-impl
 ```
 
 ## Monitor

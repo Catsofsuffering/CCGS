@@ -9,7 +9,7 @@ CCG 现在维护的是一条单主路径：
 3. Claude Agent Teams 负责受边界约束的实现执行。
 4. Codex 负责 review、测试、验收和归档。
 
-本地运行监控面板是 `~/.claude/.ccg/claude-monitor` 下的 Claude hook monitor。
+本地运行监控面板是 `~/.claude/.ccgs/claude-monitor` 下的 Claude hook monitor。
 
 ## 前置依赖
 
@@ -26,35 +26,35 @@ CCG 现在维护的是一条单主路径：
 ## 安装
 
 ```bash
-npx ccg-workflow
+npx ccgs-workflow
 ```
 
 常用后续命令：
 
 ```bash
-npx ccg-workflow init
-npx ccg-workflow menu
-npx ccg-workflow monitor install
-npx ccg-workflow monitor hooks
-npx ccg-workflow monitor start --detach
+npx ccgs-workflow init
+npx ccgs-workflow menu
+npx ccgs-workflow monitor install
+npx ccgs-workflow monitor hooks
+npx ccgs-workflow monitor start --detach
 ```
 
 ## 第一条主流程
 
 ```bash
-/ccg:spec-init
-/ccg:spec-research 实现一个边界清晰的功能
-/ccg:spec-plan
-/ccg:team-plan
-/ccg:team-exec
-/ccg:team-review
-/ccg:spec-review
+/ccgs:spec-init
+/ccgs:spec-research 实现一个边界清晰的功能
+/ccgs:spec-plan
+/ccgs:team-plan
+/ccgs:team-exec
+/ccgs:team-review
+/ccgs:spec-review
 ```
 
 如果想走托管捷径：
 
 ```bash
-/ccg:spec-impl
+/ccgs:spec-impl
 ```
 
 ## 监控面板

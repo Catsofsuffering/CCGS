@@ -10,6 +10,13 @@ import { join } from 'pathe'
 import { checkForUpdates, compareVersions } from '../utils/version'
 import { getInstalledMonitorDir } from '../utils/claude-monitor'
 import { getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
+import {
+  CANONICAL_NAMESPACE,
+  CANONICAL_PACKAGE_NAME,
+  LEGACY_PACKAGE_NAME,
+  getCanonicalGlobalInstallCommand,
+  getCanonicalNpxLatestCommand,
+} from '../utils/identity'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { i18n } from '../i18n'
 
@@ -176,13 +183,19 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
  * Check if CCG is installed globally via npm
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
-  try {
-    const { stdout } = await execAsync('npm list -g ccg-workflow --depth=0', { timeout: 5000 })
-    return stdout.includes('ccg-workflow@')
+  for (const packageName of [CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME]) {
+    try {
+      const { stdout } = await execAsync(`npm list -g ${packageName} --depth=0`, { timeout: 5000 })
+      if (stdout.includes(`${packageName}@`)) {
+        return true
+      }
+    }
+    catch {
+      continue
+    }
   }
-  catch {
-    return false
-  }
+
+  return false
 }
 
 /**
@@ -209,7 +222,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     console.log()
     console.log(`${i18n.t('update:recommendNpm')}`)
     console.log()
-    console.log(ansis.cyan('  npm install -g ccg-workflow@latest'))
+    console.log(ansis.cyan(`  ${getCanonicalGlobalInstallCommand()}`))
     console.log()
     console.log(ansis.gray(i18n.t('update:willUpdateBoth')))
     console.log()
@@ -225,7 +238,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
       console.log()
       console.log(ansis.cyan(i18n.t('update:runInNewTerminal')))
       console.log()
-      console.log(ansis.cyan.bold('  npm install -g ccg-workflow@latest'))
+      console.log(ansis.cyan.bold(`  ${getCanonicalGlobalInstallCommand()}`))
       console.log()
       console.log(ansis.gray(`(${i18n.t('update:autoUpdateAfter')})`))
       console.log()
@@ -259,7 +272,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     }
 
     spinner.text = i18n.t('update:downloading')
-    await execAsync(`npx --yes ccg-workflow@latest --version`, { timeout: 60000 })
+    await execAsync(getCanonicalNpxLatestCommand(['--version']), { timeout: 60000 })
     spinner.succeed(i18n.t('update:downloadDone'))
   }
   catch (error) {
@@ -304,7 +317,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   // verifies, then cleans up backups. On failure, restores from backup.
 
   const installDir = getDefaultInstallDir()
-  const BACKUP_SUFFIX = '.ccg-update-bak'
+  const BACKUP_SUFFIX = '.ccgs-update-bak'
 
   // Directories to back up before installing new version
   const backupTargets = [
@@ -313,7 +326,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     join(installDir, 'skills', 'ccg'),
   ]
 
-  // Step 3: Back up existing files (move to *.ccg-update-bak)
+  // Step 3: Back up existing files (move to *.ccgs-update-bak)
   spinner = ora(i18n.t('update:removingOld')).start()
 
   const backedUp: string[] = []
@@ -352,7 +365,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
 
   let installSuccess = false
   try {
-    await execAsync(`npx --yes ccg-workflow@latest init --force --skip-mcp --skip-prompt`, {
+    await execAsync(getCanonicalNpxLatestCommand(['init', '--force', '--skip-mcp', '--skip-prompt']), {
       timeout: 300000, // 5min — binary download from GitHub Release may be slow (especially in China)
       env: {
         ...process.env,
@@ -375,7 +388,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
         console.log()
         console.log(ansis.cyan(i18n.t('update:installed', { count: config.workflows.installed.length })))
         for (const cmd of config.workflows.installed) {
-          console.log(`  ${ansis.gray('•')} /ccg:${cmd}`)
+          console.log(`  ${ansis.gray('•')} /${CANONICAL_NAMESPACE}:${cmd}`)
         }
       }
     }
@@ -434,7 +447,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     }
     console.log()
     console.log(ansis.yellow(i18n.t('update:manualRetry')))
-    console.log(ansis.cyan('  npx ccg-workflow@latest'))
+    console.log(ansis.cyan(`  ${getCanonicalNpxLatestCommand()}`))
     return
   }
 

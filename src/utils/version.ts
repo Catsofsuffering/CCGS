@@ -3,6 +3,7 @@ import { promisify } from 'node:util'
 import fs from 'fs-extra'
 import { dirname, join } from 'pathe'
 import { fileURLToPath } from 'node:url'
+import { CANONICAL_PACKAGE_NAME, MANAGED_PACKAGE_NAMES } from './identity'
 
 const execAsync = promisify(exec)
 
@@ -69,14 +70,25 @@ export async function getCurrentVersion(): Promise<string> {
 /**
  * Get latest version from npm registry
  */
-export async function getLatestVersion(packageName = 'ccg-workflow'): Promise<string | null> {
-  try {
-    const { stdout } = await execAsync(`npm view ${packageName} version`)
-    return stdout.trim()
+export async function getLatestVersion(packageName = CANONICAL_PACKAGE_NAME): Promise<string | null> {
+  const packageCandidates = packageName === CANONICAL_PACKAGE_NAME
+    ? MANAGED_PACKAGE_NAMES
+    : [packageName]
+
+  for (const candidate of packageCandidates) {
+    try {
+      const { stdout } = await execAsync(`npm view ${candidate} version`)
+      const version = stdout.trim()
+      if (version) {
+        return version
+      }
+    }
+    catch {
+      continue
+    }
   }
-  catch {
-    return null
-  }
+
+  return null
 }
 
 /**
