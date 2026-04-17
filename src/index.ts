@@ -1,6 +1,7 @@
 // CCG - Claude + Codex + Gemini Multi-Model Collaboration System
 export * from './types'
 export { init } from './commands/init'
+export { doctorClaude, execClaude } from './commands/claude'
 export { installMonitorHooks, installMonitorRuntime, startMonitor } from './commands/monitor'
 export { showMainMenu } from './commands/menu'
 export { update } from './commands/update'
@@ -13,6 +14,13 @@ export {
   getCcgDir,
   getConfigPath,
 } from './utils/config'
+export {
+  buildClaudeLaunchEnv,
+  mergeNoProxyValue,
+  resolveClaudeLaunchSpec,
+  resolveWindowsCmdShimTarget,
+  runClaudeExec,
+} from './utils/claude-cli'
 export {
   configureClaudeMonitorHooks,
   getInstalledMonitorDir,

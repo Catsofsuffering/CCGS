@@ -1,6 +1,7 @@
 import type { CAC } from 'cac'
 import type { CliOptions } from './types'
 import ansis from 'ansis'
+import { doctorClaude, execClaude } from './commands/claude'
 import { version } from '../package.json'
 import { configMcp } from './commands/config-mcp'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
@@ -23,6 +24,7 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.cyan(CANONICAL_BINARY_NAME)}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
       `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} init`)} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
       `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} monitor`)}      Start the Claude monitor`,
+      `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} claude`)}       Stable Claude launcher for Codex handoff`,
       `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} config mcp`)}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
       `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} diagnose-mcp`)} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
       `  ${ansis.cyan(`${CANONICAL_BINARY_NAME} fix-mcp`)}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
@@ -161,6 +163,37 @@ export async function setupCommands(cli: CAC): Promise<void> {
 
       console.log(ansis.red(`Unknown monitor action: ${action}`))
       console.log(ansis.gray('Available actions: start, install, hooks'))
+    })
+
+  cli
+    .command('claude <action> [...claudeArgs]', 'Launch Claude through the CCGS dispatcher')
+    .option('--prompt <text>', 'Prompt content passed to claude -p')
+    .option('--prompt-file <path>', 'Read prompt content from a file and pass it to claude -p')
+    .option('--cwd <path>', 'Working directory for the Claude process')
+    .option('--disable-agent-teams', 'Do not inject Agent Teams environment variables')
+    .allowUnknownOptions()
+    .action(async (
+      action: string,
+      claudeArgs: string[],
+      options: {
+        cwd?: string
+        prompt?: string
+        promptFile?: string
+        disableAgentTeams?: boolean
+      },
+    ) => {
+      if (action === 'exec') {
+        await execClaude(claudeArgs, options)
+        return
+      }
+
+      if (action === 'doctor') {
+        await doctorClaude(options)
+        return
+      }
+
+      console.log(ansis.red(`Unknown claude action: ${action}`))
+      console.log(ansis.gray('Available actions: exec, doctor'))
     })
 
   cli.help(sections => customizeHelp(sections))

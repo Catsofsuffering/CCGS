@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.22] - 2026-04-17
+
+### Changed
+
+- Added a stable `ccgs claude` launcher so Codex-dispatched Claude execution no longer depends on platform-specific PowerShell or `cmd` snippets.
+- Switched Claude CLI discovery to prefer the standard `PATH`-based `claude` command, keeping `CCGS_CLAUDE_PATH` only as a fallback override for non-standard installs.
+- Preserved existing proxy settings by default during Claude dispatch, with optional local `NO_PROXY` augmentation only when explicitly requested.
+- Updated the installed `ccgs-spec-impl` Codex skill to use the built-in launcher contract instead of shell-specific examples.
+
+---
+
 ## [2.1.21] - 2026-04-17
 
 ### Changed
