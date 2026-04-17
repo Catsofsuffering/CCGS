@@ -126,13 +126,13 @@ function Sparkline({ data, color }: SparklineProps) {
             >
               {/* Tooltip */}
               {hoveredIndex === i && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 px-2 py-1 bg-[#12121f] border border-[#2a2a4a] rounded-md shadow-xl text-[10px] text-gray-200 whitespace-nowrap pointer-events-none">
-                  <span className="font-medium">{label}</span>
-                  <span className="text-gray-400 mx-1">·</span>
-                  <span className="tabular-nums" style={{ color }}>
+                <div className="tooltip-panel absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[10px] pointer-events-none">
+                  <span className="tooltip-title font-medium">{label}</span>
+                  <span className="tooltip-label mx-1">·</span>
+                  <span className="tooltip-value tabular-nums" style={{ color }}>
                     {value} {value === 1 ? "session" : "sessions"}
                   </span>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-[#2a2a4a]" />
+                  <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[rgb(var(--tooltip-border))]" />
                 </div>
               )}
               {/* Bar (anchored to bottom) */}

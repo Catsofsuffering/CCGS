@@ -1,690 +1,334 @@
-/**
- * @file OrchestrationDAG.tsx
- * @description Defines the OrchestrationDAG React component that visualizes orchestration data as a directed acyclic graph (DAG) using D3.js. The component takes in orchestration data, processes it to build a graph structure with nodes and edges, and renders it as an SVG. It includes interactive features such as tooltips on hover and click handlers for nodes. The graph is styled with gradients and colors to differentiate between different types of nodes and outcomes, providing a clear visual representation of the orchestration process.
- * @author Son Nguyen <hoangson091104@gmail.com>
- */
-
-import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import * as d3 from "d3";
-import type { OrchestrationData } from "../../lib/types";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { useMemo, useState } from "react";
+import type { OrchestrationData, SessionDrillIn } from "../../lib/types";
 
 interface OrchestrationDAGProps {
   data: OrchestrationData;
+  focusedSession?: SessionDrillIn | null;
   onNodeClick?: (nodeType: string) => void;
   selectedNode?: string | null;
 }
 
-interface DAGNode {
+interface GraphNode {
   id: string;
   label: string;
-  count: number;
+  subtitle: string;
+  kind: "session" | "main" | "agent" | "aggregate";
   layer: number;
-  kind: "session" | "main" | "subagent" | "nested" | "outcome";
-  meta?: {
-    completed?: number;
-    errors?: number;
-    subagent_type?: string;
-    status?: string;
-  };
-  x: number;
-  y: number;
+  count?: number;
+  status?: string;
+  filterKey?: string | null;
+  task?: string | null;
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+}
+
+interface GraphEdge {
+  source: string;
+  target: string;
+  weight: number;
+}
+
+interface GraphLayout {
+  mode: "session" | "aggregate";
+  title: string;
+  description: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
   width: number;
   height: number;
 }
 
-interface DAGEdge {
-  source: string;
-  target: string;
-  weight: number;
-  sourceNode?: DAGNode;
-  targetNode?: DAGNode;
-}
-
 interface TooltipState {
+  node: GraphNode;
   x: number;
   y: number;
-  node: DAGNode;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+const NODE_HEIGHT = 68;
+const BASE_NODE_WIDTH = 188;
+const MAX_NODE_WIDTH = 312;
+const BADGE_WIDTH = 44;
+const LAYER_GAP = 88;
+const ROW_GAP = 18;
+const PADDING_X = 20;
+const PADDING_Y = 28;
+const MIN_GRAPH_HEIGHT = 320;
+const MAX_VISIBLE_AGGREGATE_NODES = 8;
 
-const NODE_W = 136;
-const NODE_H = 44;
-const NODE_RX = 8;
-const LAYER_GAP = 80;
-const NODE_V_GAP = 8;
-const PADDING_X = 8;
-const PADDING_TOP = 44;
-const PADDING_BOTTOM = 40;
-const MAX_SUBAGENT_NODES = 7;
-const MAX_EDGE_STROKE = 10;
-const MIN_EDGE_STROKE = 1.5;
-
-const LAYER_LABELS = ["Origin", "Main Agent", "Subagent Types", "Compactions", "Outcomes"];
-
-const OUTCOME_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
-  completed: { fill: "#052e16", stroke: "#16a34a", text: "#4ade80" },
-  error: { fill: "#1a1a28", stroke: "#6b7280", text: "#9ca3af" },
-  abandoned: { fill: "#1a1a28", stroke: "#9ca3af", text: "#d1d5db" },
-};
-
-const KIND_GRADIENTS: Record<
-  DAGNode["kind"],
-  { id: string; stops: Array<{ offset: string; color: string }> }
-> = {
-  session: {
-    id: "grad-session",
-    stops: [
-      { offset: "0%", color: "#052e16" },
-      { offset: "100%", color: "#166534" },
-    ],
-  },
-  main: {
-    id: "grad-main",
-    stops: [
-      { offset: "0%", color: "#052e16" },
-      { offset: "100%", color: "#16a34a" },
-    ],
-  },
-  subagent: {
-    id: "grad-subagent",
-    stops: [
-      { offset: "0%", color: "#052e16" },
-      { offset: "100%", color: "#166534" },
-    ],
-  },
-  nested: {
-    id: "grad-nested",
-    stops: [
-      { offset: "0%", color: "#374151" },
-      { offset: "100%", color: "#6b7280" },
-    ],
-  },
-  outcome: {
-    id: "grad-outcome",
-    stops: [
-      { offset: "0%", color: "#052e16" },
-      { offset: "100%", color: "#16a34a" },
-    ],
-  },
-};
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function isEmpty(data: OrchestrationData): boolean {
-  return (
-    data.sessionCount === 0 &&
-    data.mainCount === 0 &&
-    data.subagentTypes.length === 0 &&
-    data.outcomes.length === 0
-  );
+function visualLength(value: string) {
+  return [...value].reduce((sum, char) => sum + (/[\u0000-\u00ff]/.test(char) ? 1 : 2), 0);
 }
 
-function successRate(completed: number, total: number): string {
-  if (total === 0) return "—";
-  return `${Math.round((completed / total) * 100)}%`;
+function truncate(value: string, max = 34) {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max - 1)}…`;
 }
 
-function outcomeColorSet(status: string) {
-  return OUTCOME_COLORS[status] ?? { fill: "#1a1a28", stroke: "#363650", text: "#9ca3af" };
+function prettyStatus(status: string) {
+  return status.replace(/_/g, " ");
 }
 
-// ── Layout builder ────────────────────────────────────────────────────────────
+function computeNodeWidth(label: string, subtitle: string) {
+  const labelWidth = visualLength(label) * 7.2;
+  const subtitleWidth = visualLength(subtitle) * 6.1;
+  return Math.max(BASE_NODE_WIDTH, Math.min(MAX_NODE_WIDTH, Math.ceil(Math.max(labelWidth, subtitleWidth) + 72)));
+}
 
-function buildGraph(data: OrchestrationData): {
-  nodes: DAGNode[];
-  edges: DAGEdge[];
-  svgWidth: number;
-  svgHeight: number;
-} {
-  const rawNodes: Omit<DAGNode, "x" | "y">[] = [];
+function createNode(input: Omit<GraphNode, "width" | "height">): GraphNode {
+  return {
+    ...input,
+    width: computeNodeWidth(input.label, input.subtitle),
+    height: NODE_HEIGHT,
+  };
+}
 
-  // Layer 0 — sessions
-  rawNodes.push({
-    id: "sessions",
-    label: "Sessions",
-    count: data.sessionCount,
-    layer: 0,
-    kind: "session",
-    width: NODE_W,
-    height: NODE_H,
-  });
+function nodeColors(node: GraphNode, active: boolean) {
+  const base = {
+    fill: "#111827",
+    border: active ? "#22c55e" : "#374151",
+    title: "#f3f4f6",
+    subtitle: "#9ca3af",
+    badgeFill: active ? "rgba(34,197,94,0.18)" : "rgba(55,65,81,0.5)",
+    badgeText: active ? "#86efac" : "#d1d5db",
+  };
 
-  // Layer 1 — main agent
-  rawNodes.push({
-    id: "main",
-    label: "Main Agent",
-    count: data.mainCount,
-    layer: 1,
-    kind: "main",
-    width: NODE_W,
-    height: NODE_H,
-  });
+  if (node.kind === "session") {
+    return {
+      ...base,
+      fill: "#052e16",
+      border: active ? "#4ade80" : "#16a34a",
+      title: "#dcfce7",
+      subtitle: "#86efac",
+      badgeFill: "rgba(34,197,94,0.16)",
+      badgeText: "#bbf7d0",
+    };
+  }
 
-  // Layer 2 — subagent types (deduplicated, capped at MAX_SUBAGENT_NODES)
-  const subagentMap = new Map<string, { count: number; completed: number; errors: number }>();
-  for (const s of data.subagentTypes) {
-    const key = s.subagent_type || "unknown";
-    const existing = subagentMap.get(key);
-    if (existing) {
-      existing.count += s.count;
-      existing.completed += s.completed;
-      existing.errors += s.errors;
-    } else {
-      subagentMap.set(key, { count: s.count, completed: s.completed, errors: s.errors });
+  if (node.kind === "main") {
+    return {
+      ...base,
+      fill: "#0f172a",
+      border: active ? "#4ade80" : "#22c55e",
+      title: "#f0fdf4",
+      subtitle: "#a7f3d0",
+      badgeFill: "rgba(34,197,94,0.16)",
+      badgeText: "#bbf7d0",
+    };
+  }
+
+  if (node.status === "error") {
+    return {
+      ...base,
+      fill: "#1f2937",
+      border: "#9ca3af",
+      badgeFill: "rgba(156,163,175,0.18)",
+      badgeText: "#f3f4f6",
+    };
+  }
+
+  if (node.status === "completed") {
+    return {
+      ...base,
+      fill: "#111827",
+      border: active ? "#22c55e" : "#4b5563",
+      badgeFill: active ? "rgba(34,197,94,0.16)" : "rgba(75,85,99,0.45)",
+    };
+  }
+
+  return {
+    ...base,
+    fill: "#0f172a",
+    border: active ? "#22c55e" : "#16a34a",
+    badgeFill: active ? "rgba(34,197,94,0.16)" : "rgba(22,163,74,0.14)",
+    badgeText: active ? "#bbf7d0" : "#86efac",
+  };
+}
+
+function statusBadge(status?: string) {
+  if (!status) return null;
+  return prettyStatus(status);
+}
+
+function layoutNodes(nodes: GraphNode[]) {
+  const layers = new Map<number, GraphNode[]>();
+  for (const node of nodes) {
+    if (!layers.has(node.layer)) layers.set(node.layer, []);
+    layers.get(node.layer)!.push(node);
+  }
+
+  const sortedLayers = [...layers.entries()].sort((a, b) => a[0] - b[0]);
+  const maxRows = Math.max(...sortedLayers.map(([, layer]) => layer.length), 1);
+  const height = Math.max(MIN_GRAPH_HEIGHT, PADDING_Y * 2 + maxRows * NODE_HEIGHT + (maxRows - 1) * ROW_GAP);
+
+  let currentX = PADDING_X;
+  for (const [, layerNodes] of sortedLayers) {
+    const maxWidth = Math.max(...layerNodes.map((node) => node.width));
+    const totalLayerHeight = layerNodes.length * NODE_HEIGHT + Math.max(0, layerNodes.length - 1) * ROW_GAP;
+    const startY = (height - totalLayerHeight) / 2;
+    layerNodes.forEach((node, index) => {
+      node.x = currentX;
+      node.y = startY + index * (NODE_HEIGHT + ROW_GAP);
+    });
+    currentX += maxWidth + LAYER_GAP;
+  }
+
+  return { nodes, width: currentX - LAYER_GAP + PADDING_X, height };
+}
+
+function buildSessionGraph(focusedSession: SessionDrillIn): GraphLayout {
+  const nodes: GraphNode[] = [
+    createNode({
+      id: `session:${focusedSession.session.id}`,
+      label: truncate(focusedSession.session.name ?? focusedSession.session.id, 36),
+      subtitle: `${prettyStatus(focusedSession.session.status)} · ${focusedSession.session.model ?? "unknown model"}`,
+      kind: "session",
+      layer: 0,
+      count: focusedSession.swimLanes.length,
+    }),
+  ];
+  const edges: GraphEdge[] = [];
+
+  const visit = (treeNode: SessionDrillIn["tree"][number], depth: number) => {
+    nodes.push(
+      createNode({
+        id: treeNode.id,
+        label: truncate(treeNode.name, 38),
+        subtitle:
+          treeNode.type === "main"
+            ? `main agent · ${prettyStatus(treeNode.status)}`
+            : `${treeNode.subagent_type || "subagent"} · ${prettyStatus(treeNode.status)}`,
+        kind: treeNode.type === "main" ? "main" : "agent",
+        layer: depth + 1,
+        count: treeNode.children.length,
+        status: treeNode.status,
+        filterKey: treeNode.type === "main" ? "main" : treeNode.subagent_type || null,
+        task: treeNode.task,
+      })
+    );
+
+    if (depth === 0) {
+      edges.push({ source: `session:${focusedSession.session.id}`, target: treeNode.id, weight: 1 });
     }
-  }
-  // Sort by count desc, take top N
-  const sortedSubagents = [...subagentMap.entries()].sort((a, b) => b[1].count - a[1].count);
-  const visible = sortedSubagents.slice(0, MAX_SUBAGENT_NODES);
-  const overflow = sortedSubagents.slice(MAX_SUBAGENT_NODES);
 
-  for (const [type, stats] of visible) {
-    rawNodes.push({
-      id: `subagent:${type}`,
-      label: type.length > 14 ? type.slice(0, 12) + "…" : type,
-      count: stats.count,
-      layer: 2,
-      kind: "subagent",
-      width: NODE_W,
-      height: NODE_H,
-      meta: { completed: stats.completed, errors: stats.errors, subagent_type: type },
-    });
-  }
-  if (overflow.length > 0) {
-    const overflowTotal = overflow.reduce((s, [, v]) => s + v.count, 0);
-    rawNodes.push({
-      id: "subagent:__overflow",
-      label: `+${overflow.length} more`,
-      count: overflowTotal,
-      layer: 2,
-      kind: "subagent",
-      width: NODE_W,
-      height: NODE_H,
-      meta: { completed: 0, errors: 0, subagent_type: `${overflow.length} others` },
-    });
-  }
-
-  // Layer 3 — compactions (context compressions)
-  const compactions = (data as unknown as { compactions?: { total: number; sessions: number } })
-    .compactions;
-  const compTotal = compactions?.total ?? 0;
-  const compSessions = compactions?.sessions ?? 0;
-  rawNodes.push({
-    id: "compaction:total",
-    label: "Compactions",
-    count: compTotal,
-    layer: 3,
-    kind: "nested",
-    width: NODE_W,
-    height: NODE_H,
-    meta: { subagent_type: "compaction" },
-  });
-  if (compSessions > 0) {
-    rawNodes.push({
-      id: "compaction:sessions",
-      label: `${compSessions} sessions`,
-      count: compSessions,
-      layer: 3,
-      kind: "nested",
-      width: NODE_W,
-      height: NODE_H,
-      meta: { subagent_type: "compaction" },
-    });
-  }
-
-  // Layer 4 — outcomes
-  const outcomeMap = new Map<string, number>();
-  for (const o of data.outcomes) {
-    outcomeMap.set(o.status, (outcomeMap.get(o.status) ?? 0) + o.count);
-  }
-  if (outcomeMap.size === 0) {
-    outcomeMap.set("completed", 0);
-  }
-  for (const [status, count] of outcomeMap) {
-    rawNodes.push({
-      id: `outcome:${status}`,
-      label: status.charAt(0).toUpperCase() + status.slice(1),
-      count,
-      layer: 4,
-      kind: "outcome",
-      width: NODE_W,
-      height: NODE_H,
-      meta: { status },
-    });
-  }
-
-  // Compute per-layer node lists
-  const layers: Omit<DAGNode, "x" | "y">[][] = [[], [], [], [], []];
-  for (const n of rawNodes) {
-    layers[n.layer]?.push(n);
-  }
-
-  // Compute SVG dimensions
-  const numLayers = layers.length;
-  const maxNodesInLayer = Math.max(...layers.map((l) => l.length));
-  const svgWidth = PADDING_X * 2 + numLayers * NODE_W + (numLayers - 1) * LAYER_GAP;
-  const naturalHeight =
-    PADDING_TOP +
-    PADDING_BOTTOM +
-    maxNodesInLayer * NODE_H +
-    Math.max(0, maxNodesInLayer - 1) * NODE_V_GAP;
-  const svgHeight = Math.min(naturalHeight, 520);
-
-  // Assign x/y positions
-  const nodes: DAGNode[] = [];
-  for (let li = 0; li < layers.length; li++) {
-    const layer = layers[li] ?? [];
-    const layerX = PADDING_X + li * (NODE_W + LAYER_GAP);
-    const layerTotalH = layer.length * NODE_H + Math.max(0, layer.length - 1) * NODE_V_GAP;
-    const layerStartY = PADDING_TOP + (svgHeight - PADDING_TOP - PADDING_BOTTOM - layerTotalH) / 2;
-
-    for (let ni = 0; ni < layer.length; ni++) {
-      const raw = layer[ni]!;
-      nodes.push({
-        ...raw,
-        x: layerX,
-        y: layerStartY + ni * (NODE_H + NODE_V_GAP),
-      });
-    }
-  }
-
-  // Build nodeMap for edge lookup
-  const nodeMap = new Map<string, DAGNode>(nodes.map((n) => [n.id, n]));
-
-  // Build edges from data.edges + synthetic structural edges
-  const edgeSet = new Set<string>();
-  const rawEdges: DAGEdge[] = [];
-
-  const addEdge = (source: string, target: string, weight: number) => {
-    const key = `${source}→${target}`;
-    if (edgeSet.has(key)) return;
-    edgeSet.add(key);
-    const sn = nodeMap.get(source);
-    const tn = nodeMap.get(target);
-    if (sn && tn) {
-      rawEdges.push({ source, target, weight, sourceNode: sn, targetNode: tn });
+    for (const child of treeNode.children) {
+      edges.push({ source: treeNode.id, target: child.id, weight: 1 });
+      visit(child, depth + 1);
     }
   };
 
-  // Sessions → Main
-  addEdge("sessions", "main", data.mainCount || 1);
+  for (const root of focusedSession.tree) visit(root, 0);
 
-  // Main → each subagent type (use data.edges if available, else uniform)
-  const subagentIds = nodes.filter((n) => n.kind === "subagent").map((n) => n.id);
-  const compactionIds = nodes.filter((n) => n.kind === "nested").map((n) => n.id);
-  const outcomeIds = nodes.filter((n) => n.kind === "outcome").map((n) => n.id);
-
-  for (const edge of data.edges) {
-    // Map source/target names to node IDs
-    const srcId =
-      edge.source === "main"
-        ? "main"
-        : edge.source === "sessions"
-          ? "sessions"
-          : (subagentIds.find((id) => id === `subagent:${edge.source}`) ??
-            compactionIds.find((id) => id === `nested:${edge.source}`) ??
-            `subagent:${edge.source}`);
-    const tgtId =
-      edge.target === "main"
-        ? "main"
-        : (outcomeIds.find((id) => id === `outcome:${edge.target}`) ??
-          compactionIds.find((id) => id === `nested:${edge.target}`) ??
-          subagentIds.find((id) => id === `subagent:${edge.target}`) ??
-          `subagent:${edge.target}`);
-    addEdge(srcId, tgtId, edge.weight);
-  }
-
-  // Structural fallbacks: main → subagents if no data edges cover them
-  for (const sid of subagentIds) {
-    const hasEdge = rawEdges.some((e) => e.target === sid);
-    if (!hasEdge) {
-      const subNode = nodeMap.get(sid);
-      addEdge("main", sid, subNode?.count ?? 1);
-    }
-  }
-
-  // Subagents → compaction nodes
-  for (const cid of compactionIds) {
-    const cNode = nodeMap.get(cid);
-    const weight = Math.max(1, cNode?.count ?? 1);
-    // Connect from each subagent to compaction
-    for (const sid of subagentIds) {
-      addEdge(sid, cid, Math.max(0.5, Math.round(weight / Math.max(subagentIds.length, 1))));
-    }
-  }
-
-  // Compaction → outcomes
-  for (const cid of compactionIds) {
-    for (const oid of outcomeIds) {
-      const outcomeNode = nodeMap.get(oid);
-      const perComp = Math.max(
-        0.5,
-        Math.round((outcomeNode?.count ?? 1) / Math.max(compactionIds.length, 1))
-      );
-      addEdge(cid, oid, perComp);
-    }
-  }
-
-  // Also connect subagents directly to outcomes
-  for (const sid of subagentIds) {
-    for (const oid of outcomeIds) {
-      const outcomeNode = nodeMap.get(oid);
-      const perSub = Math.max(
-        0.5,
-        Math.round((outcomeNode?.count ?? 1) / Math.max(subagentIds.length, 1))
-      );
-      addEdge(sid, oid, perSub);
-    }
-  }
-
-  return { nodes, edges: rawEdges, svgWidth, svgHeight };
+  const laidOut = layoutNodes(nodes);
+  return {
+    mode: "session",
+    title: focusedSession.session.name ?? focusedSession.session.id,
+    description: `Focused session topology · ${focusedSession.session.id}`,
+    nodes: laidOut.nodes,
+    edges,
+    width: laidOut.width,
+    height: laidOut.height,
+  };
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function buildAggregateGraph(data: OrchestrationData): GraphLayout {
+  const nodes: GraphNode[] = [
+    createNode({
+      id: "sessions",
+      label: "Sessions",
+      subtitle: "aggregate workflow origins",
+      kind: "session",
+      layer: 0,
+      count: data.sessionCount,
+    }),
+    createNode({
+      id: "main",
+      label: "Main Agent",
+      subtitle: "aggregate top-level coordinator",
+      kind: "main",
+      layer: 1,
+      count: data.mainCount,
+      filterKey: "main",
+    }),
+  ];
 
-export function OrchestrationDAG({ data, onNodeClick, selectedNode }: OrchestrationDAGProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  const graph = useMemo(() => buildGraph(data), [data]);
-
-  const handleNodeClick = useCallback(
-    (node: DAGNode) => {
-      onNodeClick?.(node.id);
-    },
-    [onNodeClick]
-  );
-
-  // Fade-in on mount
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    const { nodes, edges, svgHeight } = graph;
-
-    const root = d3.select(svg);
-    root.selectAll("*").remove();
-
-    // ── Defs ──────────────────────────────────────────────────────────────────
-
-    const defs = root.append("defs");
-
-    // Gradients
-    for (const kind of Object.keys(KIND_GRADIENTS) as DAGNode["kind"][]) {
-      const g = KIND_GRADIENTS[kind];
-      const grad = defs
-        .append("linearGradient")
-        .attr("id", g.id)
-        .attr("x1", "0%")
-        .attr("y1", "0%")
-        .attr("x2", "100%")
-        .attr("y2", "0%");
-      for (const stop of g.stops) {
-        grad.append("stop").attr("offset", stop.offset).attr("stop-color", stop.color);
-      }
-    }
-
-    // Outcome-specific gradients
-    for (const [status, colors] of Object.entries(OUTCOME_COLORS)) {
-      const grad = defs
-        .append("linearGradient")
-        .attr("id", `grad-outcome-${status}`)
-        .attr("x1", "0%")
-        .attr("y1", "0%")
-        .attr("x2", "100%")
-        .attr("y2", "0%");
-      grad.append("stop").attr("offset", "0%").attr("stop-color", colors.fill);
-      grad
-        .append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", colors.stroke + "55");
-    }
-
-    // Glow filter for selected node
-    const glowFilter = defs
-      .append("filter")
-      .attr("id", "glow")
-      .attr("x", "-30%")
-      .attr("y", "-30%")
-      .attr("width", "160%")
-      .attr("height", "160%");
-    glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
-    const feMerge = glowFilter.append("feMerge");
-    feMerge.append("feMergeNode").attr("in", "blur");
-    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
-    // Edge shadow filter
-    const edgeFilter = defs
-      .append("filter")
-      .attr("id", "edge-glow")
-      .attr("x", "-10%")
-      .attr("y", "-50%")
-      .attr("width", "120%")
-      .attr("height", "200%");
-    edgeFilter.append("feGaussianBlur").attr("stdDeviation", "2").attr("result", "blur");
-    const edgeMerge = edgeFilter.append("feMerge");
-    edgeMerge.append("feMergeNode").attr("in", "blur");
-    edgeMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
-    // ── Layer labels ──────────────────────────────────────────────────────────
-
-    const labelLayer = root.append("g").attr("class", "layer-labels");
-    const layerXPositions = [0, 1, 2, 3, 4].map(
-      (li) => PADDING_X + li * (NODE_W + LAYER_GAP) + NODE_W / 2
+  const visibleSubagents = [...data.subagentTypes].sort((a, b) => b.count - a.count).slice(0, MAX_VISIBLE_AGGREGATE_NODES);
+  for (const item of visibleSubagents) {
+    nodes.push(
+      createNode({
+        id: `subagent:${item.subagent_type}`,
+        label: truncate(item.subagent_type, 34),
+        subtitle: `${item.completed} completed · ${item.errors} errors`,
+        kind: "aggregate",
+        layer: 2,
+        count: item.count,
+        filterKey: item.subagent_type,
+      })
     );
+  }
 
-    labelLayer
-      .selectAll("text")
-      .data(LAYER_LABELS)
-      .join("text")
-      .attr("x", (_, i) => layerXPositions[i] ?? 0)
-      .attr("y", 22)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#6b7280")
-      .attr("font-size", "10px")
-      .attr("font-weight", "500")
-      .attr("letter-spacing", "0.08em")
-      .attr("text-transform", "uppercase")
-      .text((d) => d.toUpperCase());
+  const edges: GraphEdge[] = [{ source: "sessions", target: "main", weight: Math.max(data.mainCount, 1) }];
+  const visibleKeys = new Set(visibleSubagents.map((item) => item.subagent_type));
+  const seen = new Set<string>();
 
-    // ── Layer separator lines ──────────────────────────────────────────────────
+  for (const edge of data.edges) {
+    if (edge.target !== "main" && !visibleKeys.has(edge.target)) continue;
+    const source = edge.source === "main" ? "main" : visibleKeys.has(edge.source) ? `subagent:${edge.source}` : null;
+    const target = edge.target === "main" ? "main" : visibleKeys.has(edge.target) ? `subagent:${edge.target}` : null;
+    if (!source || !target) continue;
+    const key = `${source}->${target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push({ source, target, weight: edge.weight });
+  }
 
-    const sepLayer = root.append("g").attr("class", "layer-separators");
-    for (let li = 1; li < 5; li++) {
-      const sepX = PADDING_X + li * (NODE_W + LAYER_GAP) - LAYER_GAP / 2;
-      sepLayer
-        .append("line")
-        .attr("x1", sepX)
-        .attr("y1", 32)
-        .attr("x2", sepX)
-        .attr("y2", svgHeight - PADDING_BOTTOM + 8)
-        .attr("stroke", "#1f1f30")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "4 4");
+  for (const item of visibleSubagents) {
+    const id = `subagent:${item.subagent_type}`;
+    if (!edges.some((edge) => edge.target === id)) {
+      edges.push({ source: "main", target: id, weight: Math.max(item.count, 1) });
     }
+  }
 
-    // ── Edges ─────────────────────────────────────────────────────────────────
+  const laidOut = layoutNodes(nodes);
+  return {
+    mode: "aggregate",
+    title: "Aggregate workflow",
+    description: "No focused session selected. Showing aggregate parent-child relationships by agent type.",
+    nodes: laidOut.nodes,
+    edges,
+    width: laidOut.width,
+    height: laidOut.height,
+  };
+}
 
-    const weightExtent = d3.extent(edges, (e) => e.weight) as [number, number];
-    const strokeScale = d3
-      .scaleLinear()
-      .domain([Math.max(0.1, weightExtent[0] ?? 0.1), Math.max(1, weightExtent[1] ?? 1)])
-      .range([MIN_EDGE_STROKE, MAX_EDGE_STROKE])
-      .clamp(true);
+function buildGraph(data: OrchestrationData, focusedSession?: SessionDrillIn | null): GraphLayout {
+  if (focusedSession && focusedSession.tree.length > 0) return buildSessionGraph(focusedSession);
+  return buildAggregateGraph(data);
+}
 
-    const edgeLayer = root.append("g").attr("class", "edges");
+function edgePath(source: GraphNode, target: GraphNode) {
+  const sx = (source.x ?? 0) + source.width;
+  const sy = (source.y ?? 0) + source.height / 2;
+  const tx = target.x ?? 0;
+  const ty = (target.y ?? 0) + target.height / 2;
+  const cx = (sx + tx) / 2;
+  return `M ${sx} ${sy} C ${cx} ${sy}, ${cx} ${ty}, ${tx} ${ty}`;
+}
 
-    for (const edge of edges) {
-      const sn = edge.sourceNode;
-      const tn = edge.targetNode;
-      if (!sn || !tn) continue;
+function isEmptyAggregate(data: OrchestrationData) {
+  return data.sessionCount === 0 && data.mainCount === 0 && data.subagentTypes.length === 0;
+}
 
-      const sx = sn.x + sn.width;
-      const sy = sn.y + sn.height / 2;
-      const tx = tn.x;
-      const ty = tn.y + tn.height / 2;
-      const cx = (sx + tx) / 2;
+export function OrchestrationDAG({ data, focusedSession, onNodeClick, selectedNode }: OrchestrationDAGProps) {
+  const graph = useMemo(() => buildGraph(data, focusedSession), [data, focusedSession]);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-      const path = `M ${sx},${sy} C ${cx},${sy} ${cx},${ty} ${tx},${ty}`;
-      const stroke = strokeScale(edge.weight);
-      const isZero = edge.weight <= 0.5;
-
-      // Shadow pass
-      edgeLayer
-        .append("path")
-        .attr("d", path)
-        .attr("fill", "none")
-        .attr("stroke", "#16a34a")
-        .attr("stroke-width", stroke + 2)
-        .attr("stroke-opacity", isZero ? 0 : 0.08)
-        .attr("filter", "url(#edge-glow)");
-
-      // Main edge
-      edgeLayer
-        .append("path")
-        .attr("d", path)
-        .attr("fill", "none")
-        .attr("stroke", isZero ? "#2a2a3d" : "#16a34a")
-        .attr("stroke-width", isZero ? 1 : stroke)
-        .attr("stroke-opacity", isZero ? 0.3 : 0.55)
-        .attr("stroke-linecap", "round");
-    }
-
-    // ── Nodes ─────────────────────────────────────────────────────────────────
-
-    const nodeLayer = root.append("g").attr("class", "nodes");
-
-    const nodeGroups = nodeLayer
-      .selectAll<SVGGElement, DAGNode>("g.node")
-      .data(nodes, (d) => d.id)
-      .join("g")
-      .attr("class", "node")
-      .attr("transform", (d) => `translate(${d.x},${d.y})`)
-      .attr("cursor", "pointer")
-      .attr("role", "button")
-      .attr("aria-label", (d) => `${d.label}: ${d.count}`)
-      .on("click", (_event, d) => {
-        handleNodeClick(d);
-      })
-      .on("mouseenter", (event: MouseEvent, d: DAGNode) => {
-        setTooltip({ x: event.clientX, y: event.clientY, node: d });
-        d3.select(event.currentTarget as SVGGElement)
-          .select("rect.node-bg")
-          .attr("stroke-opacity", 0.9);
-      })
-      .on("mousemove", (event: MouseEvent) => {
-        setTooltip((prev) => prev && { ...prev, x: event.clientX, y: event.clientY });
-      })
-      .on("mouseleave", (event: MouseEvent, d: DAGNode) => {
-        setTooltip(null);
-        const opacity = selectedNode === d.id ? 0.9 : 0.4;
-        d3.select(event.currentTarget as SVGGElement)
-          .select("rect.node-bg")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .attr("stroke-opacity", opacity as any);
-      });
-
-    // Outer glow ring for selected node
-    nodeGroups
-      .filter((d) => d.id === selectedNode)
-      .append("rect")
-      .attr("x", -3)
-      .attr("y", -3)
-      .attr("width", (d) => d.width + 6)
-      .attr("height", (d) => d.height + 6)
-      .attr("rx", NODE_RX + 3)
-      .attr("fill", "none")
-      .attr("stroke", "#16a34a")
-      .attr("stroke-width", 2)
-      .attr("filter", "url(#glow)")
-      .attr("opacity", 0.8);
-
-    // Background rect — outcome nodes use per-status fill
-    nodeGroups
-      .append("rect")
-      .attr("class", "node-bg")
-      .attr("width", (d) => d.width)
-      .attr("height", (d) => d.height)
-      .attr("rx", NODE_RX)
-      .attr("fill", (d) => {
-        if (d.kind === "outcome" && d.meta?.status) {
-          return `url(#grad-outcome-${d.meta.status})`;
-        }
-        return `url(#${KIND_GRADIENTS[d.kind].id})`;
-      })
-      .attr("stroke", (d) => {
-        if (d.id === selectedNode) return "#16a34a";
-        if (d.kind === "outcome" && d.meta?.status) {
-          return outcomeColorSet(d.meta.status).stroke;
-        }
-        return borderColorForKind(d.kind);
-      })
-      .attr("stroke-width", (d) => (d.id === selectedNode ? 1.5 : 1))
-      .attr("stroke-opacity", (d) => (d.id === selectedNode ? 0.9 : 0.4));
-
-    // Label text
-    nodeGroups
-      .append("text")
-      .attr("x", 10)
-      .attr("y", NODE_H / 2 - 3)
-      .attr("dominant-baseline", "middle")
-      .attr("fill", (d) => {
-        if (d.kind === "outcome" && d.meta?.status) return outcomeColorSet(d.meta.status).text;
-        return textColorForKind(d.kind);
-      })
-      .attr("font-size", "11px")
-      .attr("font-weight", "500")
-      .attr("font-family", "Inter, sans-serif")
-      .text((d) => d.label);
-
-    // Count badge background
-    nodeGroups
-      .append("rect")
-      .attr("x", (d) => d.width - 36)
-      .attr("y", NODE_H / 2 - 1)
-      .attr("width", 28)
-      .attr("height", 14)
-      .attr("rx", 7)
-      .attr("fill", (d) => badgeBgForKind(d.kind, d.meta?.status))
-      .attr("opacity", 0.9);
-
-    // Count badge text
-    nodeGroups
-      .append("text")
-      .attr("x", (d) => d.width - 22)
-      .attr("y", NODE_H / 2 + 8)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .attr("fill", (d) => {
-        if (d.kind === "outcome" && d.meta?.status) return outcomeColorSet(d.meta.status).text;
-        return textColorForKind(d.kind);
-      })
-      .attr("font-size", "9px")
-      .attr("font-weight", "600")
-      .attr("font-family", "Inter, sans-serif")
-      .text((d) => fmtCount(d.count));
-  }, [graph, selectedNode, handleNodeClick]);
-
-  if (isEmpty(data)) {
+  if (!focusedSession && isEmptyAggregate(data)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-surface-4 flex items-center justify-center mb-5">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            className="w-6 h-6 text-gray-500"
-          >
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6 text-gray-500">
             <circle cx="6" cy="12" r="2" />
             <circle cx="18" cy="6" r="2" />
             <circle cx="18" cy="18" r="2" />
@@ -692,180 +336,175 @@ export function OrchestrationDAG({ data, onNodeClick, selectedNode }: Orchestrat
             <line x1="8" y1="13" x2="16" y2="17" />
           </svg>
         </div>
-        <h3 className="text-base font-medium text-gray-300 mb-2">No orchestration data</h3>
-        <p className="text-sm text-gray-500 max-w-sm">
+        <h3 className="mb-2 text-base font-medium text-gray-300">No orchestration data</h3>
+        <p className="max-w-sm text-sm text-gray-500">
           Agent spawning data will appear here once sessions with subagents have been recorded.
         </p>
       </div>
     );
   }
 
-  return (
-    <div
-      className="relative w-full"
-      style={{
-        opacity: mounted ? 1 : 0,
-        transition: "opacity 0.4s ease-out",
-      }}
-    >
-      {/* SVG DAG */}
-      <div className="w-full overflow-x-auto">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${graph.svgWidth} ${graph.svgHeight}`}
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            width: "100%",
-            minWidth: graph.svgWidth,
-            height: graph.svgHeight,
-            display: "block",
-          }}
-          aria-label="Agent orchestration directed acyclic graph"
-          role="img"
-        />
-      </div>
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node]));
+  const weightMax = Math.max(...graph.edges.map((edge) => edge.weight), 1);
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 mt-4">
-        <span className="text-[10px] text-gray-600 uppercase tracking-widest font-medium mr-1">
-          Legend
-        </span>
-        {LEGEND_ITEMS.map((item) => (
-          <div key={item.label} className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-sm flex-shrink-0"
-              style={{ background: item.color, border: `1px solid ${item.border}` }}
-            />
-            <span className="text-[11px] text-gray-500">{item.label}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5 ml-2">
-          <span
-            className="inline-block h-[2px] w-8 rounded flex-shrink-0"
-            style={{ background: "linear-gradient(to right, #052e16, #16a34a)" }}
-          />
-          <span className="text-[11px] text-gray-500">Edge weight = frequency</span>
+  return (
+    <div className="relative space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-surface-3 px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-100">
+            {graph.mode === "session" ? "Focused Session Topology" : "Aggregate Topology"}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">{graph.description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+          <span className="rounded-md border border-border bg-surface-2 px-2 py-1">{graph.nodes.length} nodes</span>
+          <span className="rounded-md border border-border bg-surface-2 px-2 py-1">{graph.edges.length} edges</span>
+          <span className="rounded-md border border-border bg-surface-2 px-2 py-1">{graph.title}</span>
         </div>
       </div>
 
-      {/* Tooltip — rendered in React DOM, not D3 */}
-      {tooltip && <DAGTooltip tooltip={tooltip} />}
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${graph.width} ${graph.height}`}
+          style={{ width: "100%", minWidth: graph.width, height: graph.height, display: "block" }}
+          role="img"
+          aria-label="Agent orchestration graph"
+        >
+          <defs>
+            <marker id="workflow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a" opacity="0.8" />
+            </marker>
+          </defs>
+
+          {graph.edges.map((edge) => {
+            const source = nodeMap.get(edge.source);
+            const target = nodeMap.get(edge.target);
+            if (!source || !target) return null;
+            const opacity = 0.25 + 0.45 * (edge.weight / weightMax);
+            const width = 1.5 + 4 * (edge.weight / weightMax);
+            return (
+              <path
+                key={`${edge.source}-${edge.target}`}
+                d={edgePath(source, target)}
+                fill="none"
+                stroke="#16a34a"
+                strokeOpacity={opacity}
+                strokeWidth={width}
+                markerEnd="url(#workflow-arrow)"
+              />
+            );
+          })}
+
+          {graph.nodes.map((node) => {
+            const active = Boolean(node.filterKey && selectedNode === node.filterKey);
+            const colors = nodeColors(node, active);
+            const badge = statusBadge(node.status) ?? (typeof node.count === "number" ? `${node.count}` : null);
+            return (
+              <g
+                key={node.id}
+                transform={`translate(${node.x ?? 0}, ${node.y ?? 0})`}
+                onMouseEnter={(event) => setTooltip({ node, x: event.clientX, y: event.clientY })}
+                onMouseMove={(event) => setTooltip((current) => (current ? { ...current, x: event.clientX, y: event.clientY } : current))}
+                onMouseLeave={() => setTooltip(null)}
+                onClick={() => {
+                  if (node.filterKey) onNodeClick?.(node.filterKey);
+                }}
+                style={{ cursor: node.filterKey ? "pointer" : "default" }}
+              >
+                <rect width={node.width} height={node.height} rx={12} fill={colors.fill} stroke={colors.border} strokeWidth={active ? 2 : 1.25} />
+                <text x={12} y={24} fill={colors.title} fontSize="12" fontWeight="600">
+                  {truncate(node.label, 40)}
+                </text>
+                <text x={12} y={44} fill={colors.subtitle} fontSize="10">
+                  {truncate(node.subtitle, Math.max(20, Math.floor((node.width - 70) / 6)))}
+                </text>
+                {badge && (
+                  <>
+                    <rect
+                      x={node.width - BADGE_WIDTH - 12}
+                      y={10}
+                      width={BADGE_WIDTH}
+                      height={18}
+                      rx={9}
+                      fill={colors.badgeFill}
+                      stroke={colors.border}
+                      strokeOpacity={0.6}
+                    />
+                    <text
+                      x={node.width - BADGE_WIDTH / 2 - 12}
+                      y={23}
+                      textAnchor="middle"
+                      fill={colors.badgeText}
+                      fontSize="9"
+                      fontWeight="600"
+                    >
+                      {truncate(badge, 10)}
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 px-1">
+        <span className="text-[10px] font-medium uppercase tracking-widest text-gray-600">Legend</span>
+        <LegendDot color="#052e16" border="#16a34a" label="Session" />
+        <LegendDot color="#0f172a" border="#22c55e" label="Main agent" />
+        <LegendDot color="#0f172a" border="#16a34a" label="Teammate / subagent" />
+        <div className="ml-2 flex items-center gap-1.5">
+          <span className="inline-block h-[2px] w-8 rounded bg-accent" />
+          <span className="text-[11px] text-gray-500">
+            {graph.mode === "session" ? "Real parent-child link" : "Aggregate relationship"}
+          </span>
+        </div>
+      </div>
+
+      {tooltip && <GraphTooltip tooltip={tooltip} />}
     </div>
   );
 }
 
-// ── Tooltip component ─────────────────────────────────────────────────────────
+function LegendDot({ color, border, label }: { color: string; border: string; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: color, border: `1px solid ${border}` }} />
+      <span className="text-[11px] text-gray-500">{label}</span>
+    </div>
+  );
+}
 
-function DAGTooltip({ tooltip }: { tooltip: TooltipState }) {
-  const { x, y, node } = tooltip;
-  const nearRight = typeof window !== "undefined" && x > window.innerWidth - 220;
-
-  const lines: Array<{ label: string; value: string }> = [
-    { label: "Count", value: String(node.count) },
-  ];
-
-  if (node.kind === "subagent" && node.meta) {
-    const { completed = 0, errors = 0 } = node.meta;
-    lines.push({ label: "Completed", value: String(completed) });
-    lines.push({ label: "Errors", value: String(errors) });
-    lines.push({ label: "Success rate", value: successRate(completed, node.count) });
-  }
-
-  if (node.kind === "nested" && node.meta?.subagent_type) {
-    lines.push({ label: "Type", value: node.meta.subagent_type });
-  }
-
-  if (node.kind === "outcome" && node.meta?.status) {
-    lines.push({ label: "Status", value: node.meta.status });
-  }
+function GraphTooltip({ tooltip }: { tooltip: TooltipState }) {
+  const nearRight = typeof window !== "undefined" && tooltip.x > window.innerWidth - 260;
 
   return (
     <div
-      className="fixed z-50 px-3 py-2 bg-[#12121f] border border-[#2a2a4a] rounded-lg shadow-2xl pointer-events-none"
+      className="tooltip-panel pointer-events-none fixed z-50 min-w-[220px] rounded-lg px-3 py-2"
       style={{
-        left: nearRight ? x - 16 : x + 16,
-        top: y - 8,
+        left: nearRight ? tooltip.x - 16 : tooltip.x + 16,
+        top: tooltip.y - 8,
         transform: nearRight ? "translateX(-100%)" : undefined,
-        minWidth: 160,
       }}
     >
-      <p className="text-xs font-semibold text-gray-200 mb-1.5">{node.label}</p>
-      <div className="space-y-0.5">
-        {lines.map((line) => (
-          <div key={line.label} className="flex items-center justify-between gap-4 text-[11px]">
-            <span className="text-gray-500">{line.label}</span>
-            <span className="text-gray-300 font-medium tabular-nums">{line.value}</span>
-          </div>
-        ))}
+      <p className="tooltip-title mb-1 text-xs font-semibold">{tooltip.node.label}</p>
+      <div className="space-y-1 text-[11px]">
+        <TooltipRow label="Role" value={tooltip.node.subtitle} />
+        {tooltip.node.status && <TooltipRow label="Status" value={prettyStatus(tooltip.node.status)} />}
+        {typeof tooltip.node.count === "number" && (
+          <TooltipRow label={tooltip.node.kind === "session" ? "Agents" : "Children"} value={String(tooltip.node.count)} />
+        )}
+        {tooltip.node.task && <TooltipRow label="Task" value={truncate(tooltip.node.task, 80)} />}
       </div>
     </div>
   );
 }
 
-// ── Utility functions ─────────────────────────────────────────────────────────
-
-function borderColorForKind(kind: DAGNode["kind"]): string {
-  switch (kind) {
-    case "session":
-      return "#16a34a";
-    case "main":
-      return "#22c55e";
-    case "subagent":
-      return "#16a34a";
-    case "nested":
-      return "#6b7280";
-    case "outcome":
-      return "#16a34a";
-  }
+function TooltipRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <span className="tooltip-label">{label}</span>
+      <span className="tooltip-value text-right font-medium">{value}</span>
+    </div>
+  );
 }
-
-function textColorForKind(kind: DAGNode["kind"]): string {
-  switch (kind) {
-    case "session":
-      return "#4ade80";
-    case "main":
-      return "#86efac";
-    case "subagent":
-      return "#86efac";
-    case "nested":
-      return "#9ca3af";
-    case "outcome":
-      return "#4ade80";
-  }
-}
-
-function badgeBgForKind(kind: DAGNode["kind"], status?: string): string {
-  if (kind === "outcome" && status) {
-    return outcomeColorSet(status).stroke + "33";
-  }
-  switch (kind) {
-    case "session":
-      return "rgba(22,163,74,0.25)";
-    case "main":
-      return "rgba(34,197,94,0.25)";
-    case "subagent":
-      return "rgba(22,163,74,0.25)";
-    case "nested":
-      return "rgba(107,114,128,0.25)";
-    case "outcome":
-      return "rgba(99,102,241,0.25)";
-  }
-}
-
-function fmtCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(Math.round(n));
-}
-
-// ── Legend data ───────────────────────────────────────────────────────────────
-
-const LEGEND_ITEMS = [
-  { label: "Sessions", color: "#052e16", border: "#16a34a" },
-  { label: "Main Agent", color: "#052e16", border: "#22c55e" },
-  { label: "Subagent Types", color: "#052e16", border: "#16a34a" },
-  { label: "Compactions", color: "#374151", border: "#6b7280" },
-  { label: "Completed", color: "#052e16", border: "#16a34a" },
-  { label: "Error", color: "#1a1a28", border: "#6b7280" },
-  { label: "Abandoned", color: "#1a1a28", border: "#9ca3af" },
-];

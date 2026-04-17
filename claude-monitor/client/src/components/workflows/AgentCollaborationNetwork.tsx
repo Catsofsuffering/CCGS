@@ -71,7 +71,7 @@ function showTooltip(el: HTMLDivElement, d: PipelineNode, x: number, y: number) 
   el.textContent = "";
 
   const title = document.createElement("p");
-  title.style.cssText = "font-size:12px;font-weight:600;color:#e2e8f0;margin:0 0 6px";
+  title.style.cssText = "font-size:12px;font-weight:600;color:rgb(var(--tooltip-text));margin:0 0 6px";
   title.textContent = d.id;
   el.appendChild(title);
 
@@ -84,10 +84,10 @@ function showTooltip(el: HTMLDivElement, d: PipelineNode, x: number, y: number) 
     const row = document.createElement("div");
     row.style.cssText = "display:flex;justify-content:space-between;gap:16px;font-size:11px";
     const lbl = document.createElement("span");
-    lbl.style.color = "#64748b";
+    lbl.style.color = "rgb(var(--tooltip-muted))";
     lbl.textContent = label;
     const val = document.createElement("span");
-    val.style.cssText = "color:#cbd5e1;font-weight:500";
+    val.style.cssText = "color:rgb(var(--tooltip-text));font-weight:500";
     val.textContent = value;
     row.appendChild(lbl);
     row.appendChild(val);
@@ -285,7 +285,7 @@ export function AgentCollaborationNetwork({
         if (tipEl) {
           tipEl.textContent = "";
           const title = document.createElement("p");
-          title.style.cssText = "font-size:12px;font-weight:600;color:#e2e8f0;margin:0 0 6px";
+          title.style.cssText = "font-size:12px;font-weight:600;color:rgb(var(--tooltip-text));margin:0 0 6px";
           title.textContent = `${src.id} \u2192 ${tgt.id}`;
           tipEl.appendChild(title);
 
@@ -300,10 +300,10 @@ export function AgentCollaborationNetwork({
             row.style.cssText =
               "display:flex;justify-content:space-between;gap:16px;font-size:11px";
             const lbl = document.createElement("span");
-            lbl.style.color = "#64748b";
+            lbl.style.color = "rgb(var(--tooltip-muted))";
             lbl.textContent = label;
             const val = document.createElement("span");
-            val.style.cssText = "color:#cbd5e1;font-weight:500";
+            val.style.cssText = "color:rgb(var(--tooltip-text));font-weight:500";
             val.textContent = value;
             row.appendChild(lbl);
             row.appendChild(val);
@@ -477,7 +477,7 @@ export function AgentCollaborationNetwork({
       />
       <div
         ref={tooltipRef}
-        className="fixed z-50 px-3 py-2 bg-[#12121f] border border-[#2a2a4a] rounded-lg shadow-2xl pointer-events-none"
+        className="tooltip-panel fixed z-50 rounded-lg px-3 py-2 pointer-events-none"
         style={{ display: "none", minWidth: 172 }}
       />
       <div className="flex flex-wrap items-center gap-3 mt-3 px-1">

@@ -24,6 +24,76 @@ const settingsRouter = require("./routes/settings");
 const workflowsRouter = require("./routes/workflows");
 const openspecRouter = require("./routes/openspec");
 
+function evictTranscriptCacheForSession(cleanupDb, transcriptCache, sessionId) {
+  const tpRow = cleanupDb.db
+    .prepare(
+      "SELECT json_extract(data, '$.transcript_path') as tp FROM events WHERE session_id = ? AND json_extract(data, '$.transcript_path') IS NOT NULL LIMIT 1"
+    )
+    .get(sessionId);
+  if (tpRow?.tp) transcriptCache.invalidate(tpRow.tp);
+}
+
+function closeSessionTree(cleanupDb, broadcast, transcriptCache, sessionId, status) {
+  const now = new Date().toISOString();
+  const agents = cleanupDb.stmts.listAgentsBySession.all(sessionId);
+  for (const agent of agents) {
+    if (agent.status !== "completed" && agent.status !== "error") {
+      cleanupDb.stmts.updateAgent.run(null, "completed", null, null, now, null, agent.id);
+      broadcast("agent_updated", cleanupDb.stmts.getAgent.get(agent.id));
+    }
+  }
+  cleanupDb.stmts.updateSession.run(null, status, now, null, sessionId);
+  broadcast("session_updated", cleanupDb.stmts.getSession.get(sessionId));
+  evictTranscriptCacheForSession(cleanupDb, transcriptCache, sessionId);
+}
+
+function runMaintenanceSweep({
+  cleanupDb,
+  broadcast,
+  importCompactions,
+  transcriptCache,
+  staleSessionMinutes = 5,
+  idleSessionMinutes = 2,
+}) {
+  // 1. Stale session cleanup
+  const stale = cleanupDb.stmts.findStaleSessions.all("__periodic__", staleSessionMinutes);
+  for (const s of stale) {
+    closeSessionTree(cleanupDb, broadcast, transcriptCache, s.id, "abandoned");
+  }
+
+  // 2. Close active sessions that have gone idle for too long.
+  const idleClosable = cleanupDb.stmts.findIdleClosableSessions.all(idleSessionMinutes);
+  for (const s of idleClosable) {
+    closeSessionTree(cleanupDb, broadcast, transcriptCache, s.id, "completed");
+  }
+
+  // 3. Scan active sessions for new compaction entries.
+  const active = cleanupDb.db
+    .prepare(
+      "SELECT DISTINCT e.session_id, json_extract(e.data, '$.transcript_path') as tp FROM events e JOIN sessions s ON s.id = e.session_id WHERE s.status = 'active' AND json_extract(e.data, '$.transcript_path') IS NOT NULL GROUP BY e.session_id ORDER BY MAX(e.id) DESC"
+    )
+    .all();
+  for (const row of active) {
+    if (!row.tp) continue;
+    try {
+      const compactions = transcriptCache.extractCompactions(row.tp);
+      if (compactions.length === 0) continue;
+      const mainAgentId = `${row.session_id}-main`;
+      const created = importCompactions(cleanupDb, row.session_id, mainAgentId, compactions);
+      if (created > 0) {
+        broadcast(
+          "agent_created",
+          cleanupDb.stmts.getAgent.get(
+            `${row.session_id}-compact-${compactions[compactions.length - 1].uuid}`
+          )
+        );
+      }
+    } catch {
+      continue;
+    }
+  }
+}
+
 function createApp() {
   const app = express();
   const openApiSpec = createOpenApiSpec();
@@ -107,59 +177,29 @@ if (require.main === module) {
   const { broadcast } = require("./websocket");
   const { importCompactions } = require("../scripts/import-history");
   const { transcriptCache } = require("./routes/hooks");
-  setInterval(
-    () => {
-      // 1. Stale session cleanup
-      const stale = cleanupDb.stmts.findStaleSessions.all("__periodic__", 5);
-      const now = new Date().toISOString();
-      for (const s of stale) {
-        const agents = cleanupDb.stmts.listAgentsBySession.all(s.id);
-        for (const agent of agents) {
-          if (agent.status !== "completed" && agent.status !== "error") {
-            cleanupDb.stmts.updateAgent.run(null, "completed", null, null, now, null, agent.id);
-            broadcast("agent_updated", cleanupDb.stmts.getAgent.get(agent.id));
-          }
-        }
-        cleanupDb.stmts.updateSession.run(null, "abandoned", now, null, s.id);
-        broadcast("session_updated", cleanupDb.stmts.getSession.get(s.id));
-
-        // Evict transcript cache for abandoned sessions to bound memory growth
-        const tpRow = cleanupDb.db
-          .prepare(
-            "SELECT json_extract(data, '$.transcript_path') as tp FROM events WHERE session_id = ? AND json_extract(data, '$.transcript_path') IS NOT NULL LIMIT 1"
-          )
-          .get(s.id);
-        if (tpRow?.tp) transcriptCache.invalidate(tpRow.tp);
-      }
-
-      // 2. Scan active sessions for new compaction entries
-      const active = cleanupDb.db
-        .prepare(
-          "SELECT DISTINCT e.session_id, json_extract(e.data, '$.transcript_path') as tp FROM events e JOIN sessions s ON s.id = e.session_id WHERE s.status = 'active' AND json_extract(e.data, '$.transcript_path') IS NOT NULL GROUP BY e.session_id ORDER BY MAX(e.id) DESC"
-        )
-        .all();
-      for (const row of active) {
-        if (!row.tp) continue;
-        try {
-          const compactions = transcriptCache.extractCompactions(row.tp);
-          if (compactions.length === 0) continue;
-          const mainAgentId = `${row.session_id}-main`;
-          const created = importCompactions(cleanupDb, row.session_id, mainAgentId, compactions);
-          if (created > 0) {
-            broadcast(
-              "agent_created",
-              cleanupDb.stmts.getAgent.get(
-                `${row.session_id}-compact-${compactions[compactions.length - 1].uuid}`
-              )
-            );
-          }
-        } catch {
-          continue;
-        }
-      }
-    },
-    2 * 60 * 1000
+  const maintenanceIntervalMs = Math.max(
+    10_000,
+    parseInt(process.env.DASHBOARD_MAINTENANCE_INTERVAL_MS || "30000", 10)
   );
+  const staleSessionMinutes = Math.max(
+    1,
+    parseInt(process.env.DASHBOARD_STALE_SESSION_MINUTES || "5", 10)
+  );
+  const idleSessionMinutes = Math.max(
+    1,
+    parseInt(process.env.DASHBOARD_IDLE_SESSION_MINUTES || "2", 10)
+  );
+
+  setInterval(() => {
+    runMaintenanceSweep({
+      cleanupDb,
+      broadcast,
+      importCompactions,
+      transcriptCache,
+      staleSessionMinutes,
+      idleSessionMinutes,
+    });
+  }, maintenanceIntervalMs);
 
   // Auto-import legacy sessions and backfill compaction tracking on startup
   const { importAllSessions, backfillCompactions } = require("../scripts/import-history");
@@ -178,4 +218,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { createApp, startServer };
+module.exports = { createApp, startServer, closeSessionTree, runMaintenanceSweep };

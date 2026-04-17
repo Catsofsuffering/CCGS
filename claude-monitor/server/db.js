@@ -307,6 +307,16 @@ const stmts = {
      WHERE status = 'active' AND id != ?
        AND updated_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-' || ? || ' minutes')`
   ),
+  findIdleClosableSessions: db.prepare(
+    `SELECT s.id FROM sessions s
+     WHERE s.status = 'active'
+       AND s.updated_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-' || ? || ' minutes')
+       AND NOT EXISTS (
+         SELECT 1 FROM agents a
+         WHERE a.session_id = s.id
+           AND a.status IN ('working', 'connected')
+       )`
+  ),
 
   insertEvent: db.prepare(
     "INSERT INTO events (session_id, agent_id, event_type, tool_name, summary, data, created_at) VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"

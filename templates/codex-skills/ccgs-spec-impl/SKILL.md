@@ -25,8 +25,11 @@ Implement the planned change while keeping Codex as the host workflow.
 
 ```powershell
 $localBypass = '127.0.0.1,localhost'
-$env:NO_PROXY = @($env:NO_PROXY, $localBypass) | Where-Object { $_ -and $_.Trim() -ne '' } | Select-Object -Unique | Join-String -Separator ','
+$proxyParts = @($env:NO_PROXY, $localBypass) | Where-Object { $_ -and $_.Trim() -ne '' } | ForEach-Object { $_.Split(',') } | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+$env:NO_PROXY = ($proxyParts | Select-Object -Unique) -join ','
 $env:no_proxy = $env:NO_PROXY
+$env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1'
+$env:CLAUDE_CODE_ENABLE_TASKS = '1'
 
 $prompt = @'
 You are the Claude execution worker for this change.
@@ -43,6 +46,12 @@ claude -p $prompt
 ```
 
    Preserve your existing proxy, but make sure local Anthropic-compatible endpoints such as `127.0.0.1` and `localhost` bypass the proxy via `NO_PROXY` / `no_proxy`.
+   Treat `claude -p` as the host entrypoint. Do not assume a separate `claude teammates` CLI command exists.
+   If the execution packet requires Agent Teams, enable both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and `CLAUDE_CODE_ENABLE_TASKS=1`, then instruct Claude to use the in-session team tools (`TeamCreate`, `TaskCreate`, `SendMessage`, `Agent(team_name=..., name=...)`) after the Claude session starts.
+   Require every teammate prompt to define its mailbox return protocol explicitly: if `SendMessage` is deferred, the teammate must run `ToolSearch select:SendMessage` before its first mailbox reply, and any string reply must include both `summary` and `message`.
+   Tell Claude that a teammate is not considered finished just because it goes idle or emits `SubagentStop`; the required report only counts after the team lead receives the teammate mailbox message.
+   In non-interactive `claude -p` sessions, require Claude to emit the full return packet before shutdown, then follow the official shutdown order: gracefully shut down teammates, wait for approvals, and run cleanup exactly once.
+   If cleanup reports success or `nothing to clean up`, do not let Claude keep retrying cleanup. Treat the last complete return packet as terminal output and stop the host Claude process if it falls into the known shutdown-reminder loop.
 
 5. Review the Claude return packet in Codex.
 6. Run the required local verification in Codex.

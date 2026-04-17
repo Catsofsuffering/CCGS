@@ -11,6 +11,31 @@ import {
 
 export const DEFAULT_MONITOR_PORT = 4820
 
+async function isMonitorHealthy(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/health`)
+    if (!response.ok) {
+      return false
+    }
+    const body = await response.json() as { status?: string }
+    return body.status === 'ok'
+  }
+  catch {
+    return false
+  }
+}
+
+async function waitForMonitorReady(port: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (await isMonitorHealthy(port)) {
+      return true
+    }
+    await new Promise(resolve => setTimeout(resolve, 250))
+  }
+  return false
+}
+
 const HOOKS_WITH_MATCHER = ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop', 'Notification'] as const
 const HOOKS_WITHOUT_MATCHER = ['SessionStart', 'SessionEnd'] as const
 const ALL_HOOK_TYPES = [...HOOKS_WITH_MATCHER, ...HOOKS_WITHOUT_MATCHER]
@@ -244,20 +269,29 @@ export async function startClaudeMonitor(options?: {
   installDir?: string
   port?: number
   detached?: boolean
-}): Promise<{ url: string, monitorDir: string }> {
+}): Promise<{ url: string, monitorDir: string, reused: boolean }> {
   const installDir = options?.installDir || join(homedir(), '.claude')
   const monitorDir = await resolveInstalledMonitorDir(installDir)
+  const port = options?.port || DEFAULT_MONITOR_PORT
 
   if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {
     throw new Error(`Claude monitor is not installed at ${monitorDir}`)
+  }
+
+  if (await isMonitorHealthy(port)) {
+    return {
+      url: `http://127.0.0.1:${port}`,
+      monitorDir,
+      reused: true,
+    }
   }
 
   const child = spawn(process.execPath, [join(monitorDir, 'server', 'index.js')], {
     cwd: monitorDir,
     env: {
       ...process.env,
-      DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
-      CLAUDE_DASHBOARD_PORT: String(options?.port || DEFAULT_MONITOR_PORT),
+      DASHBOARD_PORT: String(port),
+      CLAUDE_DASHBOARD_PORT: String(port),
       CCG_WORKSPACE_ROOT: process.cwd(),
       OPENSPEC_WORKSPACE_ROOT: process.cwd(),
     },
@@ -265,12 +299,21 @@ export async function startClaudeMonitor(options?: {
     detached: options?.detached ?? false,
   })
 
+  const ready = await waitForMonitorReady(port, 10_000)
+  if (!ready) {
+    if (!child.killed) {
+      child.kill()
+    }
+    throw new Error(`Claude monitor failed to start on port ${port}`)
+  }
+
   if (options?.detached) {
     child.unref()
   }
 
   return {
-    url: `http://127.0.0.1:${options?.port || DEFAULT_MONITOR_PORT}`,
+    url: `http://127.0.0.1:${port}`,
     monitorDir,
+    reused: false,
   }
 }

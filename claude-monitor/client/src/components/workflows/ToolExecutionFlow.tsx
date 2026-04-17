@@ -383,14 +383,11 @@ function Tooltip({ x, y, content }: { x: number; y: number; content: string }) {
   const nearRight = typeof window !== "undefined" && x > window.innerWidth - 220;
   return (
     <div
-      className="fixed z-50 px-2.5 py-1.5 text-xs rounded shadow-xl pointer-events-none whitespace-nowrap"
+      className="tooltip-panel fixed z-50 whitespace-nowrap rounded px-2.5 py-1.5 text-xs pointer-events-none"
       style={{
         left: nearRight ? x - 12 : x + 12,
         top: y - 10,
         transform: nearRight ? "translateX(-100%)" : undefined,
-        background: "#12121f",
-        border: "1px solid #2a2a4a",
-        color: "#e2e8f0",
       }}
     >
       {content}

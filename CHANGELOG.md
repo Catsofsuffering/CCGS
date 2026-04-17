@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.20] - 2026-04-17
+
+### Changed
+
+- Fixed the Codex-to-Claude Agent Teams launch path for `claude -p` by documenting and shipping the required `CLAUDE_CODE_ENABLE_TASKS=1` enablement, deferred-tool `ToolSearch` step, and a PowerShell-compatible `NO_PROXY` setup snippet.
+- Updated the Agent Teams shutdown guidance for non-interactive `claude -p` sessions so return packets are emitted before cleanup, cleanup is attempted only once, and host-side termination is treated as the fallback when Claude enters the known shutdown-reminder loop.
+
+---
+
 ## [2.1.19] - 2026-04-16
 
 ### Changed

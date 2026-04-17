@@ -15,7 +15,7 @@ const pkg = require("../../package.json");
 const TEST_DB = path.join(os.tmpdir(), `dashboard-test-${Date.now()}-${process.pid}.db`);
 process.env.DASHBOARD_DB_PATH = TEST_DB;
 
-const { createApp, startServer } = require("../index");
+const { createApp, startServer, runMaintenanceSweep } = require("../index");
 const { db, stmts } = require("../db");
 
 let server;
@@ -1743,5 +1743,100 @@ describe("Nested Agent Spawning", () => {
       byName["UW-L3"].id,
       "After unwinding to L3, new spawn should parent to L3"
     );
+  });
+});
+
+describe("Maintenance Sweep", () => {
+  it("should auto-close sessions that stay idle past the configured threshold", async () => {
+    const sid = `idle-close-${Date.now()}`;
+
+    await post("/api/hooks/event", {
+      hook_type: "PreToolUse",
+      data: {
+        session_id: sid,
+        tool_name: "Read",
+      },
+    });
+    await post("/api/hooks/event", {
+      hook_type: "Stop",
+      data: {
+        session_id: sid,
+        stop_reason: "end_turn",
+      },
+    });
+
+    db.prepare(
+      "UPDATE sessions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 minutes') WHERE id = ?"
+    ).run(sid);
+
+    runMaintenanceSweep({
+      cleanupDb: require("../db"),
+      broadcast: () => {},
+      importCompactions: () => 0,
+      transcriptCache: {
+        invalidate: () => {},
+        extractCompactions: () => [],
+      },
+      idleSessionMinutes: 2,
+      staleSessionMinutes: 99,
+    });
+
+    const sessionRes = await fetch(`/api/sessions/${sid}`);
+    assert.equal(sessionRes.status, 200);
+    assert.equal(sessionRes.body.session.status, "completed");
+
+    const mainAgentRes = await fetch(`/api/agents/${sid}-main`);
+    assert.equal(mainAgentRes.status, 200);
+    assert.equal(mainAgentRes.body.agent.status, "completed");
+    assert.ok(mainAgentRes.body.agent.ended_at);
+  });
+
+  it("should keep sessions open when a teammate is still working", async () => {
+    const sid = `idle-active-${Date.now()}`;
+
+    await post("/api/hooks/event", {
+      hook_type: "PreToolUse",
+      data: {
+        session_id: sid,
+        tool_name: "Agent",
+        tool_input: {
+          description: "Still working",
+          subagent_type: "general-purpose",
+          prompt: "Keep going",
+        },
+      },
+    });
+    await post("/api/hooks/event", {
+      hook_type: "Stop",
+      data: {
+        session_id: sid,
+        stop_reason: "end_turn",
+      },
+    });
+
+    db.prepare(
+      "UPDATE sessions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 minutes') WHERE id = ?"
+    ).run(sid);
+
+    runMaintenanceSweep({
+      cleanupDb: require("../db"),
+      broadcast: () => {},
+      importCompactions: () => 0,
+      transcriptCache: {
+        invalidate: () => {},
+        extractCompactions: () => [],
+      },
+      idleSessionMinutes: 2,
+      staleSessionMinutes: 99,
+    });
+
+    const sessionRes = await fetch(`/api/sessions/${sid}`);
+    assert.equal(sessionRes.status, 200);
+    assert.equal(sessionRes.body.session.status, "active");
+
+    const agentsRes = await fetch(`/api/agents?session_id=${sid}`);
+    const subagent = agentsRes.body.agents.find((agent) => agent.type === "subagent");
+    assert.ok(subagent);
+    assert.equal(subagent.status, "working");
   });
 });
