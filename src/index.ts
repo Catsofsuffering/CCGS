@@ -1,4 +1,4 @@
-// CCG - Claude + Codex + Gemini Multi-Model Collaboration System
+// CCG - Codex and Claude collaborative workflow system
 export * from './types'
 export { init } from './commands/init'
 export { doctorClaude, execClaude } from './commands/claude'
@@ -24,7 +24,9 @@ export {
 export {
   configureClaudeMonitorHooks,
   getInstalledMonitorDir,
+  getInstalledCodexMonitorDir,
   prepareClaudeMonitorRuntime,
+  prepareCodexMonitorRuntime,
   startClaudeMonitor,
 } from './utils/claude-monitor'
 export {

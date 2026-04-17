@@ -121,18 +121,18 @@ disable-model-invocation: false
 |------|----------|------|------|----------|------|
 | 🏗 架构师 (Architect) | `team-architect` | 天罗军师 | 代码库扫描、架构蓝图、文件分配矩阵 | Read/Glob/Grep（只读） | Sonnet |
 | 🧪 QA 工程师 (QA) | `team-qa` | 天罗验毒 | 写测试、跑测试、lint、typecheck | Read/Write/Edit/Bash/Glob/Grep | Sonnet |
-| 🔬 审查员 (Reviewer) | `team-reviewer` | 天罗护法 | 综合 Codex/Gemini 审查、分级判决 | Read/Glob/Grep（只读） | Sonnet |
+| 🔬 审查员 (Reviewer) | `team-reviewer` | 天罗护法 | 综合 Codex/Claude 审查、分级判决 | Read/Glob/Grep（只读） | Sonnet |
 
 ### 8 阶段流水线
 
 ```
 Phase 0: PRE-FLIGHT    → 环境检测 + 参数解析
 Phase 1: REQUIREMENT   → Lead 需求增强 → mini-PRD
-Phase 2: ARCHITECTURE  → Codex∥Gemini 外援 + Architect teammate 出蓝图
+Phase 2: ARCHITECTURE  → Codex∥Claude 外援 + Architect teammate 出蓝图
 Phase 3: PLANNING      → Lead 拆任务 → 零决策并行计划
 Phase 4: DEVELOPMENT   → Dev×N teammates 并行编码（文件隔离）
 Phase 5: TESTING       → QA teammate 写测试 + 跑全量验证
-Phase 6: REVIEW        → Codex∥Gemini 外援 + Reviewer teammate 综合审查
+Phase 6: REVIEW        → Codex∥Claude 外援 + Reviewer teammate 综合审查
 Phase 7: FIX           → Dev teammate(s) 修复 Critical（最多 2 轮）
 Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
 ```

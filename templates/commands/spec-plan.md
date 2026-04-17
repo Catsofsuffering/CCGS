@@ -5,7 +5,7 @@ description: 'Codex 收敛 proposal，生成执行交接契约与零决策计划
 **Core Philosophy**
 - Codex 负责把需求收敛成可执行、可验收、可打回的 change 计划。
 - Claude 不是本阶段的主控，只是后续执行层。
-- Gemini、MCP、skills 都是可选增强，不是本阶段的硬前提。
+- MCP、skills 都是可选增强，不是本阶段的硬前提。
 
 **Guardrails**
 - 本阶段只更新 OpenSpec artifacts，不修改产品源码。

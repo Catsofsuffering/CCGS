@@ -68,7 +68,6 @@ const FC_MARKER_END = '<!-- CCG-FAST-CONTEXT-END -->'
  * Write fast-context search guidance to:
  * 1. ~/.claude/rules/ccg-fast-context.md (Claude Code — auto-loaded via rules/)
  * 2. ~/.codex/AGENTS.md (Codex CLI — auto-loaded as global instructions)
- * 3. ~/.gemini/GEMINI.md (Gemini CLI — auto-loaded as global instructions)
  */
 export async function writeFastContextPrompt(auxiliaryMode = false): Promise<void> {
   const promptContent = auxiliaryMode ? FAST_CONTEXT_PROMPT_AUXILIARY : FAST_CONTEXT_PROMPT_PRIMARY
@@ -106,8 +105,6 @@ export async function writeFastContextPrompt(auxiliaryMode = false): Promise<voi
   // 2. Codex CLI global instructions (~/.codex/AGENTS.md)
   await injectIntoFile(join(homedir(), '.codex', 'AGENTS.md'))
 
-  // 3. Gemini CLI global instructions (~/.gemini/GEMINI.md)
-  await injectIntoFile(join(homedir(), '.gemini', 'GEMINI.md'))
 }
 
 /**
@@ -138,6 +135,4 @@ export async function removeFastContextPrompt(): Promise<void> {
   // 2. Remove from Codex AGENTS.md
   await removeFromFile(join(homedir(), '.codex', 'AGENTS.md'))
 
-  // 3. Remove from Gemini GEMINI.md
-  await removeFromFile(join(homedir(), '.gemini', 'GEMINI.md'))
 }

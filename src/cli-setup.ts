@@ -63,7 +63,7 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i`)}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.customModels')}`),
-      `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i --frontend gemini,codex --backend codex,gemini`)}`,
+`  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i --frontend claude,codex --backend codex,claude`)}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.parallelMode')}`),
       `  ${ansis.cyan(`npx ${CANONICAL_PACKAGE_NAME} i --mode parallel`)}`,

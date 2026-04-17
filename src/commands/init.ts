@@ -6,23 +6,24 @@ import ora from 'ora'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
-import { createDefaultConfig, ensureCcgDir, getCcgDir, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
-import { prepareClaudeMonitorRuntime } from '../utils/claude-monitor'
+import { createDefaultConfig, ensureCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
+import { prepareClaudeMonitorRuntime, prepareCodexMonitorRuntime } from '../utils/claude-monitor'
 import { CANONICAL_NAMESPACE, CANONICAL_RULE_FILES, PRODUCT_NAME, getCanonicalNpxLatestCommand } from '../utils/identity'
-import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
+import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
+import { getHostHomeDir } from '../utils/host'
 
 /**
  * Write grok-search global prompt to ~/.claude/rules/ccgs-grok-search.md
  * Uses rules/ directory for modularity — avoids bloating CLAUDE.md
  */
-async function appendGrokSearchPrompt(): Promise<void> {
-  const rulesDir = join(homedir(), '.claude', 'rules')
+async function appendGrokSearchPrompt(installDir: string): Promise<void> {
+  const rulesDir = join(installDir, 'rules')
   const rulePath = join(rulesDir, CANONICAL_RULE_FILES[2])
 
   // Also clean up legacy CLAUDE.md injection if present
-  const claudeMdPath = join(homedir(), '.claude', 'CLAUDE.md')
+  const claudeMdPath = join(installDir, 'CLAUDE.md')
   if (await fs.pathExists(claudeMdPath)) {
     const content = await fs.readFile(claudeMdPath, 'utf-8')
     if (content.includes('CCG-GROK-SEARCH-PROMPT')) {
@@ -146,7 +147,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let acceptanceModel: ModelType = orchestrator === 'codex' ? 'codex' : 'claude'
   let frontendModels: ModelType[] = ['codex']
   let backendModels: ModelType[] = ['codex']
-  let geminiModel = 'gemini-3.1-pro-preview'
   const mode: CollaborationMode = 'smart'
   const selectedWorkflows = getDefaultCommandIds()
 
@@ -156,7 +156,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
     if (existingConfig?.routing) {
       frontendModels = existingConfig.routing.frontend?.models || ['codex']
       backendModels = existingConfig.routing.backend?.models || ['codex']
-      geminiModel = existingConfig.routing.geminiModel || 'gemini-3.1-pro-preview'
     }
     if (existingConfig?.ownership) {
       orchestrator = existingConfig.ownership.orchestrator || orchestrator
@@ -273,7 +272,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
       choices: [
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
         { name: 'Claude', value: 'claude' as ModelType },
-        { name: 'Gemini', value: 'gemini' as ModelType },
       ],
       default: existingConfig?.routing?.frontend?.primary || 'codex',
     }])
@@ -285,41 +283,12 @@ export async function init(options: InitOptions = {}): Promise<void> {
       choices: [
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
         { name: 'Claude', value: 'claude' as ModelType },
-        { name: 'Gemini', value: 'gemini' as ModelType },
       ],
       default: existingConfig?.routing?.backend?.primary || 'codex',
     }])
 
     frontendModels = [selectedFrontend]
     backendModels = [selectedBackend]
-
-    // Ask for Gemini model name if Gemini is selected for any role
-    if (selectedFrontend === 'gemini' || selectedBackend === 'gemini') {
-      const { selectedGeminiModel } = await inquirer.prompt([{
-        type: 'list',
-        name: 'selectedGeminiModel',
-        message: i18n.t('init:model.selectGeminiModel'),
-        choices: [
-          { name: `gemini-3.1-pro-preview ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'gemini-3.1-pro-preview' },
-          { name: 'gemini-2.5-flash', value: 'gemini-2.5-flash' },
-          { name: `${i18n.t('init:model.custom')}`, value: 'custom' },
-        ],
-        default: existingConfig?.routing?.geminiModel || 'gemini-3.1-pro-preview',
-      }])
-
-      if (selectedGeminiModel === 'custom') {
-        const { customModel } = await inquirer.prompt([{
-          type: 'input',
-          name: 'customModel',
-          message: i18n.t('init:model.enterCustomModel'),
-          validate: (v: string) => v.trim() !== '' || i18n.t('init:model.enterCustomModel'),
-        }])
-        geminiModel = customModel.trim()
-      }
-      else {
-        geminiModel = selectedGeminiModel
-      }
-    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -531,8 +500,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       strategy: 'parallel',
     },
     mode,
-    geminiModel,
   }
+
+  const installDir = options.installDir || getHostHomeDir(orchestrator)
 
   // Show summary
   console.log()
@@ -578,9 +548,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   const spinner = ora(i18n.t('init:installing')).start()
 
   try {
-    const activeBackends = [...frontendModels, ...backendModels]
-    const usesGemini = activeBackends.includes('gemini')
-
     // v1.4.0: Auto-migrate from old directory structure
     if (await needsMigration()) {
       spinner.text = 'Migrating from v1.3.x to v1.4.0...'
@@ -613,7 +580,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       }
     }
 
-    await ensureCcgDir()
+    await ensureCcgDir(installDir)
 
     // Create config
     const config = createDefaultConfig({
@@ -622,6 +589,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       installedWorkflows: selectedWorkflows,
       mcpProvider,
       skipImpeccable,
+      installDir,
       ownership: {
         orchestrator,
         executionHost,
@@ -633,11 +601,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
     await writeCcgConfig(config)
 
     // Install workflows and commands
-    const installDir = options.installDir || getDefaultInstallDir()
     const result = await installWorkflows(selectedWorkflows, installDir, options.force, {
       routing,
       mcpProvider,
       skipImpeccable,
+      codexHomeDir: getHostHomeDir('codex'),
     })
 
     // Install selected MCP tools (multiple can be installed)
@@ -665,7 +633,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log(`    ${ansis.green('✓')} fast-context MCP ${ansis.gray(`→ ${fcResult.configPath}`)}`)
         // Write search guidance — auxiliary mode if ace-tool is primary
         await writeFastContextPrompt(mcpProvider === 'ace-tool' || mcpProvider === 'ace-tool-rs')
-        console.log(`    ${ansis.green('✓')} ${i18n.t('init:mcp.fcPromptInjected')} ${ansis.gray('→ ~/.claude/rules/ + ~/.codex/ + ~/.gemini/')}`)
+        console.log(`    ${ansis.green('✓')} ${i18n.t('init:mcp.fcPromptInjected')} ${ansis.gray('→ active host rules + ~/.codex/AGENTS.md')}`)
       }
       else {
         console.log(`    ${ansis.yellow('⚠')} fast-context: ${ansis.gray(fcResult.message)}`)
@@ -711,8 +679,13 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(`    ${ansis.green('✓')} API ${ansis.gray(`→ ${settingsPath}`)}`)
     }
 
-    const monitorRuntime = await prepareClaudeMonitorRuntime({ installDir })
+    const monitorRuntime = await prepareCodexMonitorRuntime({ installDir: getHostHomeDir('codex') })
     console.log()
+    if (executionHost === 'claude') {
+      const claudeMonitorRuntime = await prepareClaudeMonitorRuntime({ installDir: getHostHomeDir('claude') })
+      console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(claudeMonitorRuntime.monitorDir)}`)
+      console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(claudeMonitorRuntime.settingsPath)}`)
+    }
     console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(`→ ${monitorRuntime.monitorDir}`)}`)
     console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(`→ ${monitorRuntime.settingsPath}`)}`)
 
@@ -728,7 +701,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       if (grokResult.success) {
         // Write global prompt to ~/.claude/rules/ccgs-grok-search.md
-        await appendGrokSearchPrompt()
+        await appendGrokSearchPrompt(installDir)
         console.log()
         console.log(`    ${ansis.green('✓')} grok-search MCP ${ansis.gray('→ ~/.claude.json')}`)
         console.log(`    ${ansis.green('✓')} ${i18n.t('init:grok.promptAppended')} ${ansis.gray(`→ ~/.claude/rules/${CANONICAL_RULE_FILES[2]}`)}`)
@@ -773,20 +746,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
       }
 
       // ═══════════════════════════════════════════════════════
-      // Sync MCP servers to Gemini (~/.gemini/settings.json)
-      // ═══════════════════════════════════════════════════════
-      if (usesGemini) {
-        const geminiSyncResult = await syncMcpToGemini()
-        if (geminiSyncResult.success && geminiSyncResult.synced.length > 0) {
-          console.log()
-          console.log(`    ${ansis.green('✓')} Gemini MCP sync: ${geminiSyncResult.synced.join(', ')} ${ansis.gray('→ ~/.gemini/settings.json')}`)
-        }
-        else if (!geminiSyncResult.success) {
-          console.log()
-          console.log(`    ${ansis.yellow('⚠')} Gemini MCP sync failed`)
-          console.log(ansis.gray(`      ${geminiSyncResult.message}`))
-        }
-      }
     }
 
     // jq check removed — permissions.allow approach does not require jq

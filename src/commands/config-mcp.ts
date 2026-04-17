@@ -5,22 +5,18 @@ import fs from 'fs-extra'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { CANONICAL_RULE_FILES } from '../utils/identity'
-import { installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, removeFastContextPrompt, syncMcpToCodex, syncMcpToGemini, uninstallAceTool, uninstallContextWeaver, uninstallFastContext, uninstallMcpServer, writeFastContextPrompt } from '../utils/installer'
+import { installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, removeFastContextPrompt, syncMcpToCodex, uninstallAceTool, uninstallContextWeaver, uninstallFastContext, uninstallMcpServer, writeFastContextPrompt } from '../utils/installer'
 
 /**
- * Sync MCP mirrors to Codex & Gemini after any install/uninstall.
+ * Sync MCP mirrors to Codex after any install/uninstall.
  * Silent on success — only logs failures.
  */
 async function syncMcpMirrors(): Promise<void> {
-  const [codex, gemini] = await Promise.all([syncMcpToCodex(), syncMcpToGemini()])
-  const synced: string[] = []
-  if (codex.success && codex.synced.length > 0) synced.push(`Codex(${codex.synced.join(',')})`)
-  if (gemini.success && gemini.synced.length > 0) synced.push(`Gemini(${gemini.synced.join(',')})`)
-  if (synced.length > 0) {
-    console.log(ansis.green(`✓ MCP 已同步到 ${synced.join(' + ')}`))
+  const codex = await syncMcpToCodex()
+  if (codex.success && codex.synced.length > 0) {
+    console.log(ansis.green(`MCP synced to Codex(${codex.synced.join(',')})`))
   }
   if (!codex.success) console.log(ansis.yellow(`⚠ Codex 同步失败: ${codex.message}`))
-  if (!gemini.success) console.log(ansis.yellow(`⚠ Gemini 同步失败: ${gemini.message}`))
 }
 
 /**
@@ -191,7 +187,7 @@ async function handleInstallFastContext(): Promise<void> {
     // Write search guidance to Claude Code rules + Codex global instructions
     await writeFastContextPrompt()
     console.log(ansis.green('✓ fast-context MCP 配置成功！'))
-    console.log(ansis.green('✓ 搜索提示词已写入 ~/.claude/rules/ + ~/.codex/AGENTS.md + ~/.gemini/GEMINI.md'))
+    console.log(ansis.green('✓ 搜索提示词已写入 ~/.claude/rules/ + ~/.codex/AGENTS.md'))
     await syncMcpMirrors()
     console.log(ansis.gray('  重启 Claude Code CLI 使配置生效'))
   }
@@ -426,7 +422,7 @@ async function handleUninstall(): Promise<void> {
     }
   }
 
-  // Sync removals to Codex/Gemini
+  // Sync removals to Codex
   await syncMcpMirrors()
   console.log()
 }

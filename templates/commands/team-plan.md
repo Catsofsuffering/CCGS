@@ -5,7 +5,7 @@ description: 'Codex 为 Claude Agent Teams 生成执行计划与 handoff 文件'
 **Core Philosophy**
 - `team-plan` 是 Codex 给 Claude 执行层准备的施工图，不是最终实现。
 - 计划必须零歧义、可分包、可验收、可回退。
-- Gemini 是可选补充，不是 mandatory。
+- Claude 是可选补充，不是 mandatory。
 
 **Guardrails**
 - 不写产品代码，只生成执行计划。
@@ -27,7 +27,7 @@ description: 'Codex 为 Claude Agent Teams 生成执行计划与 handoff 文件'
    - 如确有必要，可用 `{{FRONTEND_PRIMARY}}` 补充 UI/集成建议。
 
 3. 生成 Claude 执行计划
-   - 输出到 `.claude/team-plan/<task-name>.md`
+   - 输出到 `.ccgs/team-plan/<task-name>.md`
    - 文件中至少包含：
 
 ```md

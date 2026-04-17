@@ -1,19 +1,22 @@
 import ansis from 'ansis'
-import { getDefaultInstallDir } from '../utils/config'
-import { configureClaudeMonitorHooks, prepareClaudeMonitorRuntime, startClaudeMonitor } from '../utils/claude-monitor'
+import { getHostHomeDir } from '../utils/host'
+import { configureClaudeMonitorHooks, prepareClaudeMonitorRuntime, prepareCodexMonitorRuntime, startClaudeMonitor } from '../utils/claude-monitor'
 
 export async function installMonitorRuntime(): Promise<void> {
-  const installDir = getDefaultInstallDir()
-  const result = await prepareClaudeMonitorRuntime({ installDir })
+  const claudeInstallDir = getHostHomeDir('claude')
+  const codexInstallDir = getHostHomeDir('codex')
+  const claude = await prepareClaudeMonitorRuntime({ installDir: claudeInstallDir })
+  const codex = await prepareCodexMonitorRuntime({ installDir: codexInstallDir })
 
   console.log()
-  console.log(ansis.green('  Claude monitor ready'))
-  console.log(ansis.gray(`    monitor: ${result.monitorDir}`))
-  console.log(ansis.gray(`    settings: ${result.settingsPath}`))
+  console.log(ansis.green('  Monitor runtimes ready'))
+  console.log(ansis.gray(`    claude monitor: ${claude.monitorDir}`))
+  console.log(ansis.gray(`    claude settings: ${claude.settingsPath}`))
+  console.log(ansis.gray(`    codex monitor: ${codex.monitorDir}`))
 }
 
 export async function installMonitorHooks(): Promise<void> {
-  const installDir = getDefaultInstallDir()
+  const installDir = getHostHomeDir('claude')
   const result = await configureClaudeMonitorHooks({ installDir })
 
   console.log()
@@ -23,7 +26,7 @@ export async function installMonitorHooks(): Promise<void> {
 }
 
 export async function startMonitor(detached = false): Promise<void> {
-  const installDir = getDefaultInstallDir()
+  const installDir = getHostHomeDir('claude')
   const result = await startClaudeMonitor({ installDir, detached })
 
   console.log()

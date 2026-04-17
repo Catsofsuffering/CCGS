@@ -1,63 +1,93 @@
 import type { CcgConfig, HostRuntime, ModelRouting, ModelType, SupportedLang } from '../types'
 import fs from 'fs-extra'
-import { homedir } from 'node:os'
-import { join } from 'pathe'
+import { dirname, join } from 'pathe'
 import { parse, stringify } from 'smol-toml'
 import { version as packageVersion } from '../../package.json'
+import { CANONICAL_NAMESPACE } from './identity'
 import {
-  CANONICAL_NAMESPACE,
-  CANONICAL_RUNTIME_DIRNAME,
-  LEGACY_RUNTIME_DIRNAME,
-} from './identity'
+  DEFAULT_HOST,
+  getConfigPathForInstallDir,
+  getHostHomeDir,
+  getLegacyConfigPathForInstallDir,
+  getLegacyRuntimeDirForInstallDir,
+  getRuntimeDirForInstallDir,
+} from './host'
 
-const DEFAULT_INSTALL_DIR = join(homedir(), '.claude')
-const CCGS_DIR = join(DEFAULT_INSTALL_DIR, CANONICAL_RUNTIME_DIRNAME)
-const LEGACY_CCG_DIR = join(DEFAULT_INSTALL_DIR, LEGACY_RUNTIME_DIRNAME)
-const CONFIG_FILE = join(CCGS_DIR, 'config.toml')
-const LEGACY_CONFIG_FILE = join(LEGACY_CCG_DIR, 'config.toml')
+const DEFAULT_INSTALL_DIR = getHostHomeDir(DEFAULT_HOST)
 
-export function getDefaultInstallDir(): string {
-  return DEFAULT_INSTALL_DIR
+function getConfigCandidates(): string[] {
+  const codexHome = getHostHomeDir('codex')
+  const claudeHome = getHostHomeDir('claude')
+
+  return [
+    getConfigPathForInstallDir(codexHome),
+    getConfigPathForInstallDir(claudeHome),
+    getLegacyConfigPathForInstallDir(claudeHome),
+  ]
+}
+
+export function getDefaultInstallDir(preferredHost: HostRuntime = DEFAULT_HOST): string {
+  for (const configPath of getConfigCandidates()) {
+    if (!fs.existsSync(configPath)) {
+      continue
+    }
+
+    try {
+      const content = fs.readFileSync(configPath, 'utf-8')
+      const config = parse(content) as unknown as CcgConfig
+      if (config.paths?.hostHome) {
+        return config.paths.hostHome
+      }
+      return dirname(dirname(configPath))
+    }
+    catch {
+      // ignore invalid config and continue
+    }
+  }
+
+  return getHostHomeDir(preferredHost)
 }
 
 export function getCcgsDir(): string {
-  return CCGS_DIR
+  return getRuntimeDirForInstallDir(getDefaultInstallDir())
 }
 
 export function getCcgDir(): string {
-  return CCGS_DIR
+  return getCcgsDir()
 }
 
 export function getLegacyCcgDir(): string {
-  return LEGACY_CCG_DIR
+  return getLegacyRuntimeDirForInstallDir(getDefaultInstallDir())
 }
 
 export function getConfigPath(): string {
-  return CONFIG_FILE
+  return getConfigPathForInstallDir(getDefaultInstallDir())
 }
 
 export function getLegacyConfigPath(): string {
-  return LEGACY_CONFIG_FILE
+  return getLegacyConfigPathForInstallDir(getDefaultInstallDir())
 }
 
-export async function ensureCcgsDir(): Promise<void> {
-  await fs.ensureDir(CCGS_DIR)
+export async function ensureCcgsDir(installDir = getDefaultInstallDir()): Promise<void> {
+  await fs.ensureDir(getRuntimeDirForInstallDir(installDir))
 }
 
-export async function ensureCcgDir(): Promise<void> {
-  await ensureCcgsDir()
+export async function ensureCcgDir(installDir = getDefaultInstallDir()): Promise<void> {
+  await ensureCcgsDir(installDir)
 }
 
 export async function readCcgConfig(): Promise<CcgConfig | null> {
-  for (const configPath of [CONFIG_FILE, LEGACY_CONFIG_FILE]) {
+  for (const configPath of getConfigCandidates()) {
     try {
-      if (await fs.pathExists(configPath)) {
-        const content = await fs.readFile(configPath, 'utf-8')
-        return parse(content) as unknown as CcgConfig
+      if (!await fs.pathExists(configPath)) {
+        continue
       }
+
+      const content = await fs.readFile(configPath, 'utf-8')
+      return parse(content) as unknown as CcgConfig
     }
     catch {
-      // Config doesn't exist or is invalid
+      // ignore invalid config and continue
     }
   }
 
@@ -65,9 +95,10 @@ export async function readCcgConfig(): Promise<CcgConfig | null> {
 }
 
 export async function writeCcgConfig(config: CcgConfig): Promise<void> {
-  await ensureCcgsDir()
+  const installDir = config.paths?.hostHome || getDefaultInstallDir()
+  await ensureCcgsDir(installDir)
   const content = stringify(config as any)
-  await fs.writeFile(CONFIG_FILE, content, 'utf-8')
+  await fs.writeFile(getConfigPathForInstallDir(installDir), content, 'utf-8')
 }
 
 export function createDefaultConfig(options: {
@@ -76,6 +107,7 @@ export function createDefaultConfig(options: {
   installedWorkflows: string[]
   mcpProvider?: string
   skipImpeccable?: boolean
+  installDir?: string
   ownership?: {
     orchestrator: ModelType
     executionHost: HostRuntime
@@ -87,6 +119,9 @@ export function createDefaultConfig(options: {
     executionHost: 'claude',
     acceptance: 'codex',
   }
+
+  const installDir = options.installDir || getHostHomeDir(ownership.orchestrator)
+  const runtimeDir = getRuntimeDirForInstallDir(installDir)
 
   return {
     general: {
@@ -100,9 +135,10 @@ export function createDefaultConfig(options: {
       installed: options.installedWorkflows,
     },
     paths: {
-      commands: join(DEFAULT_INSTALL_DIR, 'commands', CANONICAL_NAMESPACE),
-      prompts: join(CCGS_DIR, 'prompts'),
-      backup: join(CCGS_DIR, 'backup'),
+      hostHome: installDir,
+      commands: join(installDir, 'commands', CANONICAL_NAMESPACE),
+      prompts: join(runtimeDir, 'prompts'),
+      backup: join(runtimeDir, 'backup'),
     },
     mcp: {
       provider: options.mcpProvider || 'ace-tool',

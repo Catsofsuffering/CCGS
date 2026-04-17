@@ -104,7 +104,7 @@ describe('injectConfigVariables', () => {
 })
 
 describe('primary-path templates', () => {
-  it('spec-research does not require Gemini when routing excludes it', () => {
+  it('spec-research keeps Codex and Claude as the primary path', () => {
     const content = readFileSync(join(TEMPLATES_DIR, 'spec-research.md'), 'utf-8')
     const result = injectConfigVariables(content, {
       routing: {
@@ -115,10 +115,8 @@ describe('primary-path templates', () => {
       },
     })
 
-    expect(result).toContain('Gemini is an optional enhancement')
     expect(result).toContain('must use `codex`')
     expect(result).toContain('launch a second call with `claude`')
-    expect(result).not.toContain('BOTH Codex AND Gemini')
   })
 
   it('all current templates fully resolve installer variables', () => {
@@ -239,27 +237,6 @@ describe('prompt installation', () => {
     expect(fs.existsSync(join(promptsDir, 'codex'))).toBe(true)
     expect(fs.existsSync(join(promptsDir, 'claude'))).toBe(true)
     expect(fs.existsSync(join(promptsDir, 'gemini'))).toBe(false)
-  })
-
-  it('installs gemini prompts only when routing uses gemini', { timeout: 60_000 }, async () => {
-    const geminiDir = join(tmpdir(), `ccgs-test-prompts-gemini-${Date.now()}`)
-    try {
-      const result = await installWorkflows(getAllCommandIds(), geminiDir, true, {
-        mcpProvider: 'skip',
-        routing: {
-          mode: 'smart',
-          frontend: { models: ['gemini'], primary: 'gemini' },
-          backend: { models: ['codex'], primary: 'codex' },
-          review: { models: ['codex'] },
-          geminiModel: 'gemini-3.1-pro-preview',
-        },
-      })
-      expect(result.success).toBe(true)
-      expect(fs.existsSync(join(geminiDir, '.ccgs', 'prompts', 'gemini'))).toBe(true)
-    }
-    finally {
-      await fs.remove(geminiDir)
-    }
   })
 })
 

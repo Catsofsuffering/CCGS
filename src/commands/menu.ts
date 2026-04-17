@@ -408,14 +408,10 @@ async function configModelRouting(): Promise<void> {
   // Show current routing
   const currentFrontend = config?.routing?.frontend?.primary || 'codex'
   const currentBackend = config?.routing?.backend?.primary || 'codex'
-  const currentGeminiModel = config?.routing?.geminiModel || 'gemini-3.1-pro-preview'
 
   console.log(ansis.gray(`  ${i18n.t('init:model.currentRouting')}:`))
   console.log(`  ${ansis.cyan('Frontend:')} ${ansis.green(currentFrontend)}`)
   console.log(`  ${ansis.cyan('Backend:')}  ${ansis.blue(currentBackend)}`)
-  if (currentFrontend === 'gemini' || currentBackend === 'gemini') {
-    console.log(`  ${ansis.cyan('Gemini:')}   ${ansis.gray(currentGeminiModel)}`)
-  }
   console.log()
 
   // Frontend model selection
@@ -426,7 +422,6 @@ async function configModelRouting(): Promise<void> {
     choices: [
       { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' },
       { name: 'Claude', value: 'claude' },
-      { name: 'Gemini', value: 'gemini' },
     ],
     default: currentFrontend,
   }])
@@ -439,42 +434,12 @@ async function configModelRouting(): Promise<void> {
     choices: [
       { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' },
       { name: 'Claude', value: 'claude' },
-      { name: 'Gemini', value: 'gemini' },
     ],
     default: currentBackend,
   }])
 
-  // Gemini model name (if gemini is selected for any role)
-  let geminiModel = currentGeminiModel
-  if (selectedFrontend === 'gemini' || selectedBackend === 'gemini') {
-    const { selectedGeminiModel } = await inquirer.prompt([{
-      type: 'list',
-      name: 'selectedGeminiModel',
-      message: i18n.t('init:model.selectGeminiModel'),
-      choices: [
-        { name: `gemini-3.1-pro-preview ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'gemini-3.1-pro-preview' },
-        { name: 'gemini-2.5-flash', value: 'gemini-2.5-flash' },
-        { name: `${i18n.t('init:model.custom')}`, value: 'custom' },
-      ],
-      default: currentGeminiModel,
-    }])
-
-    if (selectedGeminiModel === 'custom') {
-      const { customModel } = await inquirer.prompt([{
-        type: 'input',
-        name: 'customModel',
-        message: i18n.t('init:model.enterCustomModel'),
-        validate: (v: string) => v.trim() !== '' || i18n.t('init:model.enterCustomModel'),
-      }])
-      geminiModel = customModel.trim()
-    }
-    else {
-      geminiModel = selectedGeminiModel
-    }
-  }
-
   // Check if anything changed
-  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend && geminiModel === currentGeminiModel) {
+  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend) {
     console.log(ansis.gray(`  ${i18n.t('common:configNotModified')}`))
     return
   }
@@ -495,7 +460,6 @@ async function configModelRouting(): Promise<void> {
       models: [...new Set([selectedFrontend, selectedBackend])] as any,
       strategy: 'parallel',
     }
-    config.routing.geminiModel = geminiModel
     await writeCcgConfig(config)
   }
 

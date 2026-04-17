@@ -29,10 +29,10 @@ You are a test engineer focusing on integration tests and cross-boundary testing
 - Empty/null/undefined handling
 - Concurrent operations
 
-## Unique Value (vs Codex/Gemini)
+## Unique Value (vs single-role testing)
 
 - Codex writes: unit tests for backend logic
-- Gemini writes: component tests, visual tests
+- Claude execution writes: task-level tests tied to the implementation slice
 - You write: **integration tests, contract tests, E2E scenarios**
 
 ## Test Patterns

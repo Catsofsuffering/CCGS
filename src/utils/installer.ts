@@ -47,7 +47,6 @@ export {
   installFastContext,
   installMcpServer,
   syncMcpToCodex,
-  syncMcpToGemini,
   uninstallAceTool,
   uninstallContextWeaver,
   uninstallFastContext,
@@ -73,7 +72,6 @@ interface InstallConfig {
     frontend: { models: string[], primary: string }
     backend: { models: string[], primary: string }
     review: { models: string[] }
-    geminiModel?: string
   }
   mcpProvider: string
   skipImpeccable?: boolean
@@ -86,14 +84,6 @@ interface InstallContext {
   config: InstallConfig
   templateDir: string
   result: InstallResult
-}
-
-function routingUsesGemini(routing: InstallConfig['routing']): boolean {
-  return [
-    ...(routing.frontend?.models || []),
-    ...(routing.backend?.models || []),
-    ...(routing.review?.models || []),
-  ].includes('gemini')
 }
 
 async function copyMdTemplates(
@@ -193,8 +183,6 @@ async function installPromptFiles(ctx: InstallContext): Promise<void> {
   }
 
   const promptModels = ['codex', 'claude']
-  if (routingUsesGemini(ctx.config.routing))
-    promptModels.push('gemini')
 
   for (const model of promptModels) {
     try {
@@ -421,7 +409,6 @@ export async function installWorkflows(
       frontend?: { models?: string[], primary?: string }
       backend?: { models?: string[], primary?: string }
       review?: { models?: string[] }
-      geminiModel?: string
     }
     mcpProvider?: string
     skipImpeccable?: boolean

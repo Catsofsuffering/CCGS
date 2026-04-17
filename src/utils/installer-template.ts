@@ -46,7 +46,6 @@ export function injectConfigVariables(content: string, config: {
     frontend?: { models?: string[], primary?: string }
     backend?: { models?: string[], primary?: string }
     review?: { models?: string[] }
-    geminiModel?: string
   }
   mcpProvider?: string
 }): string {
@@ -68,10 +67,7 @@ export function injectConfigVariables(content: string, config: {
 
   const routingMode = routing.mode || 'smart'
   processed = processed.replace(/\{\{ROUTING_MODE\}\}/g, routingMode)
-
-  const geminiModel = routing.geminiModel || 'gemini-3.1-pro-preview'
-  const usesGemini = [...frontendModels, ...backendModels, ...reviewModels].includes('gemini')
-  processed = processed.replace(/\{\{GEMINI_MODEL_FLAG\}\}/g, usesGemini ? `--gemini-model ${geminiModel} ` : '')
+  processed = processed.replace(/\{\{GEMINI_MODEL_FLAG\}\}/g, '')
 
   const mcpProvider = config.mcpProvider || 'ace-tool'
   if (mcpProvider === 'skip') {

@@ -9,7 +9,7 @@ description: 'Codex 最终验收 OpenSpec change，失败打回，成功 archive
 
 **Guardrails**
 - Codex 审查是 mandatory。
-- Gemini 可作为补充视角，但不是硬前提。
+- Claude 可作为补充视角，但不是硬前提。
 - 审查必须对照 spec、design、tasks 和执行回传证据。
 
 **Steps**
