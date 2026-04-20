@@ -16,7 +16,7 @@ The current project assumes Claude Code is the primary host and orchestrator, wh
 ## Capabilities
 
 ### New Capabilities
-- `codex-orchestrated-workflow`: Defines the primary end-to-end workflow where Codex creates and advances OpenSpec artifacts, dispatches implementation work, performs acceptance, and decides whether to archive.
+- `codex-workflow-orchestration`: Defines the primary end-to-end workflow where Codex creates and advances OpenSpec artifacts, dispatches implementation work, performs acceptance, and decides whether to archive.
 - `claude-execution-dispatch`: Defines how Codex-triggered workflows invoke Claude execution layers, especially Agent Teams, and how results are returned for Codex-led verification.
 - `optional-integrations`: Defines installation and runtime behavior where Gemini is opt-in for the default path, while MCP and skills remain additive compatibility layers rather than required workflow gates. The installer now surfaces an explicit “orchestrator” choice and documents that Codex is the recommended default.
 

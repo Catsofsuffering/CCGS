@@ -14,7 +14,7 @@ CCGS already has a monitor UI, an OpenSpec workflow, and a Claude-oriented execu
 
 ### New Capabilities
 - `orchestration-control-plane`: OpenSpec-backed blackboard state, dispatcher stages, replay/reopen flows, and control-plane coordination semantics.
-- `dynamic-execution-dag`: Real-time generated DAG views, node state transitions, drag-and-drop adjustments, and operator-visible execution progress.
+- `execution-dag-engine`: Real-time generated DAG views, node state transitions, drag-and-drop adjustments, and operator-visible execution progress.
 - `worker-container-runtime`: Worker lifecycle and routing contract for CLI-backed and future SDK-backed Agent Workers.
 
 ### Modified Capabilities

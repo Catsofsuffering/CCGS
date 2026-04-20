@@ -30,13 +30,13 @@ This change creates a dedicated plan for a repository-wide nativeization pass so
 
 ### New Capabilities
 
-- `ccgs-native-identity`: Defines `CCGS` as the canonical user-facing project identity and requires compatibility language to be explicitly labeled instead of silently inheriting deleted-upstream naming.
+- `ccgs-project-identity`: Defines `CCGS` as the canonical user-facing project identity and requires compatibility language to be explicitly labeled instead of silently inheriting deleted-upstream naming.
 - `ccgs-command-and-skill-surface`: Defines the native command, skill, and template namespace expected from the maintained fork, including default `ccgs` naming and bounded `ccg` compatibility aliases.
-- `ccgs-runtime-layout`: Defines the runtime-owned path layout, generated install targets, and migration expectations for moving from `ccg`-owned directories to `ccgs`-owned directories.
+- `ccgs-runtime-surface`: Defines the runtime-owned path layout, generated install targets, and migration expectations for moving from `ccg`-owned directories to `ccgs`-owned directories.
 
 ### Modified Capabilities
 
-- `codex-orchestrated-workflow`: Codex remains supported as an orchestrator or execution host, but the maintained workflow surface must no longer assume Codex owns only one fixed role.
+- `codex-workflow-orchestration`: Codex remains supported as an orchestrator or execution host, but the maintained workflow surface must no longer assume Codex owns only one fixed role.
 - `claude-execution-dispatch`: Claude remains supported as an orchestrator or execution host, but the maintained workflow surface must no longer assume Claude owns only one fixed role.
 - `optional-integrations`: Optional integrations remain optional, but Gemini is no longer part of the maintained packaged workflow surface and must not be implied as a first-class maintained role.
 
