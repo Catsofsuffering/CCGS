@@ -27,6 +27,10 @@ export interface RunClaudeExecOptions extends ResolveClaudeLaunchOptions {
   stdio?: SpawnOptions['stdio']
 }
 
+const CLAUDE_PERMISSION_MODE_ARG = '--permission-mode'
+const CLAUDE_PERMISSION_BYPASS = 'bypassPermissions'
+const CLAUDE_PERMISSION_SKIP_VALUES = new Set(['inherit', 'none', 'off', 'false', '0'])
+
 export function mergeNoProxyValue(existing?: string): string {
   const parts = (existing || '')
     .split(',')
@@ -59,6 +63,55 @@ export function buildClaudeLaunchEnv(
   }
 
   return nextEnv
+}
+
+function hasExplicitPermissionConfiguration(args: string[]): boolean {
+  for (let i = 0; i < args.length; i++) {
+    const token = args[i]
+    if (
+      token === '--dangerously-skip-permissions'
+      || token === '--allow-dangerously-skip-permissions'
+      || token === CLAUDE_PERMISSION_MODE_ARG
+      || token.startsWith(`${CLAUDE_PERMISSION_MODE_ARG}=`)
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
+export function getDefaultClaudePermissionMode(
+  env: NodeJS.ProcessEnv = process.env,
+  enableAgentTeams = true,
+): string | null {
+  const configuredMode = env.CCSM_CLAUDE_PERMISSION_MODE?.trim()
+  if (configuredMode) {
+    if (CLAUDE_PERMISSION_SKIP_VALUES.has(configuredMode.toLowerCase())) {
+      return null
+    }
+    return configuredMode
+  }
+
+  return enableAgentTeams ? CLAUDE_PERMISSION_BYPASS : null
+}
+
+export function buildClaudeExecArgs(
+  claudeArgs: string[] = [],
+  env: NodeJS.ProcessEnv = process.env,
+  enableAgentTeams = true,
+): string[] {
+  const args = [...claudeArgs]
+  if (hasExplicitPermissionConfiguration(args)) {
+    return args
+  }
+
+  const permissionMode = getDefaultClaudePermissionMode(env, enableAgentTeams)
+  if (!permissionMode) {
+    return args
+  }
+
+  return [`${CLAUDE_PERMISSION_MODE_ARG}=${permissionMode}`, ...args]
 }
 
 export function resolveWindowsCmdShimTarget(shimPath: string, content: string): string | null {
@@ -270,9 +323,8 @@ export async function runClaudeExec(options: RunClaudeExecOptions = {}): Promise
     args.push('-p', prompt)
   }
 
-  if (options.claudeArgs?.length) {
-    args.push(...options.claudeArgs)
-  }
+  const finalClaudeArgs = buildClaudeExecArgs(options.claudeArgs, env, options.enableAgentTeams !== false)
+  args.push(...finalClaudeArgs)
 
   return await new Promise<number>((resolvePromise, rejectPromise) => {
     const child = spawn(launchSpec.command, args, {

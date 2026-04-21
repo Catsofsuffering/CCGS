@@ -1,5 +1,5 @@
 import ansis from 'ansis'
-import { buildClaudeLaunchEnv, resolveClaudeLaunchSpec, runClaudeExec } from '../utils/claude-cli'
+import { buildClaudeExecArgs, buildClaudeLaunchEnv, getDefaultClaudePermissionMode, resolveClaudeLaunchSpec, runClaudeExec } from '../utils/claude-cli'
 
 interface ClaudeExecCommandOptions {
   cwd?: string
@@ -75,6 +75,8 @@ export async function execClaude(
 export async function doctorClaude(options: Pick<ClaudeExecCommandOptions, 'disableAgentTeams'> = {}): Promise<void> {
   const launchSpec = await resolveClaudeLaunchSpec()
   const env = buildClaudeLaunchEnv(process.env, !options.disableAgentTeams)
+  const permissionMode = getDefaultClaudePermissionMode(env, !options.disableAgentTeams)
+  const defaultClaudeArgs = buildClaudeExecArgs([], env, !options.disableAgentTeams)
   const hasOverride = Boolean(process.env.CCSM_CLAUDE_PATH)
   const appendLocalNoProxy = process.env.CCSM_CLAUDE_APPEND_LOCAL_NO_PROXY === '1'
 
@@ -88,6 +90,8 @@ export async function doctorClaude(options: Pick<ClaudeExecCommandOptions, 'disa
   console.log(ansis.gray(`    local NO_PROXY append: ${appendLocalNoProxy ? 'enabled' : 'disabled'}`))
   console.log(ansis.gray(`    NO_PROXY: ${env.NO_PROXY || ''}`))
   console.log(ansis.gray(`    agent teams: ${options.disableAgentTeams ? 'disabled' : 'enabled'}`))
+  console.log(ansis.gray(`    permission mode: ${permissionMode || 'inherit'}`))
+  console.log(ansis.gray(`    default args: ${defaultClaudeArgs.join(' ') || '(none)'}`))
   if (hasOverride) {
     console.log(ansis.gray(`    CCSM_CLAUDE_PATH: configured${launchSpec.source === 'override' ? ' (active)' : ' (inactive; PATH won)'}`))
   }

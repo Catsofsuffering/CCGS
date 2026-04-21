@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.26] - 2026-04-21
+
+### Changed
+
+- `ccsm monitor hooks` now also ensures `~/.claude/settings.json` allows `Bash(*ccsm*)`, so Claude-side CCSM execution is not blocked by the previous command allowlist.
+- `ccsm monitor install` and `ccsm init` now mark the active workspace as `trusted` in `~/.codex/config.toml`, matching Codex's native execution trust model instead of inventing a parallel permission surface.
+- Fixed Codex workspace trust normalization on Windows so equivalent path keys do not get duplicated with mixed `\\` and `/` separators.
+
+---
+
 ## [2.1.25] - 2026-04-21
 
 ### Changed

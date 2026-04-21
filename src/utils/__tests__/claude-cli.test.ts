@@ -4,7 +4,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { extractClaudeExecArgs } from '../../commands/claude'
 import {
+  buildClaudeExecArgs,
   buildClaudeLaunchEnv,
+  getDefaultClaudePermissionMode,
   mergeNoProxyValue,
   resolveClaudeLaunchSpec,
   resolveWindowsCmdShimTarget,
@@ -56,6 +58,30 @@ describe('buildClaudeLaunchEnv', () => {
     const env = buildClaudeLaunchEnv({}, false)
     expect(env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBeUndefined()
     expect(env.CLAUDE_CODE_ENABLE_TASKS).toBeUndefined()
+  })
+})
+
+describe('Claude permission defaults', () => {
+  it('defaults Agent Teams launches to bypassPermissions', () => {
+    expect(getDefaultClaudePermissionMode({})).toBe('bypassPermissions')
+    expect(buildClaudeExecArgs(['--verbose'])).toEqual(['--permission-mode=bypassPermissions', '--verbose'])
+  })
+
+  it('does not inject a default permission mode when Agent Teams are disabled', () => {
+    expect(getDefaultClaudePermissionMode({}, false)).toBeNull()
+    expect(buildClaudeExecArgs(['--verbose'], {}, false)).toEqual(['--verbose'])
+  })
+
+  it('allows explicit environment override and opt-out', () => {
+    expect(getDefaultClaudePermissionMode({ CCSM_CLAUDE_PERMISSION_MODE: 'acceptEdits' })).toBe('acceptEdits')
+    expect(buildClaudeExecArgs([], { CCSM_CLAUDE_PERMISSION_MODE: 'acceptEdits' })).toEqual(['--permission-mode=acceptEdits'])
+    expect(getDefaultClaudePermissionMode({ CCSM_CLAUDE_PERMISSION_MODE: 'inherit' })).toBeNull()
+    expect(buildClaudeExecArgs([], { CCSM_CLAUDE_PERMISSION_MODE: 'inherit' })).toEqual([])
+  })
+
+  it('preserves explicit user permission flags', () => {
+    expect(buildClaudeExecArgs(['--permission-mode', 'default', '--verbose'])).toEqual(['--permission-mode', 'default', '--verbose'])
+    expect(buildClaudeExecArgs(['--dangerously-skip-permissions'])).toEqual(['--dangerously-skip-permissions'])
   })
 })
 

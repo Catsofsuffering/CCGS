@@ -8,6 +8,7 @@ import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { prepareClaudeMonitorRuntime, prepareCodexMonitorRuntime } from '../utils/claude-monitor'
+import { ensureCodexWorkspaceTrust } from '../utils/codex-config'
 import { CANONICAL_NAMESPACE, CANONICAL_RULE_FILES, PRODUCT_NAME, getCanonicalNpxLatestCommand } from '../utils/identity'
 import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
@@ -605,6 +606,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
     console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(`→ ${monitorRuntime.monitorDir}`)}`)
     console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(`→ ${monitorRuntime.settingsPath}`)}`)
 
+    if (executionHost === 'claude') {
+      console.log(`    ${ansis.green('✓')} Claude exec allowlist ${ansis.gray('→ ~/.claude/settings.json')}`)
+    }
+
     // Install grok-search MCP if requested
     if (wantGrokSearch && (tavilyKey || firecrawlKey || grokApiUrl || grokApiKey)) {
       spinner.text = i18n.t('init:grok.installing')
@@ -663,6 +668,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       // ═══════════════════════════════════════════════════════
     }
+
+    const codexTrustResult = await ensureCodexWorkspaceTrust(process.cwd())
+    console.log()
+    console.log(`    ${ansis.green('✓')} Codex workspace trust ${ansis.gray(`→ ${codexTrustResult.configPath}`)}`)
 
     spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
 

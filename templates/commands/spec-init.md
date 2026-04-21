@@ -75,7 +75,8 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
      ```bash
      ccsm monitor start --detach
      ```
-   - Confirm `~/.claude/settings.json` now contains the Claude hook entries managed by the monitor.
+   - Confirm `~/.claude/settings.json` now contains the Claude hook entries managed by the monitor and includes `Bash(*ccsm*)` under `permissions.allow`.
+   - Confirm `~/.codex/config.toml` marks the current workspace as `trusted`.
    - For each unavailable tool, display warning with installation instructions.
 
 5. **Summary Report**
@@ -102,7 +103,7 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 **Reference**
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
-- CCSM Workflow: `npx ccsm-workflow`
+- CCSM Workflow: `npx ccsm`
 - Claude monitor helper: `ccsm monitor <install|start|hooks>`
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->

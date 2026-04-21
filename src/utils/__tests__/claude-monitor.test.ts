@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { afterAll, describe, expect, it } from 'vitest'
 import fs from 'fs-extra'
 import {
+  CLAUDE_CCSM_PERMISSION_ALLOW,
   configureClaudeMonitorHooks,
   getInstalledMonitorDir,
   installBundledMonitor,
@@ -11,6 +12,8 @@ import {
 
 describe('claude monitor integration helpers', () => {
   const tempRoot = join(tmpdir(), `ccsm-monitor-test-${Date.now()}`)
+  const settingsRoot = join(tempRoot, 'host-claude')
+  const canonicalRoot = join(tempRoot, 'canonical-ccsm')
 
   afterAll(async () => {
     await fs.remove(tempRoot)
@@ -26,8 +29,9 @@ describe('claude monitor integration helpers', () => {
   })
 
   it('writes and removes Claude hook entries without deleting unrelated settings', async () => {
-    const settingsPath = join(tempRoot, 'settings.json')
-    await fs.ensureDir(tempRoot)
+    const settingsPath = join(settingsRoot, 'settings.json')
+    await fs.ensureDir(settingsRoot)
+    await installBundledMonitor(canonicalRoot)
     await fs.writeJson(settingsPath, {
       env: {
         KEEP_ME: '1',
@@ -46,19 +50,27 @@ describe('claude monitor integration helpers', () => {
       },
     }, { spaces: 2 })
 
-    const result = await configureClaudeMonitorHooks({ installDir: tempRoot, port: 4901 })
+    const result = await configureClaudeMonitorHooks({
+      installDir: settingsRoot,
+      canonicalHomeDir: canonicalRoot,
+      port: 4901,
+    })
     const configured = await fs.readJson(settingsPath)
 
     expect(result.settingsPath).toBe(settingsPath)
+    expect(result.permissionsInstalled).toEqual([CLAUDE_CCSM_PERMISSION_ALLOW])
     expect(configured.env.KEEP_ME).toBe('1')
     expect(configured.env.CLAUDE_DASHBOARD_PORT).toBe('4901')
+    expect(configured.permissions.allow).toContain(CLAUDE_CCSM_PERMISSION_ALLOW)
     expect(configured.hooks.SessionStart.length).toBeGreaterThan(1)
     expect(configured.hooks.PreToolUse[0].matcher).toBe('*')
+    expect(configured.hooks.PreToolUse[0].hooks[0].command).toContain('canonical-ccsm/claude-monitor/scripts/hook-handler.js')
 
-    await removeClaudeMonitorHooks(tempRoot)
+    await removeClaudeMonitorHooks(settingsRoot)
     const cleaned = await fs.readJson(settingsPath)
     expect(cleaned.env.KEEP_ME).toBe('1')
     expect(cleaned.env.CLAUDE_DASHBOARD_PORT).toBeUndefined()
+    expect(cleaned.permissions.allow).toContain(CLAUDE_CCSM_PERMISSION_ALLOW)
     expect(cleaned.hooks.SessionStart).toHaveLength(1)
     expect(cleaned.hooks.PreToolUse).toBeUndefined()
   })
