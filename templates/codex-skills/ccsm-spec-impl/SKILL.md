@@ -1,5 +1,5 @@
 ---
-name: ccgs-spec-impl
+name: ccsm-spec-impl
 description: Dispatch Claude execution from Codex and keep acceptance in Codex. Use when the change is planned and ready for implementation.
 license: MIT
 ---
@@ -24,12 +24,12 @@ Implement the planned change while keeping Codex as the host workflow.
 4. Invoke Claude from Codex with a bounded prompt. Prefer the built-in launcher instead of shell-specific `powershell` or `cmd` snippets:
 
 ```bash
-ccgs claude exec --prompt-file .claude/ccgs/claude-dispatch-prompt.txt
+ccsm claude exec --prompt-file .claude/ccsm/claude-dispatch-prompt.txt
 ```
 
-   The `ccgs claude exec` path resolves the native Claude binary when available, or falls back to the installed Claude JS entrypoint without relying on `powershell`, `cmd`, or `.cmd` shims.
-   In a standard Claude Code install you should not need to set `CCGS_CLAUDE_PATH`; the launcher checks `PATH` first and only uses `CCGS_CLAUDE_PATH` as a fallback override for non-standard installs.
-   Preserve your existing proxy settings by default. Only append `127.0.0.1,localhost` to `NO_PROXY` / `no_proxy` when your environment explicitly needs local bypass; use `CCGS_CLAUDE_APPEND_LOCAL_NO_PROXY=1` for that case.
+   The `ccsm claude exec` path resolves the native Claude binary when available, or falls back to the installed Claude JS entrypoint without relying on `powershell`, `cmd`, or `.cmd` shims.
+   In a standard Claude Code install you should not need to set `CCSM_CLAUDE_PATH`; the launcher checks `PATH` first and only uses `CCSM_CLAUDE_PATH` as a fallback override for non-standard installs.
+   Preserve your existing proxy settings by default. Only append `127.0.0.1,localhost` to `NO_PROXY` / `no_proxy` when your environment explicitly needs local bypass; use `CCSM_CLAUDE_APPEND_LOCAL_NO_PROXY=1` for that case.
    Treat `claude -p` as the Claude-side entry contract. Do not assume a separate `claude teammates` CLI command exists.
    If the execution packet requires Agent Teams, enable both `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and `CLAUDE_CODE_ENABLE_TASKS=1`, then instruct Claude to use the in-session team tools (`TeamCreate`, `TaskCreate`, `SendMessage`, `Agent(team_name=..., name=...)`) after the Claude session starts.
    Require every teammate prompt to define its mailbox return protocol explicitly: if `SendMessage` is deferred, the teammate must run `ToolSearch select:SendMessage` before its first mailbox reply, and any string reply must include both `summary` and `message`.

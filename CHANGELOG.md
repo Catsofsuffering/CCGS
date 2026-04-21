@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.25] - 2026-04-21
+
+### Changed
+
+- Removed the interactive API provider step from `ccsm init`; installation now starts directly from workflow/model routing.
+- Delayed the `安装成功` / install success signal until all post-install work finishes, including monitor and MCP setup.
+- Hardened legacy migration cleanup so deprecated `ccg`/`ccgs` runtime, command, rule, and Codex skill entrypoints are merged into canonical `ccsm` locations and then removed.
+
+---
+
 ## [2.1.22] - 2026-04-17
 
 ### Changed

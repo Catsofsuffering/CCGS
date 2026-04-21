@@ -27,7 +27,7 @@ description: 'Codex 为 Claude Agent Teams 生成执行计划与 handoff 文件'
    - 如确有必要，可用 `{{FRONTEND_PRIMARY}}` 补充 UI/集成建议。
 
 3. 生成 Claude 执行计划
-   - 输出到 `.ccgs/team-plan/<task-name>.md`
+   - 输出到 `.ccsm/team-plan/<task-name>.md`
    - 文件中至少包含：
 
 ```md
@@ -63,7 +63,7 @@ description: 'Codex 为 Claude Agent Teams 生成执行计划与 handoff 文件'
 
 4. 用户确认
    - 展示 work package 数量、并行层次、关键限制。
-   - 提示下一步运行 `/ccgs:team-exec`。
+   - 提示下一步运行 `/ccsm:team-exec`。
 
 **Exit Criteria**
 - [ ] 计划文件已生成

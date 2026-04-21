@@ -113,9 +113,9 @@ disable-model-invocation: false
 
 ---
 
-## 企业级角色扩展（`/ccgs:team` 专用）
+## 企业级角色扩展（`/ccsm:team` 专用）
 
-`/ccgs:team` 命令在蚁群基础角色之上，增加 3 个大厂级专业角色，对应 Claude Agent Teams 会话内创建的 teammates：
+`/ccsm:team` 命令在蚁群基础角色之上，增加 3 个大厂级专业角色，对应 Claude Agent Teams 会话内创建的 teammates：
 
 | 角色 | Agent 名 | 道语 | 职责 | 工具权限 | 模型 |
 |------|----------|------|------|----------|------|
@@ -148,8 +148,8 @@ TeamCreate ─── Phase 2: spawn Architect → shutdown
             └─ Phase 8: graceful shutdown -> cleanup once
 ```
 
-**推荐入口**：`/ccgs:team <需求描述>` — 一键跑完 8 阶段。
-**分步入口**：`/ccgs:spec-plan` → `/ccgs:team-plan` → `/ccgs:team-exec` → `/ccgs:team-review`
+**推荐入口**：`/ccsm:team <需求描述>` — 一键跑完 8 阶段。
+**分步入口**：`/ccsm:spec-plan` → `/ccsm:team-plan` → `/ccsm:team-exec` → `/ccsm:team-review`
 
 ---
 

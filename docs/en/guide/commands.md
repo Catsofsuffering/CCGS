@@ -1,40 +1,40 @@
 # Command Reference
 
-CCG now maintains a smaller command surface centered on the Codex-led workflow.
+CCSM now maintains a smaller command surface centered on the Codex-led workflow.
 
 ## Primary path
 
 | Command | Purpose |
 |---------|---------|
-| `/ccgs:spec-init` | Initialize or repair the OpenSpec workspace |
-| `/ccgs:spec-research` | Turn a request into constraints and change inputs |
-| `/ccgs:spec-plan` | Produce the execution handoff contract |
-| `/ccgs:team-plan` | Split the scoped work into execution packages |
-| `/ccgs:team-exec` | Run Claude Agent Teams against the bounded plan |
-| `/ccgs:team-review` | Review execution results before acceptance |
-| `/ccgs:spec-review` | Final Codex acceptance gate |
-| `/ccgs:spec-impl` | Managed shortcut for dispatch plus acceptance |
+| `/ccsm:spec-init` | Initialize or repair the OpenSpec workspace |
+| `/ccsm:spec-research` | Turn a request into constraints and change inputs |
+| `/ccsm:spec-plan` | Produce the execution handoff contract |
+| `/ccsm:team-plan` | Split the scoped work into execution packages |
+| `/ccsm:team-exec` | Run Claude Agent Teams against the bounded plan |
+| `/ccsm:team-review` | Review execution results before acceptance |
+| `/ccsm:spec-review` | Final Codex acceptance gate |
+| `/ccsm:spec-impl` | Managed shortcut for dispatch plus acceptance |
 
 ## Utility commands
 
 | Command | Purpose |
 |---------|---------|
-| `/ccgs:context` | Manage project context and decision logs |
-| `/ccgs:enhance` | Turn a rough request into a clearer task brief |
-| `/ccgs:init` | Generate project-facing `CLAUDE.md` guidance |
-| `/ccgs:commit` | Generate a commit message from current changes |
-| `/ccgs:rollback` | Roll back interactively |
-| `/ccgs:clean-branches` | Remove merged or stale branches safely |
-| `/ccgs:worktree` | Manage Git worktrees |
+| `/ccsm:context` | Manage project context and decision logs |
+| `/ccsm:enhance` | Turn a rough request into a clearer task brief |
+| `/ccsm:init` | Generate project-facing `CLAUDE.md` guidance |
+| `/ccsm:commit` | Generate a commit message from current changes |
+| `/ccsm:rollback` | Roll back interactively |
+| `/ccsm:clean-branches` | Remove merged or stale branches safely |
+| `/ccsm:worktree` | Manage Git worktrees |
 
 ## Example
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research add an approval workflow to invoices
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research add an approval workflow to invoices
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 ```

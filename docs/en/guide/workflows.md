@@ -5,13 +5,13 @@
 Use this when you want the maintained product path:
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research <request>
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research <request>
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 openspec archive <change-id>
 ```
 
@@ -20,7 +20,7 @@ openspec archive <change-id>
 Use this when you want Codex to dispatch Claude work and keep acceptance in the same loop:
 
 ```bash
-/ccgs:spec-impl
+/ccsm:spec-impl
 ```
 
 ## When to use `team-*`
@@ -29,8 +29,8 @@ Use the `team-*` steps when the change has enough scope to justify a bounded exe
 
 ## When to use `context` and `enhance`
 
-- Use `/ccgs:enhance` when the request is underspecified.
-- Use `/ccgs:context` when the project needs decision logs or working context snapshots.
+- Use `/ccsm:enhance` when the request is underspecified.
+- Use `/ccsm:context` when the project needs decision logs or working context snapshots.
 
 ## What is no longer the default
 

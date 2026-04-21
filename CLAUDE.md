@@ -1,41 +1,41 @@
-# CCG Repository Guide
+# CCSM Repository Guide
 
 **Last Updated**: 2026-04-15  
 **Status**: Codex-led primary path
 
 ## Product Story
 
-CCG is maintained around one default workflow:
+CCSM is maintained around one default workflow:
 
 1. Codex owns workflow orchestration.
 2. OpenSpec owns change artifacts and lifecycle.
 3. Claude Agent Teams execute bounded implementation work.
 4. Codex performs review, testing, acceptance, and archive decisions.
 
-The maintained local runtime monitor is the Claude hook monitor under `~/.claude/.ccgs/claude-monitor`.
+The maintained local runtime monitor is the Claude hook monitor under `~/.ccsm/claude-monitor`.
 
 ## Maintained Command Surface
 
 Primary path:
 
-- `/ccgs:spec-init`
-- `/ccgs:spec-research`
-- `/ccgs:spec-plan`
-- `/ccgs:team-plan`
-- `/ccgs:team-exec`
-- `/ccgs:team-review`
-- `/ccgs:spec-review`
-- `/ccgs:spec-impl`
+- `/ccsm:spec-init`
+- `/ccsm:spec-research`
+- `/ccsm:spec-plan`
+- `/ccsm:team-plan`
+- `/ccsm:team-exec`
+- `/ccsm:team-review`
+- `/ccsm:spec-review`
+- `/ccsm:spec-impl`
 
 Utility commands:
 
-- `/ccgs:context`
-- `/ccgs:enhance`
-- `/ccgs:commit`
-- `/ccgs:rollback`
-- `/ccgs:clean-branches`
-- `/ccgs:worktree`
-- `/ccgs:init`
+- `/ccsm:context`
+- `/ccsm:enhance`
+- `/ccsm:commit`
+- `/ccsm:rollback`
+- `/ccsm:clean-branches`
+- `/ccsm:worktree`
+- `/ccsm:init`
 
 ## Runtime Notes
 

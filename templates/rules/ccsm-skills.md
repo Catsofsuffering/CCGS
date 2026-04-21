@@ -1,8 +1,8 @@
-# CCGS Quality Gates - Auto-trigger Rules
+# CCSM Quality Gates - Auto-trigger Rules
 
-When working in a project, automatically invoke the corresponding quality gate skills based on the scenario below. These skills are installed at `~/.claude/skills/ccgs/` and can be called directly.
+When working in a project, automatically invoke the corresponding quality gate skills based on the scenario below. These skills are installed at `~/.ccsm/skills/ccsm/` and can be called directly.
 
-**IMPORTANT**: Skill names do NOT have a `ccgs:` prefix. Use exactly: `verify-security`, `verify-quality`, `verify-change`, `verify-module`, `gen-docs`. Do NOT call `ccgs:verify-security` because that will fail with "Unknown skill".
+**IMPORTANT**: Skill names do NOT have a `ccsm:` prefix. Use exactly: `verify-security`, `verify-quality`, `verify-change`, `verify-module`, `gen-docs`. Do NOT call `ccsm:verify-security` because that will fail with "Unknown skill".
 
 ## Trigger Rules
 
@@ -54,7 +54,7 @@ When refactoring existing code:
 
 ## Multi-Agent Coordination
 
-When a task involves 3+ independent files or modules, or 2+ parallel workflows, refer to the multi-agent orchestration skill at `~/.claude/skills/ccgs/orchestration/multi-agent/SKILL.md` for:
+When a task involves 3+ independent files or modules, or 2+ parallel workflows, refer to the multi-agent orchestration skill at `~/.ccsm/skills/ccsm/orchestration/multi-agent/SKILL.md` for:
 
 - Agent role assignment (Lead / Scout / Worker / Soldier / Drone)
 - File ownership locking (one writer per file at any time)

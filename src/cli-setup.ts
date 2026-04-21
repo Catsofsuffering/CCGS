@@ -166,7 +166,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
     })
 
   cli
-    .command('claude <action> [...claudeArgs]', 'Launch Claude through the CCGS dispatcher')
+    .command('claude <action> [...claudeArgs]', 'Launch Claude through the CCSM dispatcher')
     .option('--prompt <text>', 'Prompt content passed to claude -p')
     .option('--prompt-file <path>', 'Read prompt content from a file and pass it to claude -p')
     .option('--cwd <path>', 'Working directory for the Claude process')

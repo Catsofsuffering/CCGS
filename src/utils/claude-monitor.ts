@@ -6,9 +6,9 @@ import { version as workspaceVersion } from '../../package.json'
 import { PACKAGE_ROOT } from './installer-template'
 import {
   CANONICAL_RUNTIME_DIRNAME,
-  LEGACY_RUNTIME_DIRNAME,
+  DEPRECATED_RUNTIME_DIRNAMES,
 } from './identity'
-import { getHostHomeDir } from './host'
+import { getCanonicalHomeDir, getHostHomeDir } from './host'
 
 export const DEFAULT_MONITOR_PORT = 4820
 export const CLAUDE_MONITOR_NAME = 'claude-monitor'
@@ -52,31 +52,43 @@ export function getBundledMonitorDir(): string {
 }
 
 export function getInstalledMonitorDir(
-  installDir = getHostHomeDir('claude'),
+  installDir = getCanonicalHomeDir(),
   monitorName = CLAUDE_MONITOR_NAME,
 ): string {
-  return join(installDir, CANONICAL_RUNTIME_DIRNAME, monitorName)
+  return join(installDir, monitorName)
 }
 
-export function getInstalledCodexMonitorDir(installDir = getHostHomeDir('codex')): string {
+export function getInstalledCodexMonitorDir(installDir = getCanonicalHomeDir()): string {
   return getInstalledMonitorDir(installDir, CODEX_MONITOR_NAME)
 }
 
 function getLegacyMonitorDir(
-  installDir = getHostHomeDir('claude'),
+  installDir = join(homedir(), DEPRECATED_RUNTIME_DIRNAMES[DEPRECATED_RUNTIME_DIRNAMES.length - 1]),
   monitorName = CLAUDE_MONITOR_NAME,
 ): string {
-  return join(installDir, LEGACY_RUNTIME_DIRNAME, monitorName)
+  return join(installDir, monitorName)
+}
+
+function getTransitionalMonitorDir(
+  installDir = join(homedir(), DEPRECATED_RUNTIME_DIRNAMES[0]),
+  monitorName = CLAUDE_MONITOR_NAME,
+): string {
+  return join(installDir, monitorName)
 }
 
 async function resolveInstalledMonitorDir(
-  installDir = getHostHomeDir('claude'),
+  installDir = getCanonicalHomeDir(),
   monitorName = CLAUDE_MONITOR_NAME,
 ): Promise<string> {
   const canonicalDir = getInstalledMonitorDir(installDir, monitorName)
   if (await fs.pathExists(canonicalDir))
     return canonicalDir
-  return getLegacyMonitorDir(installDir, monitorName)
+
+  const transitionalDir = getTransitionalMonitorDir(undefined, monitorName)
+  if (await fs.pathExists(transitionalDir))
+    return transitionalDir
+
+  return getLegacyMonitorDir(undefined, monitorName)
 }
 
 export function getClaudeSettingsPath(installDir = getHostHomeDir('claude')): string {
@@ -157,7 +169,7 @@ async function runNpm(args: string[], cwd: string): Promise<void> {
 }
 
 export async function installBundledMonitor(
-  installDir = getHostHomeDir('claude'),
+  installDir = getCanonicalHomeDir(),
   monitorName = CLAUDE_MONITOR_NAME,
 ): Promise<string> {
   const sourceDir = getBundledMonitorDir()
@@ -167,7 +179,7 @@ export async function installBundledMonitor(
     throw new Error(`Bundled monitor source not found: ${sourceDir}`)
   }
 
-  await fs.ensureDir(join(installDir, CANONICAL_RUNTIME_DIRNAME))
+  await fs.ensureDir(installDir)
   await fs.copy(sourceDir, targetDir, {
     overwrite: true,
     errorOnExist: false,
@@ -270,16 +282,17 @@ export async function removeClaudeMonitorHooks(installDir = getHostHomeDir('clau
 }
 
 export async function prepareClaudeMonitorRuntime(options?: {
+  canonicalHomeDir?: string
   installDir?: string
   port?: number
 }): Promise<{ monitorDir: string, settingsPath: string }> {
-  const installDir = options?.installDir || getHostHomeDir('claude')
-  const monitorDir = await installBundledMonitor(installDir, CLAUDE_MONITOR_NAME)
+  const canonicalHomeDir = options?.canonicalHomeDir || options?.installDir || getCanonicalHomeDir()
+  const monitorDir = await installBundledMonitor(canonicalHomeDir, CLAUDE_MONITOR_NAME)
 
   await runNpm(['install', '--no-package-lock'], monitorDir)
   await runNpm(['install', '--prefix', 'client', '--no-package-lock'], monitorDir)
   await runNpm(['run', 'build', '--prefix', 'client'], monitorDir)
-  const hookResult = await configureClaudeMonitorHooks({ installDir, port: options?.port })
+  const hookResult = await configureClaudeMonitorHooks({ installDir: getHostHomeDir('claude'), port: options?.port })
 
   return {
     monitorDir,
@@ -288,10 +301,11 @@ export async function prepareClaudeMonitorRuntime(options?: {
 }
 
 export async function prepareCodexMonitorRuntime(options?: {
+  canonicalHomeDir?: string
   installDir?: string
 }): Promise<{ monitorDir: string, settingsPath: string }> {
-  const installDir = options?.installDir || getHostHomeDir('codex')
-  const monitorDir = await installBundledMonitor(installDir, CODEX_MONITOR_NAME)
+  const canonicalHomeDir = options?.canonicalHomeDir || options?.installDir || getCanonicalHomeDir()
+  const monitorDir = await installBundledMonitor(canonicalHomeDir, CODEX_MONITOR_NAME)
 
   await runNpm(['install', '--no-package-lock'], monitorDir)
   await runNpm(['install', '--prefix', 'client', '--no-package-lock'], monitorDir)
@@ -299,17 +313,18 @@ export async function prepareCodexMonitorRuntime(options?: {
 
   return {
     monitorDir,
-    settingsPath: join(installDir, 'config.toml'),
+    settingsPath: join(getHostHomeDir('codex'), 'config.toml'),
   }
 }
 
 export async function startClaudeMonitor(options?: {
+  canonicalHomeDir?: string
   installDir?: string
   port?: number
   detached?: boolean
 }): Promise<{ url: string, monitorDir: string, reused: boolean }> {
-  const installDir = options?.installDir || getHostHomeDir('claude')
-  const monitorDir = await resolveInstalledMonitorDir(installDir, CLAUDE_MONITOR_NAME)
+  const canonicalHomeDir = options?.canonicalHomeDir || options?.installDir || getCanonicalHomeDir()
+  const monitorDir = await resolveInstalledMonitorDir(canonicalHomeDir, CLAUDE_MONITOR_NAME)
   const port = options?.port || DEFAULT_MONITOR_PORT
 
   if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {

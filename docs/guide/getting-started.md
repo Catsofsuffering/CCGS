@@ -1,15 +1,15 @@
 # 快速开始
 
-## CCG 是什么
+## CCSM 是什么
 
-CCG 现在维护的是一条单主路径：
+CCSM 现在维护的是一条单主路径：
 
 1. Codex 负责编排。
 2. OpenSpec 负责 change 生命周期。
 3. Claude Agent Teams 负责受边界约束的实现执行。
 4. Codex 负责 review、测试、验收和归档。
 
-本地运行监控面板是 `~/.claude/.ccgs/claude-monitor` 下的 Claude hook monitor。
+本地运行监控面板是 `~/.ccsm/claude-monitor` 下的 Claude hook monitor。
 
 ## 前置依赖
 
@@ -25,35 +25,35 @@ CCG 现在维护的是一条单主路径：
 ## 安装
 
 ```bash
-npx ccgs-workflow
+npx ccsm
 ```
 
 常用后续命令：
 
 ```bash
-npx ccgs-workflow init
-npx ccgs-workflow menu
-npx ccgs-workflow monitor install
-npx ccgs-workflow monitor hooks
-npx ccgs-workflow monitor start --detach
+npx ccsm init
+npx ccsm menu
+npx ccsm monitor install
+npx ccsm monitor hooks
+npx ccsm monitor start --detach
 ```
 
 ## 第一条主流程
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research 实现一个边界清晰的功能
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research 实现一个边界清晰的功能
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 ```
 
 如果想走托管捷径：
 
 ```bash
-/ccgs:spec-impl
+/ccsm:spec-impl
 ```
 
 ## 监控面板
@@ -67,7 +67,7 @@ http://127.0.0.1:4820
 如果还没启动：
 
 ```bash
-ccgs monitor start --detach
+ccsm monitor start --detach
 ```
 
 ## 下一步

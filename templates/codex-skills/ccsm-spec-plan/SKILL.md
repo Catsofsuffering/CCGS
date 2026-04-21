@@ -1,5 +1,5 @@
 ---
-name: ccgs-spec-plan
+name: ccsm-spec-plan
 description: Prepare the execution handoff contract from Codex. Use when a change needs design, task refinement, and a bounded Claude execution packet.
 license: MIT
 ---
@@ -32,7 +32,7 @@ Plan the change from Codex and prepare the execution handoff.
 - execution goal
 - allowed/protected file boundaries
 - required verification checklist
-- next skill: `ccgs-spec-impl`
+- next skill: `ccsm-spec-impl`
 
 **Guardrails**
 

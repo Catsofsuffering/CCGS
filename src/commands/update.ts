@@ -13,7 +13,7 @@ import { getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/co
 import {
   CANONICAL_NAMESPACE,
   CANONICAL_PACKAGE_NAME,
-  LEGACY_PACKAGE_NAME,
+  DEPRECATED_PACKAGE_NAMES,
   getCanonicalGlobalInstallCommand,
   getCanonicalNpxLatestCommand,
 } from '../utils/identity'
@@ -178,10 +178,10 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
 }
 
 /**
- * Check if CCG is installed globally via npm
+ * Check if CCSM or a deprecated package name is installed globally via npm
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
-  for (const packageName of [CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME]) {
+  for (const packageName of [CANONICAL_PACKAGE_NAME, ...DEPRECATED_PACKAGE_NAMES]) {
     try {
       const { stdout } = await execAsync(`npm list -g ${packageName} --depth=0`, { timeout: 5000 })
       if (stdout.includes(`${packageName}@`)) {
@@ -315,16 +315,21 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   // verifies, then cleans up backups. On failure, restores from backup.
 
   const installDir = getDefaultInstallDir()
-  const BACKUP_SUFFIX = '.ccgs-update-bak'
+  const BACKUP_SUFFIX = '.ccsm-update-bak'
 
   // Directories to back up before installing new version
   const backupTargets = [
+    join(installDir, 'commands', 'ccsm'),
+    join(installDir, 'agents', 'ccsm'),
+    join(installDir, 'commands', 'ccgs'),
     join(installDir, 'commands', 'ccg'),
+    join(installDir, 'agents', 'ccgs'),
     join(installDir, 'agents', 'ccg'),
+    join(installDir, 'skills', 'ccgs'),
     join(installDir, 'skills', 'ccg'),
   ]
 
-  // Step 3: Back up existing files (move to *.ccgs-update-bak)
+  // Step 3: Back up existing files (move to *.ccsm-update-bak)
   spinner = ora(i18n.t('update:removingOld')).start()
 
   const backedUp: string[] = []
@@ -372,7 +377,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     })
 
     // Step 5: Verify new installation actually produced files
-    const commandsDir = join(installDir, 'commands', 'ccg')
+    const commandsDir = join(installDir, 'commands', 'ccsm')
     const hasCommands = await fs.pathExists(commandsDir)
       && (await fs.readdir(commandsDir)).some(f => f.endsWith('.md'))
 
@@ -414,7 +419,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     const monitorDir = getInstalledMonitorDir(installDir)
     if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {
       console.log(ansis.yellow('  Claude monitor assets were not installed correctly.'))
-      console.log(ansis.cyan('  Run `ccg monitor install` to repair the runtime.'))
+      console.log(ansis.cyan('  Run `ccsm monitor install` to repair the runtime.'))
     }
   }
   else {

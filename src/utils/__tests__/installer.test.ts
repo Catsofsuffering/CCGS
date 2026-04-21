@@ -144,7 +144,7 @@ describe('primary-path templates', () => {
 })
 
 describe('installWorkflows E2E', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-install-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-install-${Date.now()}`)
   const e2eTimeout = process.platform === 'win32' ? 60_000 : 20_000
 
   afterAll(async () => {
@@ -160,19 +160,19 @@ describe('installWorkflows E2E', () => {
   })
 
   it('generated command files contain contextweaver references', () => {
-    const planContent = readFileSync(join(tmpDir, 'commands', 'ccgs', 'spec-research.md'), 'utf-8')
+    const planContent = readFileSync(join(tmpDir, 'commands', 'ccsm', 'spec-research.md'), 'utf-8')
     expect(planContent).toContain('mcp__contextweaver__codebase-retrieval')
     expect(planContent).not.toContain('{{MCP_SEARCH_TOOL}}')
   })
 
   it('generated agent files contain contextweaver references', () => {
-    const plannerContent = readFileSync(join(tmpDir, 'agents', 'ccgs', 'planner.md'), 'utf-8')
+    const plannerContent = readFileSync(join(tmpDir, 'agents', 'ccsm', 'planner.md'), 'utf-8')
     expect(plannerContent).toContain('mcp__contextweaver__codebase-retrieval')
   })
 })
 
 describe('uninstallWorkflows E2E', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-uninstall-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-uninstall-${Date.now()}`)
   const e2eTimeout = process.platform === 'win32' ? 60_000 : 20_000
 
   afterAll(async () => {
@@ -184,16 +184,16 @@ describe('uninstallWorkflows E2E', () => {
       mcpProvider: 'ace-tool',
     })
     expect(installResult.success).toBe(true)
-    expect(fs.existsSync(join(tmpDir, 'commands', 'ccgs', 'spec-init.md'))).toBe(true)
+    expect(fs.existsSync(join(tmpDir, 'commands', 'ccsm', 'spec-init.md'))).toBe(true)
 
     const uninstallResult = await uninstallWorkflows(tmpDir)
     expect(uninstallResult.success).toBe(true)
     expect(uninstallResult.removedCommands.length).toBeGreaterThan(0)
-    expect(fs.existsSync(join(tmpDir, 'commands', 'ccgs'))).toBe(false)
+    expect(fs.existsSync(join(tmpDir, 'commands', 'ccsm'))).toBe(false)
   })
 
   it('uninstall on empty dir succeeds without errors', async () => {
-    const emptyDir = join(tmpdir(), `ccgs-test-empty-${Date.now()}`)
+    const emptyDir = join(tmpdir(), `ccsm-test-empty-${Date.now()}`)
     const result = await uninstallWorkflows(emptyDir)
     expect(result.success).toBe(true)
     expect(result.errors).toEqual([])
@@ -202,7 +202,7 @@ describe('uninstallWorkflows E2E', () => {
 })
 
 describe('Claude monitor asset installation', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-monitor-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-monitor-${Date.now()}`)
 
   afterAll(async () => {
     await fs.remove(tmpDir)
@@ -221,7 +221,7 @@ describe('Claude monitor asset installation', () => {
 })
 
 describe('prompt installation', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-prompts-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-prompts-${Date.now()}`)
 
   afterAll(async () => {
     await fs.remove(tmpDir)
@@ -233,7 +233,7 @@ describe('prompt installation', () => {
     })
     expect(result.success).toBe(true)
 
-    const promptsDir = join(tmpDir, '.ccgs', 'prompts')
+    const promptsDir = join(tmpDir, '.ccsm', 'prompts')
     expect(fs.existsSync(join(promptsDir, 'codex'))).toBe(true)
     expect(fs.existsSync(join(promptsDir, 'claude'))).toBe(true)
     expect(fs.existsSync(join(promptsDir, 'gemini'))).toBe(false)
@@ -241,34 +241,34 @@ describe('prompt installation', () => {
 })
 
 describe('skills namespace isolation', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-skills-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-skills-${Date.now()}`)
 
   afterAll(async () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs skills under skills/ccgs/', { timeout: 60_000 }, async () => {
+  it('installs skills under .ccsm/skills/ccsm/', { timeout: 60_000 }, async () => {
     const result = await installWorkflows([SAMPLE_WORKFLOW_ID], tmpDir, true, {
       mcpProvider: 'skip',
     })
     expect(result.success).toBe(true)
     expect(result.installedSkills).toBeGreaterThanOrEqual(1)
-    expect(fs.existsSync(join(tmpDir, 'skills', 'ccgs', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(tmpDir, '.ccsm', 'skills', 'ccsm', 'SKILL.md'))).toBe(true)
   })
 
-  it('uninstall only removes skills/ccgs/, preserves user skills', async () => {
-    const userSkillDir = join(tmpDir, 'skills', 'my-custom-skill')
+  it('uninstall only removes skills/ccsm/, preserves user skills', async () => {
+    const userSkillDir = join(tmpDir, '.ccsm', 'skills', 'my-custom-skill')
     await fs.ensureDir(userSkillDir)
     await fs.writeFile(join(userSkillDir, 'SKILL.md'), '# My Custom Skill')
 
     const result = await uninstallWorkflows(tmpDir)
     expect(result.success).toBe(true)
-    expect(fs.existsSync(join(tmpDir, 'skills', 'ccgs'))).toBe(false)
+    expect(fs.existsSync(join(tmpDir, '.ccsm', 'skills', 'ccsm'))).toBe(false)
     expect(fs.existsSync(join(userSkillDir, 'SKILL.md'))).toBe(true)
   })
 
-  it('migrates the old root-level skills layout into skills/ccgs/', { timeout: 60_000 }, async () => {
-    const migrateDir = join(tmpdir(), `ccgs-test-migrate-${Date.now()}`)
+  it('migrates the old root-level skills layout into .ccsm/skills/ccsm/', { timeout: 60_000 }, async () => {
+    const migrateDir = join(tmpdir(), `ccsm-test-migrate-${Date.now()}`)
     try {
       const oldSkills = join(migrateDir, 'skills')
       await fs.ensureDir(join(oldSkills, 'tools', 'verify-security'))
@@ -284,7 +284,7 @@ describe('skills namespace isolation', () => {
         mcpProvider: 'skip',
       })
       expect(result.success).toBe(true)
-      expect(fs.existsSync(join(migrateDir, 'skills', 'ccgs', 'SKILL.md'))).toBe(true)
+      expect(fs.existsSync(join(migrateDir, '.ccsm', 'skills', 'ccsm', 'SKILL.md'))).toBe(true)
       expect(fs.existsSync(join(migrateDir, 'skills', 'brainstorming', 'SKILL.md'))).toBe(true)
       expect(fs.existsSync(join(migrateDir, 'skills', 'tools'))).toBe(false)
       expect(fs.existsSync(join(migrateDir, 'skills', 'orchestration'))).toBe(false)
@@ -296,7 +296,7 @@ describe('skills namespace isolation', () => {
 })
 
 describe('Codex workflow entrypoint', () => {
-  const tmpDir = join(tmpdir(), `ccgs-test-codex-entry-${Date.now()}`)
+  const tmpDir = join(tmpdir(), `ccsm-test-codex-entry-${Date.now()}`)
   const codexHomeDir = join(tmpDir, '.codex-home')
 
   afterAll(async () => {
@@ -311,15 +311,15 @@ describe('Codex workflow entrypoint', () => {
 
     expect(result.success).toBe(true)
     expect(result.installedCodexSkills).toEqual([
-      'ccgs-spec-init',
-      'ccgs-spec-plan',
-      'ccgs-spec-impl',
+      'ccsm-spec-init',
+      'ccsm-spec-plan',
+      'ccsm-spec-impl',
     ])
-    expect(fs.existsSync(join(codexHomeDir, 'skills', 'ccgs-spec-init', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(join(codexHomeDir, 'skills', 'ccsm-spec-init', 'SKILL.md'))).toBe(true)
   })
 
   it('uninstall only removes CCG-owned Codex workflow skills', { timeout: 60_000 }, async () => {
-    const uninstallDir = join(tmpdir(), `ccgs-test-codex-uninstall-${Date.now()}`)
+    const uninstallDir = join(tmpdir(), `ccsm-test-codex-uninstall-${Date.now()}`)
     const uninstallCodexHome = join(uninstallDir, '.codex-home')
     const userSkillDir = join(uninstallCodexHome, 'skills', 'my-custom-skill')
 
@@ -335,9 +335,9 @@ describe('Codex workflow entrypoint', () => {
       const result = await uninstallWorkflows(uninstallDir, { codexHomeDir: uninstallCodexHome })
       expect(result.success).toBe(true)
       expect(result.removedCodexSkills).toEqual([
-        'ccgs-spec-init',
-        'ccgs-spec-plan',
-        'ccgs-spec-impl',
+        'ccsm-spec-init',
+        'ccsm-spec-plan',
+        'ccsm-spec-impl',
       ])
       expect(fs.existsSync(join(userSkillDir, 'SKILL.md'))).toBe(true)
     }

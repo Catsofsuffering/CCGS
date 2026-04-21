@@ -12,7 +12,7 @@ import { version } from '../../package.json'
 import { configMcp } from './config-mcp'
 import { i18n } from '../i18n'
 import { uninstallWorkflows } from '../utils/installer'
-import { CANONICAL_NAMESPACE, CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME, getCanonicalGlobalUninstallCommand, getCanonicalNpxCommand } from '../utils/identity'
+import { CANONICAL_NAMESPACE, CANONICAL_PACKAGE_NAME, DEPRECATED_PACKAGE_NAMES, getCanonicalGlobalUninstallCommand, getCanonicalNpxCommand } from '../utils/identity'
 import { getConfigPath, getDefaultInstallDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { init } from './init'
 import { update } from './update'
@@ -88,7 +88,7 @@ function drawHeader(statusParts: string[]): void {
   console.log()
   console.log(top)
   console.log(empty)
-  console.log(boxRow(centerLine(ansis.bold.white('CCGS'), INNER_W)))
+  console.log(boxRow(centerLine(ansis.bold.white('CCSM'), INNER_W)))
   console.log(empty)
   console.log(boxRow(centerLine(ansis.gray('Codex Orchestrates, Claude Executes'), INNER_W)))
   console.log(boxRow(centerLine(ansis.gray('Primary Workflow Owner: Codex'), INNER_W)))
@@ -150,7 +150,7 @@ export async function showMainMenu(): Promise<void> {
       pageSize: 20,
       choices: [
         groupSep(isZh ? 'Claude Code' : 'Claude Code'),
-        item('1', i18n.t('menu:options.init'), isZh ? '安装 CCG 工作流' : 'Install CCG workflows'),
+        item('1', i18n.t('menu:options.init'), isZh ? '安装 CCSM 工作流' : 'Install CCSM workflows'),
         item('2', i18n.t('menu:options.update'), isZh ? '更新到最新版本' : 'Update to latest version'),
         item('3', i18n.t('menu:options.configMcp'), isZh ? '代码检索 MCP 工具' : 'Code retrieval MCP tool'),
         item('4', i18n.t('menu:options.configApi'), isZh ? '自定义 API 端点' : 'Custom API endpoint'),
@@ -161,9 +161,9 @@ export async function showMainMenu(): Promise<void> {
         item('T', i18n.t('menu:options.tools'), 'ccusage, CCometixLine'),
         item('C', i18n.t('menu:options.installClaude'), isZh ? '安装/重装 CLI' : 'Install/reinstall CLI'),
 
-        groupSep('CCG'),
+        groupSep('CCSM'),
         item('H', i18n.t('menu:options.help'), isZh ? '查看全部斜杠命令' : 'View all slash commands'),
-        item('-', i18n.t('menu:options.uninstall'), isZh ? '移除 CCG 配置' : 'Remove CCG config'),
+        item('-', i18n.t('menu:options.uninstall'), isZh ? '移除 CCSM 配置' : 'Remove CCSM config'),
 
         new inquirer.Separator(ansis.gray('─'.repeat(42))),
         { name: `  ${ansis.red('Q.')} ${i18n.t('menu:options.exit')}`, value: 'Q' },
@@ -656,10 +656,10 @@ async function handleInstallClaude(): Promise<void> {
 // ═══════════════════════════════════════════════════════
 
 /**
- * Check if CCG is installed globally via npm
+ * Check if CCSM or a deprecated package name is installed globally via npm
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
-  for (const packageName of [CANONICAL_PACKAGE_NAME, LEGACY_PACKAGE_NAME]) {
+  for (const packageName of [CANONICAL_PACKAGE_NAME, ...DEPRECATED_PACKAGE_NAMES]) {
     try {
       const { stdout } = await execAsync(`npm list -g ${packageName} --depth=0`, { timeout: 5000 })
       if (stdout.includes(`${packageName}@`)) {

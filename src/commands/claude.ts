@@ -75,8 +75,8 @@ export async function execClaude(
 export async function doctorClaude(options: Pick<ClaudeExecCommandOptions, 'disableAgentTeams'> = {}): Promise<void> {
   const launchSpec = await resolveClaudeLaunchSpec()
   const env = buildClaudeLaunchEnv(process.env, !options.disableAgentTeams)
-  const hasOverride = Boolean(process.env.CCGS_CLAUDE_PATH)
-  const appendLocalNoProxy = process.env.CCGS_CLAUDE_APPEND_LOCAL_NO_PROXY === '1'
+  const hasOverride = Boolean(process.env.CCSM_CLAUDE_PATH)
+  const appendLocalNoProxy = process.env.CCSM_CLAUDE_APPEND_LOCAL_NO_PROXY === '1'
 
   console.log()
   console.log(ansis.cyan.bold('  Claude launcher'))
@@ -89,6 +89,6 @@ export async function doctorClaude(options: Pick<ClaudeExecCommandOptions, 'disa
   console.log(ansis.gray(`    NO_PROXY: ${env.NO_PROXY || ''}`))
   console.log(ansis.gray(`    agent teams: ${options.disableAgentTeams ? 'disabled' : 'enabled'}`))
   if (hasOverride) {
-    console.log(ansis.gray(`    CCGS_CLAUDE_PATH: configured${launchSpec.source === 'override' ? ' (active)' : ' (inactive; PATH won)'}`))
+    console.log(ansis.gray(`    CCSM_CLAUDE_PATH: configured${launchSpec.source === 'override' ? ' (active)' : ' (inactive; PATH won)'}`))
   }
 }

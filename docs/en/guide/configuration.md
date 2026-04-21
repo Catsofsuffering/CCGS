@@ -4,32 +4,34 @@
 
 ```text
 ~/.claude/
-├── commands/ccgs/
-├── agents/ccgs/
-├── skills/ccgs/
+├── commands/ccsm/
+├── agents/ccsm/
 ├── rules/
 ├── settings.json
-└── .ccgs/
-    ├── config.toml
-    ├── prompts/
-    └── claude-monitor/
+
+~/.ccsm/
+├── config.toml
+├── prompts/
+├── skills/
+│   └── ccsm/
+└── claude-monitor/
 
 ~/.codex/
 └── skills/
-    ├── ccgs-spec-init/
-    ├── ccgs-spec-plan/
-    └── ccgs-spec-impl/
+    ├── ccsm-spec-init/
+    ├── ccsm-spec-plan/
+    └── ccsm-spec-impl/
 ```
 
 ## Key files
 
-- `~/.claude/.ccgs/config.toml`: CCGS config
+- `~/.ccsm/config.toml`: CCSM config
 - `~/.claude/settings.json`: Claude env and hook config
-- `~/.claude/.ccgs/claude-monitor`: local monitor runtime
+- `~/.ccsm/claude-monitor`: local monitor runtime
 
 ## Model routing
 
-CCG still allows routing configuration, but the maintained story is:
+CCSM still allows routing configuration, but the maintained story is:
 
 - Codex orchestrates
 - Claude executes
@@ -42,9 +44,9 @@ Only the maintained Codex/Claude prompt and host surfaces are bundled by default
 The monitor is installed and managed separately from the command templates:
 
 ```bash
-ccgs monitor install
-ccgs monitor hooks
-ccgs monitor start --detach
+ccsm monitor install
+ccsm monitor hooks
+ccsm monitor start --detach
 ```
 
 ## FAQ
@@ -54,7 +56,7 @@ ccgs monitor start --detach
 Run:
 
 ```bash
-ccgs monitor start --detach
+ccsm monitor start --detach
 ```
 
 **Hooks are missing**
@@ -62,5 +64,5 @@ ccgs monitor start --detach
 Run:
 
 ```bash
-ccgs monitor hooks
+ccsm monitor hooks
 ```

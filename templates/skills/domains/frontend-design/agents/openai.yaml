@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend Design"
   short_description: "前端设计美学秘典"
-  default_prompt: "Read the skill at ~/.claude/skills/ccgs/domains/frontend-design/SKILL.md and use it as the authoritative playbook."
+  default_prompt: "Read the skill at ~/.ccsm/skills/ccsm/domains/frontend-design/SKILL.md and use it as the authoritative playbook."

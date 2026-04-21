@@ -33,7 +33,7 @@ function collectFiles(root: string): string[] {
 }
 
 describe('native identity audit', () => {
-  it('does not reintroduce canonical ccg-owned defaults in maintained surfaces', () => {
+  it('does not reintroduce deprecated pre-CCSM defaults in maintained surfaces', () => {
     const packageRoot = findPackageRoot()
     const files = [
       join(packageRoot, 'README.md'),
@@ -46,6 +46,16 @@ describe('native identity audit', () => {
     ]
 
     const bannedSnippets = [
+      '/ccgs:',
+      'commands/ccgs/',
+      'agents/ccgs/',
+      'skills/ccgs/',
+      'ccgs-spec-',
+      'ccgs-skills.md',
+      'ccgs-skill-routing.md',
+      'ccgs-grok-search.md',
+      '~/.claude/.ccgs/',
+      '../.ccgs/',
       '/ccg:',
       'commands/ccg/',
       'agents/ccg/',
@@ -59,15 +69,11 @@ describe('native identity audit', () => {
     ]
 
     const findings: string[] = []
-    const allowedCompatibilityFindings = new Set([
-      `${join(packageRoot, 'README.md')}: ~/.claude/.ccg/`,
-    ])
     for (const file of files) {
       const content = readFileSync(file, 'utf8')
       for (const snippet of bannedSnippets) {
-        const finding = `${file}: ${snippet}`
-        if (content.includes(snippet) && !allowedCompatibilityFindings.has(finding))
-          findings.push(finding)
+        if (content.includes(snippet))
+          findings.push(`${file}: ${snippet}`)
       }
     }
 

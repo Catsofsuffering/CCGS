@@ -1,12 +1,12 @@
 ---
-name: ccgs-skills
-description: CCG Skills - Quality gates, documentation generator, and multi-agent orchestration. Auto-installed by CCG workflow system.
+name: ccsm-skills
+description: CCSM skills - quality gates, documentation generator, and multi-agent orchestration. Auto-installed by the CCSM workflow system.
 license: MIT
 user-invocable: false
 disable-model-invocation: false
 ---
 
-# CCG Skills
+# CCSM Skills
 
 ## Directory Structure
 
@@ -59,14 +59,14 @@ Refactoring:    refactor → /verify-change → /verify-quality → /verify-secu
 
 ```bash
 # Unified runner
-node ~/.claude/skills/ccgs/run_skill.js <skill-name> [args...]
+node ~/.ccsm/skills/ccsm/run_skill.js <skill-name> [args...]
 
 # Examples
-node ~/.claude/skills/ccgs/run_skill.js verify-security ./src
-node ~/.claude/skills/ccgs/run_skill.js verify-quality ./src -v
-node ~/.claude/skills/ccgs/run_skill.js verify-change --mode staged
-node ~/.claude/skills/ccgs/run_skill.js verify-module ./my-module
-node ~/.claude/skills/ccgs/run_skill.js gen-docs ./new-module --force
+node ~/.ccsm/skills/ccsm/run_skill.js verify-security ./src
+node ~/.ccsm/skills/ccsm/run_skill.js verify-quality ./src -v
+node ~/.ccsm/skills/ccsm/run_skill.js verify-change --mode staged
+node ~/.ccsm/skills/ccsm/run_skill.js verify-module ./my-module
+node ~/.ccsm/skills/ccsm/run_skill.js gen-docs ./new-module --force
 ```
 
 ---
@@ -86,7 +86,7 @@ Provides:
 
 ---
 
-## Installed by CCG
+## Installed by CCSM
 
-These skills are automatically installed during `npx ccgs-workflow` initialization.
-To update: run `npx ccgs-workflow update` or `npx ccgs-workflow` again.
+These skills are automatically installed during `npx ccsm-workflow` initialization.
+To update: run `npx ccsm-workflow update` or `npx ccsm-workflow` again.

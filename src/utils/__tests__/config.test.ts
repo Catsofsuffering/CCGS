@@ -79,8 +79,9 @@ describe('createDefaultConfig', () => {
   it('sets paths with home directory', () => {
     const config = createDefaultConfig(baseOptions)
     expect(config.paths.commands).toContain('.codex')
-    expect(config.paths.prompts).toContain('.ccgs')
-    expect(config.paths.backup).toContain('.ccgs')
+    expect(config.paths.prompts).toContain('.ccsm')
+    expect(config.paths.backup).toContain('.ccsm')
+    expect(config.paths.canonicalHome).toContain('.ccsm')
   })
 
   it('records Codex-led workflow ownership', () => {

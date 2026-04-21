@@ -4,7 +4,7 @@ import fs from 'fs-extra'
 import { dirname, join } from 'pathe'
 import {
   CANONICAL_RUNTIME_DIRNAME,
-  LEGACY_RUNTIME_DIRNAME,
+  DEPRECATED_RUNTIME_DIRNAMES,
 } from './identity'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -23,7 +23,7 @@ function findPackageRoot(startDir: string): string {
   }
 
   console.error(
-    `[CCGS] PACKAGE_ROOT resolution failed.\n`
+    `[CCSM] PACKAGE_ROOT resolution failed.\n`
     + `  Start dir: ${startDir}\n`
     + `  Last checked: ${dir}\n`
     + `  The package must contain both package.json and templates/.`,
@@ -87,11 +87,14 @@ export function injectConfigVariables(content: string, config: {
   return processed
 }
 
-export function replaceHomePathsInTemplate(content: string, installDir: string): string {
+export function replaceHomePathsInTemplate(content: string, options: {
+  hostHomeDir: string
+  canonicalHomeDir?: string
+}): string {
   const userHome = homedir()
-  const canonicalRuntimeDir = join(installDir, CANONICAL_RUNTIME_DIRNAME)
-  const legacyRuntimeDir = join(installDir, LEGACY_RUNTIME_DIRNAME)
-  const hostDir = installDir
+  const canonicalRuntimeDir = options.canonicalHomeDir || join(options.hostHomeDir, CANONICAL_RUNTIME_DIRNAME)
+  const deprecatedRuntimeDirs = DEPRECATED_RUNTIME_DIRNAMES.map(dirname => join(options.hostHomeDir, dirname))
+  const hostDir = options.hostHomeDir
   const toForwardSlash = (path: string) => path.replace(/\\/g, '/')
 
   let processed = content
@@ -99,11 +102,13 @@ export function replaceHomePathsInTemplate(content: string, installDir: string):
   processed = processed.replace(/~\/\.claude\/\.ccg/g, toForwardSlash(canonicalRuntimeDir))
   processed = processed.replace(/~\/\.codex\/\.ccgs/g, toForwardSlash(canonicalRuntimeDir))
   processed = processed.replace(/~\/\.codex\/\.ccg/g, toForwardSlash(canonicalRuntimeDir))
-  processed = processed.replace(/\.\.\/\.ccgs/g, '../.ccgs')
-  processed = processed.replace(/\.\.\/\.ccg/g, '../.ccgs')
+  processed = processed.replace(/\.\.\/\.ccgs/g, '../.ccsm')
+  processed = processed.replace(/\.\.\/\.ccg/g, '../.ccsm')
   processed = processed.replace(/~\/\.claude/g, toForwardSlash(hostDir))
   processed = processed.replace(/~\/\.codex/g, toForwardSlash(hostDir))
   processed = processed.replace(/~\//g, `${toForwardSlash(userHome)}/`)
-  processed = processed.replace(new RegExp(toForwardSlash(legacyRuntimeDir), 'g'), toForwardSlash(canonicalRuntimeDir))
+  for (const deprecatedRuntimeDir of deprecatedRuntimeDirs) {
+    processed = processed.replace(new RegExp(toForwardSlash(deprecatedRuntimeDir), 'g'), toForwardSlash(canonicalRuntimeDir))
+  }
   return processed
 }

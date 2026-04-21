@@ -3,7 +3,7 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 ---
 <!-- CCG:SPEC:INIT:START -->
 **Core Philosophy**
-- OPSX provides the specification framework; CCG adds multi-model collaboration.
+- OPSX provides the specification framework; CCSM adds Codex-orchestrated collaboration.
 - This phase ensures all tools are ready before any development work begins.
 - Fail fast: detect missing dependencies early rather than mid-workflow.
 
@@ -65,15 +65,15 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
      ```
    - Verify monitor helper availability:
      ```bash
-     ccg monitor hooks
+     ccsm monitor hooks
      ```
    - If the runtime has not been prepared yet, install it:
      ```bash
-     ccg monitor install
+     ccsm monitor install
      ```
    - If the user wants an immediate UI check, start the local dashboard:
      ```bash
-     ccg monitor start --detach
+     ccsm monitor start --detach
      ```
    - Confirm `~/.claude/settings.json` now contains the Claude hook entries managed by the monitor.
    - For each unavailable tool, display warning with installation instructions.
@@ -91,18 +91,18 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
    Claude hook config        ✓/✗
    ```
 
-   **Next Steps (Use CCG Encapsulated Commands)**
-   1. Start Research: `/ccgs:spec-research "description"`
-   2. Plan & Design: `/ccgs:spec-plan`
-   3. Implement: `/ccgs:spec-impl` (Includes auto-review & archive)
+   **Next Steps (Use CCSM Encapsulated Commands)**
+   1. Start Research: `/ccsm:spec-research "description"`
+   2. Plan & Design: `/ccsm:spec-plan`
+   3. Implement: `/ccsm:spec-impl` (Includes auto-review & archive)
 
    **Standalone Tools (Available Anytime)**
-   - Code Review: `/ccgs:spec-review` (Independent dual-model review)
+   - Code Review: `/ccsm:spec-review` (Independent dual-model review)
 
 **Reference**
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
-- CCGS Workflow: `npx ccgs-workflow`
-- Claude monitor helper: `ccg monitor <install|start|hooks>`
+- CCSM Workflow: `npx ccsm-workflow`
+- Claude monitor helper: `ccsm monitor <install|start|hooks>`
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->

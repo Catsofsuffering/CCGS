@@ -5,13 +5,13 @@
 这是当前维护的工作流：
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research <需求>
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research <需求>
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 openspec archive <change-id>
 ```
 
@@ -20,7 +20,7 @@ openspec archive <change-id>
 如果你希望把 Claude 调度和最终验收放进同一个循环：
 
 ```bash
-/ccgs:spec-impl
+/ccsm:spec-impl
 ```
 
 ## 什么时候用 `team-*`
@@ -29,8 +29,8 @@ openspec archive <change-id>
 
 ## 什么时候用 `context` 和 `enhance`
 
-- 需求还不清楚时，用 `/ccgs:enhance`
-- 需要记录项目决策和上下文快照时，用 `/ccgs:context`
+- 需求还不清楚时，用 `/ccsm:enhance`
+- 需要记录项目决策和上下文快照时，用 `/ccsm:context`
 
 ## 哪些已经不再是默认路线
 

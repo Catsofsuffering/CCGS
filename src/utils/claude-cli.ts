@@ -47,7 +47,7 @@ export function buildClaudeLaunchEnv(
   enableAgentTeams = true,
 ): NodeJS.ProcessEnv {
   const nextEnv = { ...baseEnv }
-  if (nextEnv.CCGS_CLAUDE_APPEND_LOCAL_NO_PROXY === '1') {
+  if (nextEnv.CCSM_CLAUDE_APPEND_LOCAL_NO_PROXY === '1') {
     const mergedNoProxy = mergeNoProxyValue(nextEnv.NO_PROXY || nextEnv.no_proxy)
     nextEnv.NO_PROXY = mergedNoProxy
     nextEnv.no_proxy = mergedNoProxy
@@ -187,8 +187,8 @@ async function resolveFromPackageRoot(packageRoot: string): Promise<ClaudeLaunch
 function getPackageRootCandidates(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string[] {
   const prefixes = new Set<string>()
 
-  if (env.CCGS_CLAUDE_PACKAGE_ROOT) {
-    prefixes.add(env.CCGS_CLAUDE_PACKAGE_ROOT)
+  if (env.CCSM_CLAUDE_PACKAGE_ROOT) {
+    prefixes.add(env.CCSM_CLAUDE_PACKAGE_ROOT)
   }
 
   if (env.npm_config_prefix) {
@@ -232,8 +232,8 @@ export async function resolveClaudeLaunchSpec(
     return pathSpec
   }
 
-  if (env.CCGS_CLAUDE_PATH) {
-    return await resolveOverrideLaunchSpec(env.CCGS_CLAUDE_PATH)
+  if (env.CCSM_CLAUDE_PATH) {
+    return await resolveOverrideLaunchSpec(env.CCSM_CLAUDE_PATH)
   }
 
   for (const candidate of getPackageRootCandidates(env, platform)) {
@@ -244,7 +244,7 @@ export async function resolveClaudeLaunchSpec(
   }
 
   throw new Error(
-    'Claude CLI was not found on PATH. Install Claude Code so the `claude` command is available, or set CCGS_CLAUDE_PATH only for a non-standard install.',
+    'Claude CLI was not found on PATH. Install Claude Code so the `claude` command is available, or set CCSM_CLAUDE_PATH only for a non-standard install.',
   )
 }
 

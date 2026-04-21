@@ -1,15 +1,15 @@
 # Getting Started
 
-## What CCG is
+## What CCSM is
 
-CCG is now maintained around one default path:
+CCSM is now maintained around one default path:
 
 1. Codex owns orchestration.
 2. OpenSpec owns the change lifecycle.
 3. Claude Agent Teams execute the scoped implementation.
 4. Codex reviews, tests, accepts, and archives.
 
-The local runtime monitor is the Claude hook monitor under `~/.claude/.ccgs/claude-monitor`.
+The local runtime monitor is the Claude hook monitor under `~/.ccsm/claude-monitor`.
 
 ## Prerequisites
 
@@ -25,17 +25,17 @@ Optional:
 ## Install
 
 ```bash
-npx ccgs-workflow
+npx ccsm
 ```
 
 Useful follow-up commands:
 
 ```bash
-npx ccgs-workflow init
-npx ccgs-workflow menu
-npx ccgs-workflow monitor install
-npx ccgs-workflow monitor hooks
-npx ccgs-workflow monitor start --detach
+npx ccsm init
+npx ccsm menu
+npx ccsm monitor install
+npx ccsm monitor hooks
+npx ccsm monitor start --detach
 ```
 
 ## First run
@@ -43,19 +43,19 @@ npx ccgs-workflow monitor start --detach
 The maintained flow is:
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research implement a bounded feature
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research implement a bounded feature
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 ```
 
 If you want the managed shortcut:
 
 ```bash
-/ccgs:spec-impl
+/ccsm:spec-impl
 ```
 
 ## Monitor
@@ -69,7 +69,7 @@ http://127.0.0.1:4820
 If it is not running yet:
 
 ```bash
-ccgs monitor start --detach
+ccsm monitor start --detach
 ```
 
 ## Next

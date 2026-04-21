@@ -35,7 +35,7 @@ description: 'Codex 最终验收 OpenSpec change，失败打回，成功 archive
    - 若失败：
      - 输出 `Acceptance Failed`
      - 生成新的 rework packet
-     - 指示回到 `/ccgs:team-exec` 或 `/ccgs:spec-impl`
+     - 指示回到 `/ccsm:team-exec` 或 `/ccsm:spec-impl`
    - 若通过：
      - 输出 `Acceptance Passed`
      - 允许 archive
@@ -56,7 +56,7 @@ description: 'Codex 最终验收 OpenSpec change，失败打回，成功 archive
 ### Rework Packet
 - ...
 
-Next: /ccgs:team-exec
+Next: /ccsm:team-exec
 ```
 
 通过：

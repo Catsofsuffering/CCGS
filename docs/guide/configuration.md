@@ -4,28 +4,30 @@
 
 ```text
 ~/.claude/
-├── commands/ccgs/
-├── agents/ccgs/
-├── skills/ccgs/
+├── commands/ccsm/
+├── agents/ccsm/
 ├── rules/
 ├── settings.json
-└── .ccgs/
-    ├── config.toml
-    ├── prompts/
-    └── claude-monitor/
+
+~/.ccsm/
+├── config.toml
+├── prompts/
+├── skills/
+│   └── ccsm/
+└── claude-monitor/
 
 ~/.codex/
 └── skills/
-    ├── ccgs-spec-init/
-    ├── ccgs-spec-plan/
-    └── ccgs-spec-impl/
+    ├── ccsm-spec-init/
+    ├── ccsm-spec-plan/
+    └── ccsm-spec-impl/
 ```
 
 ## 关键文件
 
-- `~/.claude/.ccgs/config.toml`：CCGS 配置
+- `~/.ccsm/config.toml`：CCSM 配置
 - `~/.claude/settings.json`：Claude 环境变量和 hooks
-- `~/.claude/.ccgs/claude-monitor`：本地监控运行时
+- `~/.ccsm/claude-monitor`：本地监控运行时
 
 ## 模型路由
 
@@ -42,9 +44,9 @@
 监控运行时和命令模板分开管理：
 
 ```bash
-ccgs monitor install
-ccgs monitor hooks
-ccgs monitor start --detach
+ccsm monitor install
+ccsm monitor hooks
+ccsm monitor start --detach
 ```
 
 ## 常见问题
@@ -54,7 +56,7 @@ ccgs monitor start --detach
 运行：
 
 ```bash
-ccgs monitor start --detach
+ccsm monitor start --detach
 ```
 
 **hooks 丢了**
@@ -62,5 +64,5 @@ ccgs monitor start --detach
 运行：
 
 ```bash
-ccgs monitor hooks
+ccsm monitor hooks
 ```

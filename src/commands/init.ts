@@ -12,10 +12,10 @@ import { CANONICAL_NAMESPACE, CANONICAL_RULE_FILES, PRODUCT_NAME, getCanonicalNp
 import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
-import { getHostHomeDir } from '../utils/host'
+import { getCanonicalHomeDir, getHostHomeDir } from '../utils/host'
 
 /**
- * Write grok-search global prompt to ~/.claude/rules/ccgs-grok-search.md
+ * Write grok-search global prompt to ~/.claude/rules/ccsm-grok-search.md
  * Uses rules/ directory for modularity — avoids bloating CLAUDE.md
  */
 async function appendGrokSearchPrompt(installDir: string): Promise<void> {
@@ -182,72 +182,14 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let grokApiUrl = ''
   let grokApiKey = ''
 
-  // Claude Code API configuration
-  let apiUrl = ''
-  let apiKey = ''
-
   // ═══════════════════════════════════════════════════════
-  // Step 1/3: API Provider
-  // ═══════════════════════════════════════════════════════
-  if (!options.skipPrompt) {
-    console.log()
-    console.log(ansis.cyan.bold(`  🔑 Step 1/4 — ${i18n.t('init:api.title')}`))
-    console.log()
-
-    const { apiProvider } = await inquirer.prompt([{
-      type: 'list',
-      name: 'apiProvider',
-      message: i18n.t('init:api.providerPrompt'),
-      choices: [
-        { name: `${ansis.green('●')} ${i18n.t('init:api.officialOption')}`, value: 'official' },
-        { name: `${ansis.cyan('●')} ${i18n.t('init:api.thirdPartyOption')}`, value: 'thirdparty' },
-        { name: `${ansis.yellow('★')} ${i18n.t('init:api.sponsor302AI')} ${ansis.gray('— https://share.302.ai/oUDqQ6')}`, value: '302ai' },
-      ],
-    }])
-
-    if (apiProvider === '302ai') {
-      apiUrl = 'https://api.302.ai/cc'
-      console.log()
-      console.log(`    ${ansis.yellow('★')} ${i18n.t('init:api.sponsor302AIGetKey')}: ${ansis.cyan.underline('https://share.302.ai/oUDqQ6')}`)
-      console.log()
-      const { key } = await inquirer.prompt([{
-        type: 'password',
-        name: 'key',
-        message: `302.AI API Key ${ansis.gray(`(${i18n.t('init:api.keyRequired')})`)}`,
-        mask: '*',
-        validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterKey'),
-      }])
-      apiKey = key?.trim() || ''
-    }
-    else if (apiProvider === 'thirdparty') {
-      const apiAnswers = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'url',
-          message: `API URL ${ansis.gray(`(${i18n.t('init:api.urlRequired')})`)}`,
-          validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterUrl'),
-        },
-        {
-          type: 'password',
-          name: 'key',
-          message: `API Key ${ansis.gray(`(${i18n.t('init:api.keyRequired')})`)}`,
-          mask: '*',
-          validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterKey'),
-        },
-      ])
-      apiUrl = apiAnswers.url?.trim() || ''
-      apiKey = apiAnswers.key?.trim() || ''
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // Step 2/4: Model Routing
+  // Step 1/3: Model Routing
   // ═══════════════════════════════════════════════════════
   if (!options.skipPrompt) {
     const existingConfig = await readCcgConfig()
 
     console.log()
-    console.log(ansis.cyan.bold(`  🧠 Step 2/4 — ${i18n.t('init:model.title')}`))
+    console.log(ansis.cyan.bold(`  🧠 Step 1/3 — ${i18n.t('init:model.title')}`))
     console.log()
 
     const { selectedOrchestrator } = await inquirer.prompt([{
@@ -292,7 +234,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   }
 
   // ═══════════════════════════════════════════════════════
-  // Step 3/4: MCP Tools (checkbox multi-select)
+  // Step 2/3: MCP Tools (checkbox multi-select)
   // ═══════════════════════════════════════════════════════
   if (options.skipMcp) {
     // Fix #124: preserve existing MCP provider from config during update
@@ -302,7 +244,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   }
   else if (!options.skipPrompt) {
     console.log()
-    console.log(ansis.cyan.bold(`  🔧 Step 3/4 — ${i18n.t('init:mcp.title')}`))
+    console.log(ansis.cyan.bold(`  🔧 Step 2/3 — ${i18n.t('init:mcp.title')}`))
     console.log()
 
     const { selectedTools } = await inquirer.prompt([{
@@ -463,7 +405,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // ═══════════════════════════════════════════════════════
   if (!options.skipPrompt) {
     console.log()
-    console.log(ansis.cyan.bold(`  ⚡ Step 4/4 — ${i18n.t('init:commands.title')}`))
+    console.log(ansis.cyan.bold(`  ⚡ Step 3/3 — ${i18n.t('init:commands.title')}`))
     console.log()
 
     // Impeccable frontend design commands (optional, default: not installed)
@@ -503,6 +445,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   }
 
   const installDir = options.installDir || getHostHomeDir(orchestrator)
+  const canonicalHomeDir = getCanonicalHomeDir()
 
   // Show summary
   console.log()
@@ -561,9 +504,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
         }
         if (migrationResult.skipped.length > 0) {
           console.log()
-          console.log(ansis.gray('  Skipped:'))
+          console.log(ansis.yellow('  Deferred cleanup:'))
           for (const file of migrationResult.skipped) {
-            console.log(`  ${ansis.gray('○')} ${file}`)
+            console.log(`  ${ansis.yellow('○')} ${file}`)
           }
         }
         console.log()
@@ -580,7 +523,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       }
     }
 
-    await ensureCcgDir(installDir)
+    await ensureCcgDir(canonicalHomeDir)
 
     // Create config
     const config = createDefaultConfig({
@@ -590,6 +533,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       mcpProvider,
       skipImpeccable,
       installDir,
+      canonicalHome: canonicalHomeDir,
       ownership: {
         orchestrator,
         executionHost,
@@ -606,10 +550,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       mcpProvider,
       skipImpeccable,
       codexHomeDir: getHostHomeDir('codex'),
+      canonicalHomeDir,
     })
 
-    // Install selected MCP tools (multiple can be installed)
-    spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
 
     // ace-tool
     if (aceToolToken) {
@@ -652,37 +595,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
       }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // Save settings.json: API config + Hook auto-approve
-    // ═══════════════════════════════════════════════════════
-    const settingsPath = join(installDir, 'settings.json')
-
-    // Save API configuration if provided
-    if (apiUrl && apiKey) {
-      let settings: Record<string, any> = {}
-      if (await fs.pathExists(settingsPath)) {
-        settings = await fs.readJSON(settingsPath)
-      }
-      if (!settings.env)
-        settings.env = {}
-      settings.env.ANTHROPIC_BASE_URL = apiUrl
-      settings.env.ANTHROPIC_AUTH_TOKEN = apiKey
-      delete settings.env.ANTHROPIC_API_KEY
-      // Default optimization config
-      settings.env.DISABLE_TELEMETRY = '1'
-      settings.env.DISABLE_ERROR_REPORTING = '1'
-      settings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
-      settings.env.CLAUDE_CODE_ATTRIBUTION_HEADER = '0'
-      settings.env.MCP_TIMEOUT = '60000'
-      await fs.writeJSON(settingsPath, settings, { spaces: 2 })
-      console.log()
-      console.log(`    ${ansis.green('✓')} API ${ansis.gray(`→ ${settingsPath}`)}`)
-    }
-
-    const monitorRuntime = await prepareCodexMonitorRuntime({ installDir: getHostHomeDir('codex') })
+    const monitorRuntime = await prepareCodexMonitorRuntime({ canonicalHomeDir })
     console.log()
     if (executionHost === 'claude') {
-      const claudeMonitorRuntime = await prepareClaudeMonitorRuntime({ installDir: getHostHomeDir('claude') })
+      const claudeMonitorRuntime = await prepareClaudeMonitorRuntime({ canonicalHomeDir })
       console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(claudeMonitorRuntime.monitorDir)}`)
       console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(claudeMonitorRuntime.settingsPath)}`)
     }
@@ -700,7 +616,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       })
 
       if (grokResult.success) {
-        // Write global prompt to ~/.claude/rules/ccgs-grok-search.md
+        // Write global prompt to ~/.claude/rules/ccsm-grok-search.md
         await appendGrokSearchPrompt(installDir)
         console.log()
         console.log(`    ${ansis.green('✓')} grok-search MCP ${ansis.gray('→ ~/.claude.json')}`)
@@ -747,6 +663,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       // ═══════════════════════════════════════════════════════
     }
+
+    spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
 
     // jq check removed — permissions.allow approach does not require jq
 

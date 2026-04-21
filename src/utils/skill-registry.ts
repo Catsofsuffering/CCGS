@@ -270,8 +270,8 @@ export function generateCommandContent(skill: SkillMeta, skillsInstallDir: strin
  * Install auto-generated commands for all user-invocable skills.
  *
  * @param skillsTemplateDir - Path to templates/skills/ (source)
- * @param skillsInstallDir - Path to ~/.claude/skills/ccgs/ (installed destination)
- * @param commandsDir - Path to ~/.claude/commands/ccgs/ (command output)
+ * @param skillsInstallDir - Path to ~/.ccsm/skills/ccsm/ (installed destination)
+ * @param commandsDir - Path to ~/.claude/commands/ccsm/ (command output)
  * @param existingCommandNames - Set of command names already defined in installer-data.ts (to avoid conflicts)
  * @returns List of generated command names
  */

@@ -43,6 +43,7 @@ export interface CcgConfig {
   }
   paths: {
     hostHome: string
+    canonicalHome: string
     commands: string
     prompts: string
     backup: string

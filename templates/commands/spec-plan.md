@@ -10,7 +10,7 @@ description: 'Codex 收敛 proposal，生成执行交接契约与零决策计划
 **Guardrails**
 - 本阶段只更新 OpenSpec artifacts，不修改产品源码。
 - 必须把执行边界写清楚，避免 Claude 在执行阶段二次做产品决策。
-- 当建议下一步时，始终使用 `/ccgs:*` 命令，不向用户暴露 `/opsx:*`。
+- 当建议下一步时，始终使用 `/ccsm:*` 命令，不向用户暴露 `/opsx:*`。
 - `tasks.md` 必须使用 checkbox 格式：`- [ ] X.Y description`。
 
 **Steps**
@@ -90,7 +90,7 @@ description: 'Codex 收敛 proposal，生成执行交接契约与零决策计划
 6. 结束本阶段
    - 明确告诉用户：
      - 已完成计划与交接契约
-     - 下一步运行 `/ccgs:spec-impl`
+     - 下一步运行 `/ccsm:spec-impl`
 
 **Exit Criteria**
 - [ ] change 已选定并加载

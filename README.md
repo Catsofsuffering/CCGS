@@ -1,8 +1,8 @@
-# CCGS
+# CCSM
 
 <div align="center">
 
-[![npm version](https://img.shields.io/npm/v/ccgs-workflow.svg)](https://www.npmjs.com/package/ccgs-workflow)
+[![npm version](https://img.shields.io/npm/v/ccsm.svg)](https://www.npmjs.com/package/ccsm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Primary Path](https://img.shields.io/badge/Primary%20Path-Codex%20Led-green.svg)]()
 
@@ -10,9 +10,9 @@
 
 </div>
 
-CCGS is a Codex-led OpenSpec workflow package. Codex owns planning and acceptance, Claude Agent Teams execute bounded implementation, and the local monitor gives you a live view of board status, workflow topology, and runtime activity.
+CCSM is a Codex-led OpenSpec workflow package. Codex owns planning and acceptance, Claude Agent Teams execute bounded implementation, and the local monitor gives you a live view of board status, workflow topology, and runtime activity.
 
-## What CCGS Is For
+## What CCSM Is For
 
 The maintained path in this fork is:
 
@@ -34,38 +34,38 @@ MCP, extra skills, and Gemini can still be used, but they are optional layers ra
 ### Run Without Global Install
 
 ```bash
-npx ccgs-workflow
+npx ccsm
 ```
 
 ### Install Globally
 
 ```bash
-npm install -g ccgs-workflow
-ccgs
+npm install -g ccsm
+ccsm
 ```
 
-The canonical command is `ccgs`. The legacy `ccg` alias still exists for compatibility.
+The only maintained command is `ccsm`.
 
 ## Quick Start
 
 ### 1. Initialize the workflow
 
 ```bash
-ccgs init
+ccsm init
 ```
 
-During setup, CCGS asks who orchestrates the workflow before model routing is selected. Codex is the recommended default. The installer also places Codex-native entry skills under `~/.codex/skills/`.
+During setup, CCSM asks who orchestrates the workflow before model routing is selected. Codex is the recommended default. The installer also places Codex-native entry skills under `~/.codex/skills/`.
 
 ### 2. Start the monitor
 
 ```bash
-ccgs monitor
+ccsm monitor
 ```
 
 To keep it running in the background:
 
 ```bash
-ccgs monitor --detach
+ccsm monitor --detach
 ```
 
 By default, the monitor serves at [http://127.0.0.1:4820](http://127.0.0.1:4820).
@@ -73,20 +73,20 @@ By default, the monitor serves at [http://127.0.0.1:4820](http://127.0.0.1:4820)
 ### 3. Work through the primary OpenSpec flow
 
 ```bash
-/ccgs:spec-init
-/ccgs:spec-research <request>
-/ccgs:spec-plan
-/ccgs:team-plan
-/ccgs:team-exec
-/ccgs:team-review
-/ccgs:spec-review
+/ccsm:spec-init
+/ccsm:spec-research <request>
+/ccsm:spec-plan
+/ccsm:team-plan
+/ccsm:team-exec
+/ccsm:team-review
+/ccsm:spec-review
 openspec archive <change-id>
 ```
 
 If you want the managed shortcut for Codex dispatch plus Claude execution plus Codex acceptance, use:
 
 ```bash
-/ccgs:spec-impl
+/ccsm:spec-impl
 ```
 
 ## CLI Surface
@@ -94,25 +94,25 @@ If you want the managed shortcut for Codex dispatch plus Claude execution plus C
 The currently maintained command surface is:
 
 ```bash
-ccgs
-ccgs init
-ccgs monitor
-ccgs monitor --detach
-ccgs claude
-ccgs config mcp
-ccgs diagnose-mcp
-ccgs fix-mcp
+ccsm
+ccsm init
+ccsm monitor
+ccsm monitor --detach
+ccsm claude
+ccsm config mcp
+ccsm diagnose-mcp
+ccsm fix-mcp
 ```
 
 What these do:
 
-- `ccgs`: open the interactive menu.
-- `ccgs init`: install and configure the workflow.
-- `ccgs monitor`: start the local Claude hook monitor.
-- `ccgs claude`: launch Claude through the CCGS dispatcher for Codex handoff scenarios.
-- `ccgs config mcp`: configure MCP tokens.
-- `ccgs diagnose-mcp`: inspect MCP configuration problems.
-- `ccgs fix-mcp`: apply the Windows MCP repair path.
+- `ccsm`: open the interactive menu.
+- `ccsm init`: install and configure the workflow.
+- `ccsm monitor`: start the local Claude hook monitor.
+- `ccsm claude`: launch Claude through the CCSM dispatcher for Codex handoff scenarios.
+- `ccsm config mcp`: configure MCP tokens.
+- `ccsm diagnose-mcp`: inspect MCP configuration problems.
+- `ccsm fix-mcp`: apply the Windows MCP repair path.
 
 ## Monitor
 
@@ -143,20 +143,20 @@ Main pages:
 
 ## What Gets Installed
 
-The current install path keeps compatibility with existing environments while shifting the primary workflow toward Codex:
+The current install path keeps the workflow host-native while making `.ccsm` the canonical home:
 
 - Claude-facing commands and runtime assets are still installed under `~/.claude/`.
 - Codex-native workflow skills are installed under `~/.codex/skills/`.
-- Runtime data is stored under `~/.claude/.ccgs/`.
-- The maintained local monitor runtime lives under `~/.claude/.ccgs/claude-monitor`.
+- Runtime data is stored under `~/.ccsm/`.
+- The maintained local monitor runtime lives under `~/.ccsm/claude-monitor`.
 
 ## Codex-Native Entry Skills
 
-After installation, CCGS also installs:
+After installation, CCSM also installs:
 
-- `ccgs-spec-init`
-- `ccgs-spec-plan`
-- `ccgs-spec-impl`
+- `ccsm-spec-init`
+- `ccsm-spec-plan`
+- `ccsm-spec-impl`
 
 These let the primary workflow start directly from Codex while keeping Claude available as the execution layer.
 
@@ -206,7 +206,7 @@ graph TD
 ## Contributing
 
 - Prefer OpenSpec-first changes over ad hoc edits.
-- Keep compatibility surfaces labeled as compatibility until they are retired.
+- Do not reintroduce deprecated command or namespace entrypoints.
 - Do not describe MCP, extra skills, or Gemini as mandatory for the default product path.
 - Keep new docs aligned to the Codex-orchestrated, Claude-executed workflow.
 

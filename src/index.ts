@@ -1,4 +1,4 @@
-// CCG - Codex and Claude collaborative workflow system
+// CCSM - Codex orchestrated workflow system
 export * from './types'
 export { init } from './commands/init'
 export { doctorClaude, execClaude } from './commands/claude'
