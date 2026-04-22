@@ -169,10 +169,10 @@ describe('extractClaudeExecArgs', () => {
   })
 })
 
-describe('ccsm-spec-impl skill', () => {
+describe('spec-impl skill', () => {
   it('uses the stable ccsm claude launcher instead of a PowerShell snippet', () => {
     const packageRoot = findPackageRoot()
-    const content = readFileSync(join(packageRoot, 'templates', 'codex-skills', 'ccsm-spec-impl', 'SKILL.md'), 'utf-8')
+    const content = readFileSync(join(packageRoot, 'templates', 'codex-skills', 'spec-impl', 'SKILL.md'), 'utf-8')
 
     expect(content).toContain('ccsm claude exec --prompt-file')
     expect(content).not.toContain('```powershell')

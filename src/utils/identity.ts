@@ -5,10 +5,13 @@ export const CANONICAL_NAMESPACE = 'ccsm'
 export const CANONICAL_RUNTIME_DIRNAME = '.ccsm'
 export const CANONICAL_RULE_PREFIX = 'ccsm'
 export const CANONICAL_CODEX_SKILL_NAMES = [
-  'ccsm-spec-init',
-  'ccsm-spec-plan',
-  'ccsm-spec-impl',
+  'spec-init',
+  'spec-research',
+  'spec-plan',
+  'spec-impl',
+  'spec-review',
 ] as const
+export const MANAGED_CODEX_SKILL_MARKER = '<!-- CCSM-MANAGED-CODEX-WORKFLOW-SKILL -->'
 export const DEPRECATED_PACKAGE_NAMES = [
   'ccsm-workflow',
   'ccgs-workflow',
@@ -26,14 +29,18 @@ export const DEPRECATED_RUNTIME_DIRNAMES = [
   '.ccgs',
   '.ccg',
 ] as const
-export const DEPRECATED_CODEX_SKILL_NAMES = [
-  'ccgs-spec-init',
-  'ccgs-spec-plan',
-  'ccgs-spec-impl',
-  'ccg-spec-init',
-  'ccg-spec-plan',
-  'ccg-spec-impl',
-] as const
+export const DEPRECATED_CODEX_SKILL_NAME_MAP = {
+  'ccsm-spec-init': 'spec-init',
+  'ccsm-spec-plan': 'spec-plan',
+  'ccsm-spec-impl': 'spec-impl',
+  'ccgs-spec-init': 'spec-init',
+  'ccgs-spec-plan': 'spec-plan',
+  'ccgs-spec-impl': 'spec-impl',
+  'ccg-spec-init': 'spec-init',
+  'ccg-spec-plan': 'spec-plan',
+  'ccg-spec-impl': 'spec-impl',
+} as const
+export const DEPRECATED_CODEX_SKILL_NAMES = Object.keys(DEPRECATED_CODEX_SKILL_NAME_MAP) as Array<keyof typeof DEPRECATED_CODEX_SKILL_NAME_MAP>
 export const CANONICAL_RULE_FILES = [
   'ccsm-skills.md',
   'ccsm-skill-routing.md',

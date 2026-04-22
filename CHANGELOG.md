@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.27] - 2026-04-22
+
+### Changed
+
+- Completed the maintained nativeization pass to `ccsm`, making `~/.ccsm` the canonical runtime home while keeping only minimal `.claude` and `.codex` discovery bridges.
+- Replaced the maintained Codex workflow skill surface with the top-level `spec-init`, `spec-research`, `spec-plan`, `spec-impl`, and `spec-review` entrypoints, and hardened installer and migration behavior to avoid overwriting user-owned `spec-*` skills.
+- Removed install-time MCP buffet and automatic MCP setup from `ccsm init`; base installation now defaults MCP to optional post-install configuration and ignores stale removed MCP providers.
+- Synced the finalized OpenSpec changes into main specs and archived the completed `ccsm-nativeization` and `ccg-spec-entrypoint-unification` changes.
+
 ## [2.1.26] - 2026-04-21
 
 ### Changed

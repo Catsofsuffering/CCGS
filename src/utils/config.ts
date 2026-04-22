@@ -170,7 +170,7 @@ export function createDefaultConfig(options: {
       backup: join(canonicalHome, 'backup'),
     },
     mcp: {
-      provider: options.mcpProvider || 'ace-tool',
+      provider: options.mcpProvider || 'skip',
       setup_url: 'https://augmentcode.com/',
     },
     performance: {

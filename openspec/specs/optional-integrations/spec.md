@@ -38,7 +38,11 @@ The system SHALL clearly distinguish between core dependencies required for the 
 
 #### Scenario: User reads installation guidance
 - **WHEN** installation or configuration steps are shown to the user
-- **THEN** core requirements are separated from optional integrations
+- **THEN** the base workflow install flow SHALL omit install-time MCP buffet selection and automatic MCP setup
+
+#### Scenario: User wants MCP after base install
+- **WHEN** a user wants MCP tools after the base workflow is already installed
+- **THEN** MCP remains available through explicit later configuration rather than as a required install-time step
 
 #### Scenario: User reads command or architecture guidance
 - **WHEN** workflow documentation describes available tools and model roles

@@ -7,15 +7,25 @@ import fs from 'fs-extra'
 import { homedir } from 'node:os'
 import { dirname, join } from 'pathe'
 import {
-  CANONICAL_CODEX_SKILL_NAMES,
   CANONICAL_NAMESPACE,
   CANONICAL_RULE_FILES,
+  DEPRECATED_CODEX_SKILL_NAME_MAP,
   DEPRECATED_CODEX_SKILL_NAMES,
   DEPRECATED_HOST_NAMESPACES,
   DEPRECATED_RULE_FILES,
   DEPRECATED_RUNTIME_DIRNAMES,
+  MANAGED_CODEX_SKILL_MARKER,
 } from './identity'
 import { getCanonicalHomeDir } from './host'
+
+async function isManagedCodexSkillTarget(skillDir: string): Promise<boolean> {
+  const skillFile = join(skillDir, 'SKILL.md')
+  if (!(await fs.pathExists(skillFile)))
+    return false
+
+  const content = await fs.readFile(skillFile, 'utf-8')
+  return content.includes(MANAGED_CODEX_SKILL_MARKER)
+}
 
 export interface MigrationResult {
   success: boolean
@@ -205,20 +215,18 @@ export async function migrateToV1_4_0(): Promise<MigrationResult> {
       )
     }
 
-    for (let i = 0; i < CANONICAL_CODEX_SKILL_NAMES.length; i++) {
-      await migratePath(
-        join(codexSkillsDir, DEPRECATED_CODEX_SKILL_NAMES[i + CANONICAL_CODEX_SKILL_NAMES.length]),
-        join(codexSkillsDir, CANONICAL_CODEX_SKILL_NAMES[i]),
-        `~/.codex/skills/${DEPRECATED_CODEX_SKILL_NAMES[i + CANONICAL_CODEX_SKILL_NAMES.length]}`,
-        result,
-      )
-    }
+    for (const deprecatedSkill of DEPRECATED_CODEX_SKILL_NAMES) {
+      const canonicalSkill = DEPRECATED_CODEX_SKILL_NAME_MAP[deprecatedSkill]
+      const canonicalSkillDir = join(codexSkillsDir, canonicalSkill)
+      if (await fs.pathExists(canonicalSkillDir) && !await isManagedCodexSkillTarget(canonicalSkillDir)) {
+        result.skipped.push(`~/.codex/skills/${deprecatedSkill} (canonical ${canonicalSkill} already exists and is not managed by CCSM)`)
+        continue
+      }
 
-    for (let i = 0; i < CANONICAL_CODEX_SKILL_NAMES.length; i++) {
       await migratePath(
-        join(codexSkillsDir, DEPRECATED_CODEX_SKILL_NAMES[i]),
-        join(codexSkillsDir, CANONICAL_CODEX_SKILL_NAMES[i]),
-        `~/.codex/skills/${DEPRECATED_CODEX_SKILL_NAMES[i]}`,
+        join(codexSkillsDir, deprecatedSkill),
+        canonicalSkillDir,
+        `~/.codex/skills/${deprecatedSkill}`,
         result,
       )
     }

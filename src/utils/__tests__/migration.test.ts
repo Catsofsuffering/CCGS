@@ -57,7 +57,7 @@ describe.sequential('migration cleanup', () => {
     expect(await fs.pathExists(join(homeDir, '.claude', 'commands', 'ccsm', 'existing.md'))).toBe(true)
     expect(await fs.pathExists(join(homeDir, '.claude', 'agents', 'ccsm', 'planner.md'))).toBe(true)
     expect(await fs.pathExists(join(homeDir, '.claude', 'rules', 'ccsm-skills.md'))).toBe(true)
-    expect(await fs.pathExists(join(homeDir, '.codex', 'skills', 'ccsm-spec-init', 'SKILL.md'))).toBe(true)
+    expect(await fs.pathExists(join(homeDir, '.codex', 'skills', 'spec-init', 'SKILL.md'))).toBe(true)
 
     expect(await fs.pathExists(join(homeDir, '.ccg'))).toBe(false)
     expect(await fs.pathExists(join(homeDir, '.claude', 'commands', 'ccg'))).toBe(false)
@@ -113,6 +113,36 @@ describe.sequential('migration cleanup', () => {
       process.env.HOME = previousHome
       process.env.USERPROFILE = previousUserProfile
       await fs.remove(busyHomeDir)
+    }
+  })
+
+  it('skips Codex skill migration when a user-owned top-level skill already exists', async () => {
+    const conflictHomeDir = join(tmpdir(), `ccsm-migration-conflict-${Date.now()}`)
+    const previousHome = process.env.HOME
+    const previousUserProfile = process.env.USERPROFILE
+
+    process.env.HOME = conflictHomeDir
+    process.env.USERPROFILE = conflictHomeDir
+
+    try {
+      await fs.ensureDir(join(conflictHomeDir, '.codex', 'skills', 'ccg-spec-init'))
+      await fs.ensureDir(join(conflictHomeDir, '.codex', 'skills', 'spec-init'))
+      await fs.writeFile(join(conflictHomeDir, '.codex', 'skills', 'ccg-spec-init', 'SKILL.md'), '# legacy codex skill')
+      await fs.writeFile(join(conflictHomeDir, '.codex', 'skills', 'spec-init', 'SKILL.md'), '# user owned skill')
+
+      const result = await migrateToV1_4_0()
+
+      expect(result.success).toBe(true)
+      expect(result.skipped).toEqual(expect.arrayContaining([
+        expect.stringContaining('~/.codex/skills/ccg-spec-init (canonical spec-init already exists and is not managed by CCSM)'),
+      ]))
+      expect(await fs.readFile(join(conflictHomeDir, '.codex', 'skills', 'spec-init', 'SKILL.md'), 'utf-8')).toBe('# user owned skill')
+      expect(await fs.pathExists(join(conflictHomeDir, '.codex', 'skills', 'ccg-spec-init', 'SKILL.md'))).toBe(true)
+    }
+    finally {
+      process.env.HOME = previousHome
+      process.env.USERPROFILE = previousUserProfile
+      await fs.remove(conflictHomeDir)
     }
   })
 })

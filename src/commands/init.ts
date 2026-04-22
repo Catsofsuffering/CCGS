@@ -1,196 +1,74 @@
 import type { CollaborationMode, HostRuntime, InitOptions, ModelRouting, ModelType, SupportedLang } from '../types'
 import ansis from 'ansis'
-import fs from 'fs-extra'
 import inquirer from 'inquirer'
 import ora from 'ora'
-import { homedir } from 'node:os'
-import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { prepareClaudeMonitorRuntime, prepareCodexMonitorRuntime } from '../utils/claude-monitor'
 import { ensureCodexWorkspaceTrust } from '../utils/codex-config'
-import { CANONICAL_NAMESPACE, CANONICAL_RULE_FILES, PRODUCT_NAME, getCanonicalNpxLatestCommand } from '../utils/identity'
-import { getDefaultCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, syncMcpToCodex, writeFastContextPrompt } from '../utils/installer'
-import { isWindows } from '../utils/platform'
+import { CANONICAL_NAMESPACE, PRODUCT_NAME, getCanonicalNpxLatestCommand } from '../utils/identity'
+import { getDefaultCommandIds, installWorkflows } from '../utils/installer'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
+import { readClaudeCodeConfig } from '../utils/mcp'
 import { getCanonicalHomeDir, getHostHomeDir } from '../utils/host'
 
-/**
- * Write grok-search global prompt to ~/.claude/rules/ccsm-grok-search.md
- * Uses rules/ directory for modularity — avoids bloating CLAUDE.md
- */
-async function appendGrokSearchPrompt(installDir: string): Promise<void> {
-  const rulesDir = join(installDir, 'rules')
-  const rulePath = join(rulesDir, CANONICAL_RULE_FILES[2])
-
-  // Also clean up legacy CLAUDE.md injection if present
-  const claudeMdPath = join(installDir, 'CLAUDE.md')
-  if (await fs.pathExists(claudeMdPath)) {
-    const content = await fs.readFile(claudeMdPath, 'utf-8')
-    if (content.includes('CCG-GROK-SEARCH-PROMPT')) {
-      const cleaned = content.replace(/\n*<!-- CCG-GROK-SEARCH-PROMPT-START -->[\s\S]*?<!-- CCG-GROK-SEARCH-PROMPT-END -->\n*/g, '')
-      await fs.writeFile(claudeMdPath, cleaned, 'utf-8')
-    }
-  }
-
-  const prompt = `## 0. Language and Format Standards
-
-- **Interaction Language**: Tools and models must interact exclusively in **English**; user outputs must be in **Chinese**.
-- MUST ULRTA Thinking in ENGLISH!
-- **Formatting Requirements**: Use standard Markdown formatting. Code blocks and specific text results should be marked with backticks. Skilled in applying four or more \`\`\`\`markdown wrappers.
-
-## 1. Search and Evidence Standards
-Typically, the results of web searches only constitute third-party suggestions and are not directly credible; they must be cross-verified with sources to provide users with absolutely authoritative and correct answers.
-
-### Search Trigger Conditions
-Strictly distinguish between internal and external knowledge. Avoid speculation based on general internal knowledge. When uncertain, explicitly inform the user.
-
-For example, when using the \`fastapi\` library to encapsulate an API endpoint, despite possessing common-sense knowledge internally, you must still rely on the latest search results or official documentation for reliable implementation.
-
-### Search Execution Guidelines
-
-- Use the \`mcp__grok-search\` tool for web searches
-- Execute independent search requests in parallel; sequential execution applies only when dependencies exist
-- Evaluate search results for quality: analyze relevance, source credibility, cross-source consistency, and completeness. Conduct supplementary searches if gaps exist
-
-### Source Quality Standards
-
-- Key factual claims must be supported by >=2 independent sources. If relying on a single source, explicitly state this limitation
-- Conflicting sources: Present evidence from both sides, assess credibility and timeliness, identify the stronger evidence, or declare unresolved discrepancies
-- Empirical conclusions must include confidence levels (High/Medium/Low)
-- Citation format: [Author/Organization, Year/Date, Section/URL]. Fabricated references are strictly prohibited
-
-## 2. Reasoning and Expression Principles
-
-- Be concise, direct, and information-dense: Use lists for discrete items; paragraphs for arguments
-- Challenge flawed premises: When user logic contains errors, pinpoint specific issues with evidence
-- All conclusions must specify: Applicable conditions, scope boundaries, and known limitations
-- Avoid greetings, pleasantries, filler adjectives, and emotional expressions
-- When uncertain: State unknowns and reasons before presenting confirmed facts
-`
-
-  await fs.ensureDir(rulesDir)
-  await fs.writeFile(rulePath, prompt, 'utf-8')
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-/**
- * Install grok-search MCP server
- */
-async function installGrokSearchMcp(keys: {
-  tavilyKey?: string
-  firecrawlKey?: string
-  grokApiUrl?: string
-  grokApiKey?: string
-}): Promise<{ success: boolean, message: string }> {
-  const env: Record<string, string> = {}
-  if (keys.tavilyKey)
-    env.TAVILY_API_KEY = keys.tavilyKey
-  if (keys.firecrawlKey)
-    env.FIRECRAWL_API_KEY = keys.firecrawlKey
-  if (keys.grokApiUrl)
-    env.GROK_API_URL = keys.grokApiUrl
-  if (keys.grokApiKey)
-    env.GROK_API_KEY = keys.grokApiKey
+async function resolveInstalledMcpProvider(preferredProvider?: string): Promise<string> {
+  const claudeConfig = await readClaudeCodeConfig()
+  const mcpServers = claudeConfig?.mcpServers || {}
 
-  return installMcpServer(
-    'grok-search',
-    'uvx',
-    ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'grok-search'],
-    env,
-  )
+  if (mcpServers['ace-tool']) {
+    return preferredProvider === 'ace-tool-rs' ? 'ace-tool-rs' : 'ace-tool'
+  }
+  if (mcpServers['fast-context']) {
+    return 'fast-context'
+  }
+  if (mcpServers.contextweaver) {
+    return 'contextweaver'
+  }
+
+  return 'skip'
 }
 
 export async function init(options: InitOptions = {}): Promise<void> {
   console.log()
   console.log(ansis.cyan.bold(`  ${PRODUCT_NAME} - Codex Orchestrated Workflow`))
-  console.log(ansis.gray(`  Codex plans and accepts, Claude executes`))
+  console.log(ansis.gray('  Codex plans and accepts, Claude executes'))
   console.log()
 
-  // ═══════════════════════════════════════════════════════
-  // Step 0: Language selection (FIRST interactive step)
-  // ═══════════════════════════════════════════════════════
-  let language: SupportedLang = 'zh-CN'
+  const persistedConfig = await readCcgConfig()
 
-  if (!options.skipPrompt) {
-    // Check if user already has a language preference
-    const existingConfig = await readCcgConfig()
-    const savedLang = existingConfig?.general?.language
-
-    if (savedLang) {
-      // Use saved language
-      language = savedLang
-      await initI18n(language)
-    }
-    else {
-      // First time user: ask for language
-      const { selectedLang } = await inquirer.prompt([{
-        type: 'list',
-        name: 'selectedLang',
-        message: '选择语言 / Select language',
-        choices: [
-          { name: `简体中文`, value: 'zh-CN' },
-          { name: `English`, value: 'en' },
-        ],
-        default: 'zh-CN',
-      }])
-      language = selectedLang
-      await initI18n(language)
-    }
+  let language: SupportedLang = options.lang || persistedConfig?.general?.language || 'zh-CN'
+  if (!options.skipPrompt && !persistedConfig?.general?.language) {
+    const { selectedLang } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedLang',
+      message: '选择语言 / Select language',
+      choices: [
+        { name: '简体中文', value: 'zh-CN' },
+        { name: 'English', value: 'en' },
+      ],
+      default: language,
+    }])
+    language = selectedLang
   }
-  else if (options.lang) {
-    language = options.lang
-    await initI18n(language)
-  }
+  await initI18n(language)
 
-  // Model routing configuration (user-selectable since v2.1.0)
-  let orchestrator: ModelType = options.orchestrator || 'codex'
-  let executionHost: HostRuntime = orchestrator === 'codex' ? 'claude' : 'codex'
-  let acceptanceModel: ModelType = orchestrator === 'codex' ? 'codex' : 'claude'
-  let frontendModels: ModelType[] = ['codex']
-  let backendModels: ModelType[] = ['codex']
+  let orchestrator: ModelType = options.orchestrator || persistedConfig?.ownership?.orchestrator || 'codex'
+  let executionHost: HostRuntime = persistedConfig?.ownership?.executionHost || (orchestrator === 'codex' ? 'claude' : 'codex')
+  let acceptanceModel: ModelType = persistedConfig?.ownership?.acceptance || (orchestrator === 'codex' ? 'codex' : 'claude')
+  let frontendModels: ModelType[] = persistedConfig?.routing?.frontend?.models || ['codex']
+  let backendModels: ModelType[] = persistedConfig?.routing?.backend?.models || ['codex']
   const mode: CollaborationMode = 'smart'
   const selectedWorkflows = getDefaultCommandIds()
+  const mcpProvider = await resolveInstalledMcpProvider(persistedConfig?.mcp?.provider)
 
-  // Non-interactive mode: preserve existing config
-  if (options.skipPrompt) {
-    const existingConfig = await readCcgConfig()
-    if (existingConfig?.routing) {
-      frontendModels = existingConfig.routing.frontend?.models || ['codex']
-      backendModels = existingConfig.routing.backend?.models || ['codex']
-    }
-    if (existingConfig?.ownership) {
-      orchestrator = existingConfig.ownership.orchestrator || orchestrator
-      executionHost = existingConfig.ownership.executionHost || (orchestrator === 'codex' ? 'claude' : 'codex')
-      acceptanceModel = existingConfig.ownership.acceptance || (orchestrator === 'codex' ? 'codex' : 'claude')
-    }
-  }
-
-  let skipImpeccable = false
-
-  // MCP Tool Selection
-  let mcpProvider = 'ace-tool'
-  let aceToolBaseUrl = ''
-  let aceToolToken = ''
-  let contextWeaverApiKey = ''
-  let fastContextApiKey = ''
-  let fastContextIncludeSnippets = false
-  let wantFastContext = false
-
-  // Grok Search MCP
-  let wantGrokSearch = false
-  let tavilyKey = ''
-  let firecrawlKey = ''
-  let grokApiUrl = ''
-  let grokApiKey = ''
-
-  // ═══════════════════════════════════════════════════════
-  // Step 1/3: Model Routing
-  // ═══════════════════════════════════════════════════════
   if (!options.skipPrompt) {
-    const existingConfig = await readCcgConfig()
-
     console.log()
-    console.log(ansis.cyan.bold(`  🧠 Step 1/3 — ${i18n.t('init:model.title')}`))
+    console.log(ansis.cyan.bold(`  🧠 Step 1/2 - ${i18n.t('init:model.title')}`))
     console.log()
 
     const { selectedOrchestrator } = await inquirer.prompt([{
@@ -201,7 +79,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
         { name: 'Claude', value: 'claude' as ModelType },
       ],
-      default: existingConfig?.ownership?.orchestrator || 'codex',
+      default: orchestrator,
     }])
 
     orchestrator = selectedOrchestrator
@@ -216,7 +94,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
         { name: 'Claude', value: 'claude' as ModelType },
       ],
-      default: existingConfig?.routing?.frontend?.primary || 'codex',
+      default: persistedConfig?.routing?.frontend?.primary || frontendModels[0] || 'codex',
     }])
 
     const { selectedBackend } = await inquirer.prompt([{
@@ -227,206 +105,29 @@ export async function init(options: InitOptions = {}): Promise<void> {
         { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
         { name: 'Claude', value: 'claude' as ModelType },
       ],
-      default: existingConfig?.routing?.backend?.primary || 'codex',
+      default: persistedConfig?.routing?.backend?.primary || backendModels[0] || 'codex',
     }])
 
     frontendModels = [selectedFrontend]
     backendModels = [selectedBackend]
   }
 
-  // ═══════════════════════════════════════════════════════
-  // Step 2/3: MCP Tools (checkbox multi-select)
-  // ═══════════════════════════════════════════════════════
-  if (options.skipMcp) {
-    // Fix #124: preserve existing MCP provider from config during update
-    // instead of unconditionally setting to 'skip'
-    const existingConfig = await readCcgConfig()
-    mcpProvider = existingConfig?.mcp?.provider || 'skip'
-  }
-  else if (!options.skipPrompt) {
-    console.log()
-    console.log(ansis.cyan.bold(`  🔧 Step 2/3 — ${i18n.t('init:mcp.title')}`))
-    console.log()
-
-    const { selectedTools } = await inquirer.prompt([{
-      type: 'checkbox',
-      name: 'selectedTools',
-      message: i18n.t('init:mcp.selectTools'),
-      choices: [
-        {
-          name: `ace-tool ${ansis.green(`(${i18n.t('common:info')})`)} ${ansis.gray('— search_context 代码检索')}`,
-          value: 'ace-tool',
-          checked: true,
-        },
-        {
-          name: `fast-context ${ansis.gray('— AI 驱动语义搜索')}`,
-          value: 'fast-context',
-        },
-        {
-          name: `context7 ${ansis.green('(free)')} ${ansis.gray('— 库文档查询')}`,
-          value: 'context7',
-          checked: true,
-        },
-        {
-          name: `grok-search ${ansis.gray('— 联网搜索 (需 API Key)')}`,
-          value: 'grok-search',
-        },
-        {
-          name: `contextweaver ${ansis.gray('— 硅基流动嵌入检索 (需 API Key)')}`,
-          value: 'contextweaver',
-        },
-      ],
-    }]) as { selectedTools: string[] }
-
-    // Determine primary MCP provider for template variable replacement
-    // Priority: ace-tool > fast-context > contextweaver > skip
-    const hasAceTool = selectedTools.includes('ace-tool')
-    const hasFastContext = selectedTools.includes('fast-context')
-    const hasContextWeaver = selectedTools.includes('contextweaver')
-    wantFastContext = hasFastContext
-    wantGrokSearch = selectedTools.includes('grok-search')
-
-    if (hasAceTool) {
-      mcpProvider = 'ace-tool'
-    }
-    else if (hasFastContext) {
-      mcpProvider = 'fast-context'
-    }
-    else if (hasContextWeaver) {
-      mcpProvider = 'contextweaver'
-    }
-    else {
-      mcpProvider = 'skip'
-    }
-
-    // ── Collect keys for selected tools that need them ──
-
-    // ace-tool: needs Token
-    if (hasAceTool) {
-      console.log()
-      console.log(ansis.cyan.bold(`  🔧 ace-tool MCP`))
-      console.log()
-      console.log(`     ${ansis.gray('•')} ${ansis.cyan(i18n.t('init:mcp.officialService'))}: ${ansis.underline('https://augmentcode.com/')}`)
-      console.log(`     ${ansis.gray('•')} ${ansis.cyan(i18n.t('init:mcp.proxyService'))} ${ansis.yellow(`(${i18n.t('init:mcp.noSignup')})`)}: ${ansis.underline('https://acemcp.heroman.wtf/')}`)
-      console.log()
-
-      const aceAnswers = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'baseUrl',
-          message: `Base URL ${ansis.gray(`(${i18n.t('init:mcp.baseUrlHint')})`)}`,
-          default: '',
-        },
-        {
-          type: 'password',
-          name: 'token',
-          message: `Token ${ansis.gray(`(${i18n.t('init:mcp.tokenRequired')})`)}`,
-          mask: '*',
-          validate: (input: string) => input.trim() !== '' || i18n.t('init:mcp.enterToken'),
-        },
-      ])
-      aceToolBaseUrl = aceAnswers.baseUrl || ''
-      aceToolToken = aceAnswers.token || ''
-    }
-
-    // fast-context: optional API Key
-    if (hasFastContext) {
-      console.log()
-      console.log(ansis.cyan.bold(`  🔧 fast-context MCP`))
-      console.log(ansis.gray(`     Windsurf Fast Context — ${i18n.t('init:mcp.fcAutoExtract')}`))
-      console.log()
-
-      const fcAnswers = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'apiKey',
-          message: `WINDSURF_API_KEY ${ansis.gray(`(${i18n.t('init:mcp.fcLeaveEmpty')})`)}`,
-          default: '',
-        },
-        {
-          type: 'list',
-          name: 'includeSnippets',
-          message: i18n.t('init:mcp.fcSnippetMode'),
-          choices: [
-            { name: `${i18n.t('init:mcp.fcPathOnly')} ${ansis.gray(`(${i18n.t('init:mcp.fcSaveToken')})`)}`, value: false },
-            { name: i18n.t('init:mcp.fcFullSnippet'), value: true },
-          ],
-        },
-      ])
-      fastContextApiKey = fcAnswers.apiKey?.trim() || ''
-      fastContextIncludeSnippets = fcAnswers.includeSnippets
-    }
-
-    // contextweaver: needs SiliconFlow API Key
-    if (hasContextWeaver) {
-      console.log()
-      console.log(ansis.cyan.bold(`  🔧 ContextWeaver MCP`))
-      console.log()
-      console.log(`     ${ansis.gray('1.')} ${i18n.t('init:mcp.siliconflowStep1', { url: ansis.underline('https://siliconflow.cn/') })}`)
-      console.log(`     ${ansis.gray('2.')} ${i18n.t('init:mcp.siliconflowStep2')}`)
-      console.log(`     ${ansis.gray('3.')} ${i18n.t('init:mcp.siliconflowStep3')}`)
-      console.log()
-
-      const cwAnswers = await inquirer.prompt([{
-        type: 'password',
-        name: 'apiKey',
-        message: `SiliconFlow API Key ${ansis.gray('(sk-xxx)')}`,
-        mask: '*',
-        validate: (input: string) => input.trim() !== '' || i18n.t('init:mcp.enterApiKey'),
-      }])
-      contextWeaverApiKey = cwAnswers.apiKey || ''
-    }
-
-    // grok-search: needs API Keys
-    if (wantGrokSearch) {
-      console.log()
-      console.log(ansis.cyan.bold(`  🔍 grok-search MCP`))
-      console.log()
-      console.log(`     Tavily: ${ansis.underline('https://www.tavily.com/')} ${ansis.gray(`(${i18n.t('init:grok.tavilyHint')})`)}`)
-      console.log(`     Firecrawl: ${ansis.underline('https://www.firecrawl.dev/')} ${ansis.gray(`(${i18n.t('init:grok.firecrawlHint')})`)}`)
-      console.log(`     Grok API: ${ansis.gray(i18n.t('init:grok.grokHint'))}`)
-      console.log()
-
-      const grokAnswers = await inquirer.prompt([
-        { type: 'input', name: 'grokApiUrl', message: `GROK_API_URL ${ansis.gray(`(${i18n.t('init:grok.optional')})`)}`, default: '' },
-        { type: 'password', name: 'grokApiKey', message: `GROK_API_KEY ${ansis.gray(`(${i18n.t('init:grok.optional')})`)}`, mask: '*' },
-        { type: 'password', name: 'tavilyKey', message: `TAVILY_API_KEY ${ansis.gray(`(${i18n.t('init:grok.optional')})`)}`, mask: '*' },
-        { type: 'password', name: 'firecrawlKey', message: `FIRECRAWL_API_KEY ${ansis.gray(`(${i18n.t('init:grok.optional')})`)}`, mask: '*' },
-      ])
-
-      tavilyKey = grokAnswers.tavilyKey?.trim() || ''
-      firecrawlKey = grokAnswers.firecrawlKey?.trim() || ''
-      grokApiUrl = grokAnswers.grokApiUrl?.trim() || ''
-      grokApiKey = grokAnswers.grokApiKey?.trim() || ''
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // Step 3/3: Performance Mode
-  // ═══════════════════════════════════════════════════════
+  let skipImpeccable = persistedConfig?.performance?.skipImpeccable || false
   if (!options.skipPrompt) {
     console.log()
-    console.log(ansis.cyan.bold(`  ⚡ Step 3/3 — ${i18n.t('init:commands.title')}`))
+    console.log(ansis.cyan.bold(`  🔧 Step 2/2 - ${i18n.t('init:commands.title')}`))
     console.log()
 
-    // Impeccable frontend design commands (optional, default: not installed)
     const { includeImpeccable } = await inquirer.prompt([{
       type: 'confirm',
       name: 'includeImpeccable',
       message: i18n.t('init:commands.includeImpeccable'),
-      default: false,
+      default: !skipImpeccable,
     }])
+
     skipImpeccable = !includeImpeccable
   }
-  else {
-    // In non-interactive mode (update), preserve existing settings
-    const existingConfig = await readCcgConfig()
-    if (existingConfig?.performance?.skipImpeccable !== undefined) {
-      skipImpeccable = existingConfig.performance.skipImpeccable
-    }
-  }
 
-  // Build routing config (user-selectable since v2.1.0)
   const routing: ModelRouting = {
     frontend: {
       models: frontendModels,
@@ -448,32 +149,16 @@ export async function init(options: InitOptions = {}): Promise<void> {
   const installDir = options.installDir || getHostHomeDir(orchestrator)
   const canonicalHomeDir = getCanonicalHomeDir()
 
-  // Show summary
   console.log()
   console.log(ansis.yellow('━'.repeat(50)))
   console.log(ansis.bold(`  ${i18n.t('init:summary.title')}`))
   console.log()
-  const fmName = frontendModels[0].charAt(0).toUpperCase() + frontendModels[0].slice(1)
-  const bmName = backendModels[0].charAt(0).toUpperCase() + backendModels[0].slice(1)
-  const orchestratorName = orchestrator.charAt(0).toUpperCase() + orchestrator.slice(1)
-  const execName = executionHost.charAt(0).toUpperCase() + executionHost.slice(1)
-  console.log(`  ${ansis.cyan(i18n.t('init:summary.orchestrator'))}  ${ansis.green(orchestratorName)} ${ansis.gray('→')} ${ansis.blue(execName)}`)
-  console.log(`  ${ansis.cyan(i18n.t('init:summary.modelRouting'))}  ${ansis.green(fmName)} (Frontend) + ${ansis.blue(bmName)} (Backend)`)
+  console.log(`  ${ansis.cyan(i18n.t('init:summary.orchestrator'))}  ${ansis.green(capitalize(orchestrator))} ${ansis.gray('→')} ${ansis.blue(capitalize(executionHost))}`)
+  console.log(`  ${ansis.cyan(i18n.t('init:summary.modelRouting'))}  ${ansis.green(capitalize(frontendModels[0]))} (Frontend) + ${ansis.blue(capitalize(backendModels[0]))} (Backend)`)
   console.log(`  ${ansis.cyan(i18n.t('init:summary.commandCount'))}  ${ansis.yellow(selectedWorkflows.length.toString())}`)
-  const mcpSummary = (() => {
-    if (mcpProvider === 'fast-context') return ansis.green('fast-context')
-    if (mcpProvider === 'ace-tool' || mcpProvider === 'ace-tool-rs') return aceToolToken ? ansis.green(mcpProvider) : ansis.yellow(`${mcpProvider} (${i18n.t('init:summary.pendingConfig')})`)
-    if (mcpProvider === 'contextweaver') return contextWeaverApiKey ? ansis.green('contextweaver') : ansis.yellow(`contextweaver (${i18n.t('init:summary.pendingConfig')})`)
-    return ansis.gray(i18n.t('init:summary.skipped'))
-  })()
-  console.log(`  ${ansis.cyan(i18n.t('init:summary.mcpTool'))}  ${mcpSummary}`)
-  if (wantGrokSearch) {
-    console.log(`  ${ansis.cyan('grok-search')}    ${tavilyKey ? ansis.green('✓') : ansis.yellow(`(${i18n.t('init:summary.pendingConfig')})`)}`)
-  }
   console.log(ansis.yellow('━'.repeat(50)))
   console.log()
 
-  // Confirm in interactive mode (skip if force is true)
   if (!options.skipPrompt && !options.force) {
     const { confirmed } = await inquirer.prompt([{
       type: 'confirm',
@@ -488,13 +173,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
     }
   }
 
-  // Install
   const spinner = ora(i18n.t('init:installing')).start()
 
   try {
-    // v1.4.0: Auto-migrate from old directory structure
     if (await needsMigration()) {
-      spinner.text = 'Migrating from v1.3.x to v1.4.0...'
+      spinner.text = 'Migrating previous runtime layout...'
       const migrationResult = await migrateToV1_4_0()
 
       if (migrationResult.migratedFiles.length > 0) {
@@ -526,7 +209,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
     await ensureCcgDir(canonicalHomeDir)
 
-    // Create config
     const config = createDefaultConfig({
       language,
       routing,
@@ -542,10 +224,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
       },
     })
 
-    // Save config FIRST - ensure it's created even if installation fails
     await writeCcgConfig(config)
 
-    // Install workflows and commands
     const result = await installWorkflows(selectedWorkflows, installDir, options.force, {
       routing,
       mcpProvider,
@@ -554,48 +234,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
       canonicalHomeDir,
     })
 
-
-    // ace-tool
-    if (aceToolToken) {
-      spinner.text = i18n.t('init:aceTool.installing')
-      const aceResult = await installAceTool({ baseUrl: aceToolBaseUrl, token: aceToolToken })
-      if (aceResult.success) {
-        console.log(`    ${ansis.green('✓')} ace-tool MCP ${ansis.gray(`→ ${aceResult.configPath}`)}`)
-      }
-      else {
-        console.log(`    ${ansis.yellow('⚠')} ace-tool: ${ansis.gray(aceResult.message)}`)
-      }
-    }
-
-    // fast-context
-    if (wantFastContext) {
-      const fcResult = await installFastContext({
-        apiKey: fastContextApiKey || undefined,
-        includeSnippets: fastContextIncludeSnippets,
-      })
-      if (fcResult.success) {
-        console.log(`    ${ansis.green('✓')} fast-context MCP ${ansis.gray(`→ ${fcResult.configPath}`)}`)
-        // Write search guidance — auxiliary mode if ace-tool is primary
-        await writeFastContextPrompt(mcpProvider === 'ace-tool' || mcpProvider === 'ace-tool-rs')
-        console.log(`    ${ansis.green('✓')} ${i18n.t('init:mcp.fcPromptInjected')} ${ansis.gray('→ active host rules + ~/.codex/AGENTS.md')}`)
-      }
-      else {
-        console.log(`    ${ansis.yellow('⚠')} fast-context: ${ansis.gray(fcResult.message)}`)
-      }
-    }
-
-    // contextweaver
-    if (contextWeaverApiKey) {
-      spinner.text = i18n.t('init:mcp.cwConfiguring')
-      const cwResult = await installContextWeaver({ siliconflowApiKey: contextWeaverApiKey })
-      if (cwResult.success) {
-        console.log(`    ${ansis.green('✓')} ContextWeaver MCP ${ansis.gray(`→ ${cwResult.configPath}`)}`)
-      }
-      else {
-        console.log(`    ${ansis.yellow('⚠')} ContextWeaver: ${ansis.gray(cwResult.message)}`)
-      }
-    }
-
     const monitorRuntime = await prepareCodexMonitorRuntime({ canonicalHomeDir })
     console.log()
     if (executionHost === 'claude') {
@@ -603,70 +241,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(claudeMonitorRuntime.monitorDir)}`)
       console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(claudeMonitorRuntime.settingsPath)}`)
     }
-    console.log(`    ${ansis.green('✓')} Claude monitor ${ansis.gray(`→ ${monitorRuntime.monitorDir}`)}`)
-    console.log(`    ${ansis.green('✓')} Claude hooks ${ansis.gray(`→ ${monitorRuntime.settingsPath}`)}`)
+    console.log(`    ${ansis.green('✓')} Codex monitor ${ansis.gray(monitorRuntime.monitorDir)}`)
+    console.log(`    ${ansis.green('✓')} Codex monitor state ${ansis.gray(monitorRuntime.settingsPath)}`)
 
     if (executionHost === 'claude') {
       console.log(`    ${ansis.green('✓')} Claude exec allowlist ${ansis.gray('→ ~/.claude/settings.json')}`)
-    }
-
-    // Install grok-search MCP if requested
-    if (wantGrokSearch && (tavilyKey || firecrawlKey || grokApiUrl || grokApiKey)) {
-      spinner.text = i18n.t('init:grok.installing')
-      const grokResult = await installGrokSearchMcp({
-        tavilyKey,
-        firecrawlKey,
-        grokApiUrl: grokApiUrl || undefined,
-        grokApiKey: grokApiKey || undefined,
-      })
-
-      if (grokResult.success) {
-        // Write global prompt to ~/.claude/rules/ccsm-grok-search.md
-        await appendGrokSearchPrompt(installDir)
-        console.log()
-        console.log(`    ${ansis.green('✓')} grok-search MCP ${ansis.gray('→ ~/.claude.json')}`)
-        console.log(`    ${ansis.green('✓')} ${i18n.t('init:grok.promptAppended')} ${ansis.gray(`→ ~/.claude/rules/${CANONICAL_RULE_FILES[2]}`)}`)
-      }
-      else {
-        console.log()
-        console.log(`    ${ansis.yellow('⚠')} grok-search MCP ${i18n.t('init:grok.installFailed')}`)
-        console.log(ansis.gray(`      ${grokResult.message}`))
-      }
-    }
-
-    // Install context7 MCP + Codex sync (skip when --skip-mcp is passed)
-    if (!options.skipMcp) {
-      const context7Result = await installMcpServer(
-        'context7',
-        'npx',
-        ['-y', '@upstash/context7-mcp@latest'],
-      )
-      if (context7Result.success) {
-        console.log()
-        console.log(`    ${ansis.green('✓')} context7 MCP ${ansis.gray('→ ~/.claude.json')}`)
-      }
-      else {
-        console.log()
-        console.log(`    ${ansis.yellow('⚠')} context7 MCP install failed`)
-        console.log(ansis.gray(`      ${context7Result.message}`))
-      }
-
-      // ═══════════════════════════════════════════════════════
-      // Sync MCP servers to Codex (~/.codex/config.toml)
-      // Mirrors MCP tools into Codex so the Codex-led path can use them during planning and review.
-      // ═══════════════════════════════════════════════════════
-      const codexSyncResult = await syncMcpToCodex()
-      if (codexSyncResult.success && codexSyncResult.synced.length > 0) {
-        console.log()
-        console.log(`    ${ansis.green('✓')} Codex MCP sync: ${codexSyncResult.synced.join(', ')} ${ansis.gray('→ ~/.codex/config.toml')}`)
-      }
-      else if (!codexSyncResult.success) {
-        console.log()
-        console.log(`    ${ansis.yellow('⚠')} Codex MCP sync failed`)
-        console.log(ansis.gray(`      ${codexSyncResult.message}`))
-      }
-
-      // ═══════════════════════════════════════════════════════
     }
 
     const codexTrustResult = await ensureCodexWorkspaceTrust(process.cwd())
@@ -675,25 +254,19 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
     spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
 
-    // jq check removed — permissions.allow approach does not require jq
-
-    // Show result summary
     console.log()
     console.log(ansis.cyan(`  ${i18n.t('init:installedCommands')}`))
     result.installedCommands.forEach((cmd) => {
       console.log(`    ${ansis.green('✓')} /${CANONICAL_NAMESPACE}:${cmd}`)
     })
 
-    // Show installed prompts
     if (result.installedPrompts.length > 0) {
       console.log()
       console.log(ansis.cyan(`  ${i18n.t('init:installedPrompts')}`))
-      // Group by model
       const grouped: Record<string, string[]> = {}
-      result.installedPrompts.forEach((p) => {
-        const [model, role] = p.split('/')
-        if (!grouped[model])
-          grouped[model] = []
+      result.installedPrompts.forEach((prompt) => {
+        const [model, role] = prompt.split('/')
+        grouped[model] ||= []
         grouped[model].push(role)
       })
       Object.entries(grouped).forEach(([model, roles]) => {
@@ -701,12 +274,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
       })
     }
 
-    // Show installed skills
     if (result.installedSkills && result.installedSkills > 0) {
       console.log()
       console.log(ansis.cyan('  Skills:'))
-      console.log(`    ${ansis.green('✓')} ${result.installedSkills} skills installed (quality gates + multi-agent)`)
-      console.log(ansis.gray('       → ~/.claude/skills/'))
+      console.log(`    ${ansis.green('✓')} ${result.installedSkills} skills installed`)
+      console.log(ansis.gray('       → ~/.ccsm/skills/ccsm/'))
     }
 
     if (result.installedCodexSkills && result.installedCodexSkills.length > 0) {
@@ -718,57 +290,33 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(ansis.gray('       → ~/.codex/skills/'))
     }
 
-    // Show installed rules
     if (result.installedRules) {
       console.log()
       console.log(ansis.cyan('  Rules:'))
       console.log(`    ${ansis.green('✓')} quality gate auto-trigger rules`)
-      console.log(ansis.gray(`       → ~/.claude/rules/${CANONICAL_RULE_FILES[0]}`))
     }
 
-    // Show errors if any
+    console.log()
+    console.log(ansis.gray(`  MCP setup is optional. Run ${getCanonicalNpxLatestCommand(['config', 'mcp'])} if you want to add code-retrieval tools later.`))
+
     if (result.errors.length > 0) {
       console.log()
       if (!result.success) {
-        // Critical failure — prominent red box
-        console.log(ansis.red.bold(`  ╔════════════════════════════════════════════════════════════╗`))
-        console.log(ansis.red.bold(`  ║  ⚠  安装出现错误 / Installation errors detected           ║`))
-        console.log(ansis.red.bold(`  ╚════════════════════════════════════════════════════════════╝`))
+        console.log(ansis.red.bold('  Installation errors detected'))
       }
       else {
-        console.log(ansis.yellow(`  ⚠ ${i18n.t('init:installationErrors')}`))
+        console.log(ansis.yellow(`  ${i18n.t('init:installationErrors')}`))
       }
+
       result.errors.forEach((error) => {
         console.log(`    ${ansis.red('✗')} ${error}`)
       })
+
       if (!result.success) {
         console.log()
-        console.log(ansis.yellow(`  尝试修复 / Try to fix:`))
+        console.log(ansis.yellow('  Try to fix:'))
         console.log(ansis.cyan(`    ${getCanonicalNpxLatestCommand(['init', '--force'])}`))
-        console.log(ansis.gray(`    如仍失败，请提交 issue 并附上以上错误信息`))
-        console.log(ansis.gray(`    If still failing, report an issue with the errors above`))
       }
-    }
-
-    // Show MCP resources if user skipped installation
-    if (mcpProvider === 'skip' || ((mcpProvider === 'ace-tool' || mcpProvider === 'ace-tool-rs') && !aceToolToken) || (mcpProvider === 'contextweaver' && !contextWeaverApiKey)) {
-      console.log()
-      console.log(ansis.cyan.bold(`  📖 ${i18n.t('init:mcp.mcpOptions')}`))
-      console.log()
-      console.log(ansis.gray(`     ${i18n.t('init:mcp.mcpOptionsHint')}`))
-      console.log()
-      console.log(`     ${ansis.green('1.')} ${ansis.cyan('fast-context')} ${ansis.yellow('(推荐)')}: Windsurf Fast Context`)
-      console.log(`        ${ansis.gray('AI 驱动代码搜索，需 Windsurf 账号，免费/低成本')}`)
-      console.log()
-      console.log(`     ${ansis.green('2.')} ${ansis.cyan('ace-tool / ace-tool-rs')}: ${ansis.underline('https://augmentcode.com/')}`)
-      console.log(`        ${ansis.gray(i18n.t('init:mcp.promptEnhancement'))}`)
-      console.log()
-      console.log(`     ${ansis.green('3.')} ${ansis.cyan('ace-tool ' + i18n.t('init:mcp.proxyService'))} ${ansis.yellow(`(${i18n.t('init:mcp.noSignup')})`)}: ${ansis.underline('https://acemcp.heroman.wtf/')}`)
-      console.log(`        ${ansis.gray(i18n.t('init:mcp.communityProxy'))}`)
-      console.log()
-      console.log(`     ${ansis.green('4.')} ${ansis.cyan('ContextWeaver')} ${ansis.yellow(`(${i18n.t('init:mcp.freeQuota')})`)}: ${ansis.underline('https://siliconflow.cn/')}`)
-      console.log(`        ${ansis.gray(i18n.t('init:mcp.localEngine'))}`)
-      console.log()
     }
 
     console.log()

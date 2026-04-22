@@ -54,7 +54,7 @@ The only maintained command is `ccsm`.
 ccsm init
 ```
 
-During setup, CCSM asks who orchestrates the workflow before model routing is selected. Codex is the recommended default. The installer also places Codex-native entry skills under `~/.codex/skills/`.
+During setup, CCSM asks who orchestrates the workflow before model routing is selected. Codex is the recommended default. Base install no longer includes MCP buffet setup. The installer also places Codex-native entry skills under `~/.codex/skills/`.
 
 ### 2. Start the monitor
 
@@ -154,9 +154,11 @@ The current install path keeps the workflow host-native while making `.ccsm` the
 
 After installation, CCSM also installs:
 
-- `ccsm-spec-init`
-- `ccsm-spec-plan`
-- `ccsm-spec-impl`
+- `spec-init`
+- `spec-research`
+- `spec-plan`
+- `spec-impl`
+- `spec-review`
 
 These let the primary workflow start directly from Codex while keeping Claude available as the execution layer.
 

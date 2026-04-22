@@ -25,6 +25,7 @@ function collectMdFiles(dir: string): string[] {
 
 describe('installWorkflows E2E - mcpProvider="skip"', () => {
   const tmpDir = join(tmpdir(), `ccsm-test-skip-${Date.now()}`)
+  const codexHomeDir = join(tmpDir, '.codex-home')
 
   afterAll(async () => {
     await fs.remove(tmpDir)
@@ -33,6 +34,7 @@ describe('installWorkflows E2E - mcpProvider="skip"', () => {
   it('installs all workflows without errors', { timeout: 60_000 }, async () => {
     const result = await installWorkflows(ALL_IDS, tmpDir, true, {
       mcpProvider: 'skip',
+      codexHomeDir,
     })
     expect(result.success).toBe(true)
     expect(result.errors).toEqual([])
@@ -64,6 +66,7 @@ describe('installWorkflows E2E - mcpProvider="skip"', () => {
 
 describe('installWorkflows E2E - mcpProvider="ace-tool"', () => {
   const tmpDir = join(tmpdir(), `ccsm-test-ace-${Date.now()}`)
+  const codexHomeDir = join(tmpDir, '.codex-home')
   const e2eTimeout = process.platform === 'win32' ? 60_000 : 20_000
 
   afterAll(async () => {
@@ -73,6 +76,7 @@ describe('installWorkflows E2E - mcpProvider="ace-tool"', () => {
   it('installs all workflows and injects ace-tool references', { timeout: e2eTimeout }, async () => {
     const result = await installWorkflows(ALL_IDS, tmpDir, true, {
       mcpProvider: 'ace-tool',
+      codexHomeDir,
     })
     expect(result.success).toBe(true)
     expect(result.errors).toEqual([])

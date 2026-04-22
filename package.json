@@ -1,6 +1,6 @@
 {
   "name": "ccsm",
-  "version": "2.1.26",
+  "version": "2.1.27",
   "description": "Codex-led OpenSpec workflow with Claude Agent Teams execution and local Claude hook monitoring",
   "type": "module",
   "packageManager": "pnpm@10.17.1",

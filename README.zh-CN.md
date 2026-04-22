@@ -54,7 +54,7 @@ ccsm
 ccsm init
 ```
 
-初始化时会先询问谁来编排整个工作流，再继续模型路由配置。推荐选择 Codex。安装完成后，CCSM 也会把 Codex 原生入口技能安装到 `~/.codex/skills/`。
+初始化时会先询问谁来编排整个工作流，再继续模型路由配置。推荐选择 Codex。基础安装阶段不再包含 MCP 自助选择。安装完成后，CCSM 也会把 Codex 原生入口技能安装到 `~/.codex/skills/`。
 
 ### 2. 启动 monitor
 
@@ -154,9 +154,11 @@ ccsm fix-mcp
 
 安装后还会提供这些技能：
 
-- `ccsm-spec-init`
-- `ccsm-spec-plan`
-- `ccsm-spec-impl`
+- `spec-init`
+- `spec-research`
+- `spec-plan`
+- `spec-impl`
+- `spec-review`
 
 这样主工作流就可以直接从 Codex 发起，同时保留 Claude 作为执行层。
 

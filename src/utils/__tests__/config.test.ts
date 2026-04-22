@@ -56,9 +56,9 @@ describe('createDefaultConfig', () => {
     expect(config.workflows.installed).toEqual(['workflow', 'plan'])
   })
 
-  it('defaults mcpProvider to ace-tool', () => {
+  it('defaults mcpProvider to skip', () => {
     const config = createDefaultConfig(baseOptions)
-    expect(config.mcp.provider).toBe('ace-tool')
+    expect(config.mcp.provider).toBe('skip')
   })
 
   it('respects custom mcpProvider', () => {

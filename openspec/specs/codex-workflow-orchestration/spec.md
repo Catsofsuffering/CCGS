@@ -16,6 +16,11 @@ The maintained workflow SHALL treat Codex as the control plane for change creati
 - **WHEN** a change moves through proposal, design, specs, or tasks
 - **THEN** Codex SHALL remain the actor responsible for driving the artifact lifecycle
 
+#### Scenario: User starts the primary workflow from Codex-native entrypoints
+
+- **WHEN** a user starts the maintained workflow through Codex-native installed skills
+- **THEN** the maintained entry surface SHALL be the top-level `spec-*` skill set instead of a product-prefixed compatibility skill name
+
 ### Requirement: Claude execution SHALL be invoked as bounded downstream work
 
 The maintained workflow SHALL let Codex dispatch Claude execution work as a bounded downstream step rather than as an independent control plane.
@@ -95,6 +100,10 @@ The system SHALL present the default product narrative as "Codex orchestrates, C
 - **WHEN** a user opens a compatibility or secondary command from the same installation
 - **THEN** the guidance keeps Codex-led ownership intact and does not describe Gemini as an unconditional authority or required collaborator
 
+#### Scenario: User reads Codex-native workflow guidance
+- **WHEN** a user reads the installed Codex-native workflow skills
+- **THEN** the skills describe the maintained primary path through `spec-init`, `spec-research`, `spec-plan`, `spec-impl`, and `spec-review`
+
 ### Requirement: Installer surfaces orchestration ownership
 The installer SHALL prompt users to confirm who acts as the workflow orchestrator before selecting frontend/backend execution models. Codex MUST remain the recommended default, while Claude SHOULD remain selectable for compatibility. The prompt outcome MUST persist into configuration metadata and be summarized back to the user.
 
@@ -105,4 +114,3 @@ The installer SHALL prompt users to confirm who acts as the workflow orchestrato
 #### Scenario: User intentionally selects Claude as orchestrator
 - **WHEN** a user selects Claude as the orchestrator during the installer step
 - **THEN** the resulting configuration records Claude as the orchestrator, Codex as the execution host, and the summary reflects the compatibility setup
-

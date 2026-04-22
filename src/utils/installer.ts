@@ -18,9 +18,11 @@ import {
   CANONICAL_NAMESPACE,
   CANONICAL_RUNTIME_DIRNAME,
   CANONICAL_RULE_FILES,
+  DEPRECATED_CODEX_SKILL_NAME_MAP,
   DEPRECATED_CODEX_SKILL_NAMES,
   DEPRECATED_HOST_NAMESPACES,
   DEPRECATED_RULE_FILES,
+  MANAGED_CODEX_SKILL_MARKER,
 } from './identity'
 import {
   injectConfigVariables,
@@ -83,10 +85,36 @@ interface InstallContext {
   claudeHomeDir: string
   canonicalHomeDir: string
   codexHomeDir: string
+  codexSkillConflicts: Set<string>
   force: boolean
   config: InstallConfig
   templateDir: string
   result: InstallResult
+}
+
+function normalizeManagedCodexSkillContent(content: string): string {
+  return content.replace(/\r\n/g, '\n').trimEnd()
+}
+
+function markManagedCodexSkill(content: string): string {
+  if (content.includes(MANAGED_CODEX_SKILL_MARKER))
+    return content
+  return `${content.trimEnd()}\n\n${MANAGED_CODEX_SKILL_MARKER}\n`
+}
+
+async function isManagedCodexSkill(skillFile: string, expectedContent?: string): Promise<boolean> {
+  if (!(await fs.pathExists(skillFile)))
+    return false
+
+  const content = await fs.readFile(skillFile, 'utf-8')
+  if (content.includes(MANAGED_CODEX_SKILL_MARKER))
+    return true
+
+  if (expectedContent) {
+    return normalizeManagedCodexSkillContent(content) === normalizeManagedCodexSkillContent(expectedContent)
+  }
+
+  return false
 }
 
 async function copyMdTemplates(
@@ -338,15 +366,24 @@ async function installCodexWorkflowSkills(ctx: InstallContext): Promise<void> {
         continue
       }
 
-      const destDir = join(codexSkillsDir, skillName)
-      await fs.ensureDir(destDir)
       let content = await fs.readFile(skillFile, 'utf-8')
       content = injectConfigVariables(content, ctx.config)
       content = replaceHomePathsInTemplate(content, {
         hostHomeDir: ctx.claudeHomeDir,
         canonicalHomeDir: ctx.canonicalHomeDir,
       })
-      await fs.writeFile(join(destDir, 'SKILL.md'), content, 'utf-8')
+      const destDir = join(codexSkillsDir, skillName)
+      const destSkillFile = join(destDir, 'SKILL.md')
+      if (await fs.pathExists(destDir) && !await isManagedCodexSkill(destSkillFile, content)) {
+        ctx.result.errors.push(`Codex workflow skill conflict: ${skillName} already exists and is not managed by CCSM`)
+        ctx.result.success = false
+        ctx.codexSkillConflicts.add(skillName)
+        continue
+      }
+
+      await fs.ensureDir(destDir)
+      content = markManagedCodexSkill(content)
+      await fs.writeFile(destSkillFile, content, 'utf-8')
       installed.push(skillName)
     }
 
@@ -438,6 +475,10 @@ async function cleanupDeprecatedEntryPoints(ctx: InstallContext): Promise<void> 
 
   for (const skillName of DEPRECATED_CODEX_SKILL_NAMES) {
     const skillDir = join(ctx.codexHomeDir, 'skills', skillName)
+    const canonicalSkillName = DEPRECATED_CODEX_SKILL_NAME_MAP[skillName]
+    if (ctx.codexSkillConflicts.has(canonicalSkillName)) {
+      continue
+    }
     if (await fs.pathExists(skillDir)) {
       await fs.remove(skillDir)
     }
@@ -465,6 +506,7 @@ export async function installWorkflows(
     claudeHomeDir: installDir,
     canonicalHomeDir: config?.canonicalHomeDir || join(installDir, CANONICAL_RUNTIME_DIRNAME),
     codexHomeDir: config?.codexHomeDir || join(homedir(), '.codex'),
+    codexSkillConflicts: new Set<string>(),
     force,
     config: {
       routing: config?.routing as InstallConfig['routing'] || {
@@ -473,7 +515,7 @@ export async function installWorkflows(
         backend: { models: ['codex'], primary: 'codex' },
         review: { models: ['codex'] },
       },
-      mcpProvider: config?.mcpProvider || 'ace-tool',
+      mcpProvider: config?.mcpProvider || 'skip',
       skipImpeccable: config?.skipImpeccable || false,
     },
     templateDir: join(PACKAGE_ROOT, 'templates'),
@@ -606,8 +648,9 @@ export async function uninstallWorkflows(
 
   for (const skillName of ALL_CODEX_SKILL_NAMES) {
     const skillDir = join(codexSkillsDir, skillName)
+    const skillFile = join(skillDir, 'SKILL.md')
     try {
-      if (await fs.pathExists(skillDir)) {
+      if (await fs.pathExists(skillDir) && await isManagedCodexSkill(skillFile)) {
         await fs.remove(skillDir)
         result.removedCodexSkills.push(skillName)
       }
