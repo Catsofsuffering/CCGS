@@ -1,11 +1,11 @@
 import { defineConfig } from 'vitepress'
 
-const repo = 'https://github.com/Catsofsuffering/CCGS'
+const repo = 'https://github.com/Catsofsuffering/ccsm'
 
 export default defineConfig({
-  title: 'CCGS',
+  title: 'CCSM',
   description: 'Codex-led spec collaboration workflow',
-  base: '/CCGS/',
+  base: '/ccsm/',
   lastUpdated: true,
   cleanUrls: true,
 
@@ -50,7 +50,7 @@ export default defineConfig({
         },
         footer: {
           message: '基于 MIT License 发布',
-          copyright: 'Copyright © 2025-present CCGS',
+          copyright: 'Copyright © 2025-present CCSM',
         },
         docFooter: {
           prev: '上一页',
@@ -107,7 +107,7 @@ export default defineConfig({
         },
         footer: {
           message: 'Released under the MIT License',
-          copyright: 'Copyright © 2025-present CCGS',
+          copyright: 'Copyright © 2025-present CCSM',
         },
       },
     },

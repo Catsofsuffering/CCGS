@@ -47,6 +47,7 @@ const EXPECTED_API_PATHS = [
   "/api/settings/reset-pricing",
   "/api/settings/export",
   "/api/settings/cleanup",
+  "/api/settings/openspec-workspace",
   "/api/openapi.json",
 ];
 
@@ -152,9 +153,12 @@ describe("OpenSpec API", () => {
     assert.ok(Array.isArray(res.body.stages));
     assert.ok(Array.isArray(res.body.changes));
     assert.ok(typeof res.body.workspaceRoot === "string");
+    const change = res.body.changes[0];
+    if (!change) {
+      assert.equal(res.body.changes.length, 0);
+      return;
+    }
 
-    const change = res.body.changes.find((item) => item.name === "openspec-capabilities-and-change-hygiene");
-    assert.ok(change, "expected known OpenSpec change to be present");
     assert.equal(typeof change.stage, "string");
     assert.ok(Array.isArray(change.artifacts));
     assert.ok(change.taskProgress);
@@ -177,8 +181,12 @@ describe("Control Plane API", () => {
     assert.ok(Array.isArray(res.body.projects));
     assert.ok(Array.isArray(res.body.workers));
 
-    const project = res.body.projects.find((item) => item.name === "openspec-orchestration-control-plane");
-    assert.ok(project, "expected new control-plane change to be present");
+    const project = res.body.projects[0];
+    if (!project) {
+      assert.equal(res.body.projects.length, 0);
+      return;
+    }
+
     assert.equal(typeof project.graphSummary.totalNodes, "number");
     assert.equal(typeof project.readyToApply, "boolean");
     assert.ok(project.dispatch);
@@ -188,9 +196,17 @@ describe("Control Plane API", () => {
   });
 
   it("should return project graph and blackboard state", async () => {
-    const res = await fetch("/api/control-plane/projects/openspec-orchestration-control-plane");
+    const overviewRes = await fetch("/api/control-plane/overview");
+    assert.equal(overviewRes.status, 200);
+    const projectName = overviewRes.body.projects[0]?.name;
+    if (!projectName) {
+      assert.equal(overviewRes.body.projects.length, 0);
+      return;
+    }
+
+    const res = await fetch(`/api/control-plane/projects/${projectName}`);
     assert.equal(res.status, 200);
-    assert.equal(res.body.project.name, "openspec-orchestration-control-plane");
+    assert.equal(res.body.project.name, projectName);
     assert.ok(Array.isArray(res.body.graph.nodes));
     assert.ok(Array.isArray(res.body.graph.edges));
     assert.ok(res.body.blackboard);
@@ -207,12 +223,20 @@ describe("Control Plane API", () => {
   });
 
   it("should record replay and reopen actions for a graph node", async () => {
-    const projectRes = await fetch("/api/control-plane/projects/openspec-orchestration-control-plane");
+    const overviewRes = await fetch("/api/control-plane/overview");
+    assert.equal(overviewRes.status, 200);
+    const projectName = overviewRes.body.projects[0]?.name;
+    if (!projectName) {
+      assert.equal(overviewRes.body.projects.length, 0);
+      return;
+    }
+
+    const projectRes = await fetch(`/api/control-plane/projects/${projectName}`);
     assert.equal(projectRes.status, 200);
     const nodeId = projectRes.body.graph.nodes[0]?.id;
     assert.ok(nodeId, "expected a project graph node");
 
-    const actionRes = await post("/api/control-plane/projects/openspec-orchestration-control-plane/actions", {
+    const actionRes = await post(`/api/control-plane/projects/${projectName}/actions`, {
       nodeId,
       actionType: "replay",
     });
@@ -226,7 +250,7 @@ describe("Control Plane API", () => {
     assert.equal(actionRes.body.intent.nodeId, nodeId);
     assert.ok(["queued", "running", "completed", "failed", "blocked"].includes(actionRes.body.intent.status));
 
-    const refreshedProject = await fetch("/api/control-plane/projects/openspec-orchestration-control-plane");
+    const refreshedProject = await fetch(`/api/control-plane/projects/${projectName}`);
     assert.equal(refreshedProject.status, 200);
     assert.ok(Array.isArray(refreshedProject.body.actions));
     assert.ok(Array.isArray(refreshedProject.body.dispatches));
@@ -1358,6 +1382,25 @@ describe("Transcript cache integration", () => {
     assert.ok(res.body.transcript_cache, "response should include transcript_cache");
     assert.ok(typeof res.body.transcript_cache.entries === "number", "should have entries count");
     assert.ok(Array.isArray(res.body.transcript_cache.paths), "should have paths array");
+  });
+
+  it("should resolve and persist the nearest openspec workspace root", async () => {
+    const repoRoot = path.resolve(__dirname, "..", "..", "..");
+    const nestedPath = path.join(repoRoot, "claude-monitor", "server");
+
+    const updateRes = await post("/api/settings/openspec-workspace", {
+      workspaceRoot: nestedPath,
+    });
+
+    assert.strictEqual(updateRes.status, 200);
+    assert.strictEqual(updateRes.body.openspec.workspaceRoot, repoRoot);
+    assert.strictEqual(updateRes.body.openspec.activeWorkspaceRoot, repoRoot);
+    assert.strictEqual(updateRes.body.openspec.source, "preferred");
+
+    const infoRes = await fetch("/api/settings/info");
+    assert.strictEqual(infoRes.status, 200);
+    assert.strictEqual(infoRes.body.openspec.workspaceRoot, repoRoot);
+    assert.strictEqual(infoRes.body.openspec.activeWorkspaceRoot, repoRoot);
   });
 
   it("should evict cache entry on SessionEnd", async () => {

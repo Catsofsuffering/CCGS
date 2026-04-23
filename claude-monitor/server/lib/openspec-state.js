@@ -2,11 +2,12 @@ const { execFile } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { promisify } = require("node:util");
-const { db } = require("../db");
+const { db, stmts } = require("../db");
 
 const execFileAsync = promisify(execFile);
 
 const OPEN_SPEC_CACHE_TTL_MS = Number(process.env.OPENSPEC_BOARD_CACHE_TTL_MS || 5000);
+const OPEN_SPEC_WORKSPACE_SETTING_KEY = "openspec.activeWorkspaceRoot";
 const STAGE_ORDER = ["proposal", "design", "specs", "tasks", "implementing", "complete"];
 const STAGE_LABELS = {
   proposal: "Scoping",
@@ -63,28 +64,81 @@ function getSessionWorkspaceCandidates() {
   }
 }
 
-function workspaceCandidates() {
-  const roots = [
-    process.env.OPENSPEC_WORKSPACE_ROOT,
-    process.env.CCG_WORKSPACE_ROOT,
-    ...getSessionWorkspaceCandidates(),
-    process.cwd(),
-    path.resolve(__dirname, "..", ".."),
-    path.resolve(__dirname, "..", "..", ".."),
-  ].filter(Boolean);
+function resolveOpenSpecWorkspaceRoot(startPath) {
+  if (!startPath || typeof startPath !== "string") return null;
 
-  return Array.from(new Set(roots));
+  let current = path.resolve(startPath);
+
+  while (true) {
+    const openspecDir = path.join(current, "openspec");
+    try {
+      if (fs.existsSync(openspecDir) && fs.statSync(openspecDir).isDirectory()) {
+        return current;
+      }
+    } catch {}
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
 }
 
-function resolveWorkspaceRoot() {
-  for (const candidate of workspaceCandidates()) {
-    const openspecDir = path.join(candidate, "openspec");
-    if (fs.existsSync(openspecDir) && fs.statSync(openspecDir).isDirectory()) {
-      return candidate;
+function getActiveWorkspaceRoot() {
+  try {
+    const row = stmts.getSetting.get(OPEN_SPEC_WORKSPACE_SETTING_KEY);
+    return resolveOpenSpecWorkspaceRoot(row?.value ? String(row.value).trim() : null);
+  } catch {
+    return null;
+  }
+}
+
+function hasOpenSpecWorkspace(candidate) {
+  return Boolean(resolveOpenSpecWorkspaceRoot(candidate));
+}
+
+function getDetectedWorkspaceRoots() {
+  return Array.from(
+    new Set(
+      getSessionWorkspaceCandidates()
+        .map((candidate) => resolveOpenSpecWorkspaceRoot(candidate))
+        .filter(Boolean)
+    )
+  );
+}
+
+function getWorkspaceSelection(preferredRoot) {
+  const detectedRoots = getDetectedWorkspaceRoots();
+  const activeWorkspaceRoot = getActiveWorkspaceRoot();
+  const orderedCandidates = [
+    { root: preferredRoot, source: "preferred" },
+    { root: process.env.OPENSPEC_WORKSPACE_ROOT, source: "env" },
+    { root: activeWorkspaceRoot, source: "active" },
+    { root: process.env.CCG_WORKSPACE_ROOT, source: "legacy-env" },
+    ...detectedRoots.map((root) => ({ root, source: "sessions" })),
+    { root: process.cwd(), source: "cwd" },
+    { root: path.resolve(__dirname, "..", ".."), source: "server" },
+    { root: path.resolve(__dirname, "..", "..", ".."), source: "repo" },
+  ];
+
+  for (const candidate of orderedCandidates) {
+    const resolvedRoot = resolveOpenSpecWorkspaceRoot(candidate.root);
+    if (resolvedRoot) {
+      return {
+        workspaceRoot: resolvedRoot,
+        source: candidate.source,
+        activeWorkspaceRoot,
+        detectedWorkspaceRoots: detectedRoots,
+      };
     }
   }
 
   throw new Error("OpenSpec workspace not found");
+}
+
+function resolveWorkspaceRoot(preferredRoot) {
+  return getWorkspaceSelection(preferredRoot).workspaceRoot;
 }
 
 function resolveOpenSpecRunner() {
@@ -544,5 +598,10 @@ async function buildBoardPayload(workspaceRoot) {
 module.exports = {
   OPEN_SPEC_CACHE_TTL_MS,
   buildBoardPayload,
+  getActiveWorkspaceRoot,
+  getDetectedWorkspaceRoots,
+  getWorkspaceSelection,
+  hasOpenSpecWorkspace,
+  resolveOpenSpecWorkspaceRoot,
   resolveWorkspaceRoot,
 };

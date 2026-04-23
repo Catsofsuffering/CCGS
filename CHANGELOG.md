@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.28] - 2026-04-23
+
+### Changed
+
+- Fixed `ccsm init --force` monitor runtime installs on Windows by removing incompatible client code from the shipped monitor bundle and excluding runtime `claude-monitor/data/` artifacts from install-time copies.
+- Added automatic monitor workspace rebinding so `ccsm monitor` now follows the directory it was launched from, including nearest-parent OpenSpec root detection for nested working directories.
+- Added upgrade fallback for reused monitor processes so older monitor servers without the new workspace update API are restarted automatically instead of failing with HTTP 404.
+- Surfaced the active project path in the monitor sidebar and documented the new runtime settings endpoint in the embedded OpenAPI spec.
+
+---
+
 ## [2.1.27] - 2026-04-22
 
 ### Changed

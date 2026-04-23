@@ -1,6 +1,6 @@
-# Contributing to CCGS
+# Contributing to CCSM
 
-Thanks for your interest in contributing to CCGS. This guide will help you get started.
+Thanks for your interest in contributing to CCSM. This guide will help you get started.
 
 ## Development Setup
 
@@ -13,8 +13,8 @@ Thanks for your interest in contributing to CCGS. This guide will help you get s
 
 ```bash
 # Clone the repository
-git clone <your-ccgs-repository-url>
-cd ccs
+git clone <your-ccsm-repository-url>
+cd ccsm
 
 # Install dependencies
 pnpm install
@@ -29,7 +29,7 @@ pnpm test
 ### Project Structure
 
 ```
-ccs/
+ccsm/
 ├── src/                    # TypeScript source
 │   ├── cli.ts              # CLI entry point
 │   ├── commands/           # CLI commands (init, update, menu, etc.)

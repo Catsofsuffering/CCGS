@@ -4,10 +4,33 @@
  * @author Son Nguyen <hoangson091104@gmail.com>
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Sidebar } from "../Sidebar";
+import { api } from "../../lib/api";
+
+vi.mock("../../lib/api", () => ({
+  api: {
+    settings: {
+      info: vi.fn(),
+    },
+  },
+}));
+
+beforeEach(() => {
+  vi.mocked(api.settings.info).mockResolvedValue({
+    db: { path: "", size: 0, counts: {} },
+    hooks: { installed: false, path: "", hooks: {} },
+    server: { uptime: 0, node_version: "v22.0.0", platform: "win32", ws_connections: 0 },
+    openspec: {
+      workspaceRoot: "B:\\project\\DataBeacon",
+      source: "active",
+      activeWorkspaceRoot: "B:\\project\\DataBeacon",
+      detectedWorkspaceRoots: ["B:\\project\\DataBeacon"],
+    },
+  });
+});
 
 function renderSidebar(wsConnected: boolean, collapsed = false) {
   return render(
@@ -27,6 +50,12 @@ describe("Sidebar", () => {
   it("should render the brand name", () => {
     renderSidebar(true);
     expect(screen.getByText("Agent Monitor")).toBeInTheDocument();
+  });
+
+  it("should render the current workspace", async () => {
+    renderSidebar(true);
+    expect(await screen.findByText("Project: DataBeacon")).toBeInTheDocument();
+    expect(screen.getByText("B:\\project\\DataBeacon")).toBeInTheDocument();
   });
 
   it("should render all navigation links", () => {
@@ -61,6 +90,6 @@ describe("Sidebar", () => {
     expect(hrefs).toContain("/analytics");
     expect(hrefs).toContain("/workflows");
     expect(hrefs).toContain("https://github.com/Catsofsuffering");
-    expect(hrefs).toContain("https://github.com/Catsofsuffering/CCGS");
+    expect(hrefs).toContain("https://github.com/Catsofsuffering/ccsm");
   });
 });

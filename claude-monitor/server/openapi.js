@@ -734,7 +734,7 @@ function createOpenApiSpec() {
         },
         SettingsInfoResponse: {
           type: "object",
-          required: ["db", "hooks", "server", "transcript_cache"],
+          required: ["db", "hooks", "server", "openspec", "transcript_cache"],
           properties: {
             db: {
               type: "object",
@@ -770,6 +770,9 @@ function createOpenApiSpec() {
                 ws_connections: { type: "integer" },
               },
             },
+            openspec: {
+              $ref: "#/components/schemas/OpenSpecWorkspaceInfo",
+            },
             transcript_cache: {
               type: "object",
               required: ["entries", "paths"],
@@ -777,6 +780,35 @@ function createOpenApiSpec() {
                 entries: { type: "integer" },
                 paths: { type: "array", items: { type: "string" } },
               },
+            },
+          },
+        },
+        OpenSpecWorkspaceInfo: {
+          type: "object",
+          required: ["workspaceRoot", "source", "activeWorkspaceRoot", "detectedWorkspaceRoots"],
+          properties: {
+            workspaceRoot: { type: "string", nullable: true },
+            source: { type: "string", nullable: true },
+            activeWorkspaceRoot: { type: "string", nullable: true },
+            detectedWorkspaceRoots: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
+        UpdateOpenSpecWorkspaceRequest: {
+          type: "object",
+          properties: {
+            workspaceRoot: { type: "string" },
+          },
+        },
+        UpdateOpenSpecWorkspaceResponse: {
+          type: "object",
+          required: ["ok", "openspec"],
+          properties: {
+            ok: { type: "boolean", enum: [true] },
+            openspec: {
+              $ref: "#/components/schemas/OpenSpecWorkspaceInfo",
             },
           },
         },
@@ -2191,6 +2223,39 @@ function createOpenApiSpec() {
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/SettingsInfoResponse" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/settings/openspec-workspace": {
+        post: {
+          tags: ["Settings"],
+          summary: "Update the active OpenSpec workspace root for the running monitor",
+          operationId: "updateOpenSpecWorkspace",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UpdateOpenSpecWorkspaceRequest" },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: "Active OpenSpec workspace updated",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/UpdateOpenSpecWorkspaceResponse" },
+                },
+              },
+            },
+            400: {
+              description: "Requested workspace does not contain an openspec root",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
             },

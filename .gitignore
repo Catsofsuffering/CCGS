@@ -64,3 +64,6 @@ FINAL_VERIFICATION.md
 
 # Temporary verification artifacts
 .tmp/
+
+# Local monitor runtime data
+claude-monitor/data/

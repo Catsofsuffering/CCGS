@@ -4,6 +4,7 @@
  * @author Son Nguyen <hoangson091104@gmail.com>
  */
 
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutPanelTop,
@@ -21,7 +22,9 @@ import {
   SunMedium,
   MoonStar,
 } from "lucide-react";
+import { api } from "../lib/api";
 import type { Theme } from "../lib/theme";
+import type { OpenSpecWorkspaceInfo } from "../lib/types";
 
 const NAV_ITEMS = [
   { to: "/board", icon: LayoutPanelTop, label: "Board" },
@@ -33,8 +36,16 @@ const NAV_ITEMS = [
 
 const STORAGE_KEY = "sidebar-collapsed";
 const AUTHOR_GITHUB_URL = "https://github.com/Catsofsuffering";
-const REPOSITORY_URL = "https://github.com/Catsofsuffering/CCGS";
-const REPOSITORY_LABEL = "CatsOfSuffering/CCGS";
+const REPOSITORY_URL = "https://github.com/Catsofsuffering/ccsm";
+const REPOSITORY_LABEL = "Catsofsuffering/ccsm";
+
+function workspaceLabel(workspaceRoot: string | null): string | null {
+  if (!workspaceRoot) return null;
+  const normalized = workspaceRoot.replace(/[\\/]+$/, "");
+  const parts = normalized.split(/[\\/]/).filter(Boolean);
+  const label = parts.length > 0 ? parts[parts.length - 1] : normalized;
+  return label ?? null;
+}
 
 function loadCollapsed(): boolean {
   try {
@@ -56,6 +67,34 @@ const SIDEBAR_VERSION = `v${__CCGS_VERSION__}`;
 
 export function Sidebar({ wsConnected, collapsed, onToggle, theme, onThemeToggle }: SidebarProps) {
   const nextThemeLabel = theme === "dark" ? "Day mode" : "Night mode";
+  const [workspaceInfo, setWorkspaceInfo] = useState<OpenSpecWorkspaceInfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWorkspace = async () => {
+      try {
+        const info = await api.settings.info();
+        if (!cancelled) {
+          setWorkspaceInfo(info.openspec);
+        }
+      } catch {
+        if (!cancelled) {
+          setWorkspaceInfo(null);
+        }
+      }
+    };
+
+    loadWorkspace();
+    const interval = setInterval(loadWorkspace, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const currentWorkspace = workspaceInfo?.workspaceRoot ?? null;
+  const currentWorkspaceLabel = workspaceLabel(currentWorkspace);
 
   return (
     <aside
@@ -72,6 +111,14 @@ export function Sidebar({ wsConnected, collapsed, onToggle, theme, onThemeToggle
           {!collapsed && (
             <div className="min-w-0">
               <h1 className="text-sm font-semibold text-gray-100 truncate">Agent Monitor</h1>
+              <p className="mt-0.5 truncate text-[11px] text-gray-500">
+                {currentWorkspaceLabel
+                  ? `Project: ${currentWorkspaceLabel}`
+                  : "Project: workspace not resolved"}
+              </p>
+              {currentWorkspace && (
+                <p className="truncate text-[10px] text-gray-600">{currentWorkspace}</p>
+              )}
             </div>
           )}
         </div>

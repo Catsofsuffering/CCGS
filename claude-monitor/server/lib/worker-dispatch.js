@@ -11,7 +11,7 @@ function buildControlPlanePrompt({ change, nodeId, actionType, workspaceRoot, di
   const modeLabel = actionType === "replay" ? "replay execution" : "reopen and reconcile";
 
   return [
-    `You are the ${dispatch.preferredAdapterId || "worker"} for CCGS control-plane execution.`,
+    `You are the ${dispatch.preferredAdapterId || "worker"} for CCSM control-plane execution.`,
     `Project: ${change.name}`,
     `Node: ${nodeId}`,
     `Requested action: ${actionType}`,
@@ -120,7 +120,7 @@ function createDispatchIntentAndFetch(args) {
 }
 
 function launchClaudeDispatch({ intent, workspaceRoot }) {
-  const cliEntry = path.join(workspaceRoot, "bin", "ccgs.mjs");
+  const cliEntry = path.join(workspaceRoot, "bin", "ccsm.mjs");
   const args = ["claude", "exec", "--cwd", workspaceRoot, "--prompt", intent.prompt];
   const startedAt = nowIso();
   const child = spawn(process.execPath, [cliEntry, ...args], {

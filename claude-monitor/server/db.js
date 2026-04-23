@@ -104,6 +104,12 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
   CREATE TABLE IF NOT EXISTS control_plane_actions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_name TEXT NOT NULL,
@@ -438,6 +444,18 @@ const stmts = {
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
   `),
   deletePricing: db.prepare("DELETE FROM model_pricing WHERE model_pattern = ?"),
+  getSetting: db.prepare("SELECT key, value, updated_at FROM app_settings WHERE key = ?"),
+  listSettingsByPrefix: db.prepare(
+    "SELECT key, value, updated_at FROM app_settings WHERE key LIKE ? ORDER BY key ASC"
+  ),
+  upsertSetting: db.prepare(`
+    INSERT INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+  `),
+  deleteSetting: db.prepare("DELETE FROM app_settings WHERE key = ?"),
   matchPricing: db.prepare(
     "SELECT * FROM model_pricing WHERE ? LIKE REPLACE(model_pattern, '%', '%') LIMIT 1"
   ),

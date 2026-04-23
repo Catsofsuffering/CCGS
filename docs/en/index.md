@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: CCGS
+  name: CCSM
   text: A Codex-led spec collaboration workflow
   tagline: OpenSpec defines the boundary, Codex owns progression and acceptance, and Claude Agent Teams execute the bounded implementation work.
   actions:
@@ -14,7 +14,7 @@ hero:
       link: /en/guide/commands
     - theme: alt
       text: GitHub
-      link: https://github.com/Catsofsuffering/CCGS
+      link: https://github.com/Catsofsuffering/ccsm
 
 features:
   - icon: 🔀

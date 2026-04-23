@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: CCGS
+  name: CCSM
   text: Codex 主控的规范协作工作流
   tagline: OpenSpec 负责收敛边界，Codex 负责推进与验收，Claude Agent Teams 负责有边界的执行实现。
   actions:
@@ -14,7 +14,7 @@ hero:
       link: /guide/commands
     - theme: alt
       text: GitHub
-      link: https://github.com/Catsofsuffering/CCGS
+      link: https://github.com/Catsofsuffering/ccsm
 
 features:
   - icon: 🔀

@@ -10,6 +10,11 @@ const os = require("os");
 const { db, stmts, DB_PATH } = require("../db");
 const { getConnectionCount } = require("../websocket");
 const { transcriptCache } = require("./hooks");
+const {
+  getWorkspaceSelection,
+  hasOpenSpecWorkspace,
+  resolveOpenSpecWorkspaceRoot,
+} = require("../lib/openspec-state");
 
 const router = Router();
 
@@ -74,6 +79,16 @@ router.get("/info", (_req, res) => {
   const dbSize = getDbSize();
   const counts = getTableCounts();
   const hookStatus = getHookStatus();
+  let openspec = {
+    workspaceRoot: null,
+    source: null,
+    activeWorkspaceRoot: null,
+    detectedWorkspaceRoots: [],
+  };
+
+  try {
+    openspec = getWorkspaceSelection();
+  } catch {}
 
   res.json({
     db: {
@@ -88,8 +103,46 @@ router.get("/info", (_req, res) => {
       platform: process.platform,
       ws_connections: getConnectionCount(),
     },
+    openspec,
     transcript_cache: transcriptCache.stats(),
   });
+});
+
+router.post("/openspec-workspace", (req, res) => {
+  const rawRoot = typeof req.body?.workspaceRoot === "string" ? req.body.workspaceRoot.trim() : "";
+
+  if (!rawRoot) {
+    stmts.deleteSetting.run("openspec.activeWorkspaceRoot");
+
+    let openspec = {
+      workspaceRoot: null,
+      source: null,
+      activeWorkspaceRoot: null,
+      detectedWorkspaceRoots: [],
+    };
+    try {
+      openspec = getWorkspaceSelection();
+    } catch {}
+
+    res.json({ ok: true, openspec });
+    return;
+  }
+
+  const normalizedRoot = path.resolve(rawRoot);
+  const workspaceRoot = resolveOpenSpecWorkspaceRoot(normalizedRoot);
+  if (!hasOpenSpecWorkspace(normalizedRoot) || !workspaceRoot) {
+    res.status(400).json({
+      error: {
+        code: "OPENSPEC_WORKSPACE_INVALID",
+        message: `No openspec directory was found under '${normalizedRoot}'`,
+      },
+    });
+    return;
+  }
+
+  stmts.upsertSetting.run("openspec.activeWorkspaceRoot", workspaceRoot);
+  const openspec = getWorkspaceSelection(workspaceRoot);
+  res.json({ ok: true, openspec });
 });
 
 // POST /api/settings/clear-data — delete all sessions, agents, events, tokens

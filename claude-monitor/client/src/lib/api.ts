@@ -15,9 +15,11 @@ import type {
   DashboardEvent,
   ModelPricing,
   OpenSpecBoardData,
+  OpenSpecWorkspaceInfo,
   Session,
   SessionOutputs,
   SessionDrillIn,
+  SettingsInfo,
   Stats,
   WorkflowData,
 } from "./types";
@@ -88,12 +90,12 @@ export const api = {
   },
 
   settings: {
-    info: () =>
-      request<{
-        db: { path: string; size: number; counts: Record<string, number> };
-        hooks: { installed: boolean; path: string; hooks: Record<string, boolean> };
-        server: { uptime: number; node_version: string; platform: string; ws_connections: number };
-      }>("/settings/info"),
+    info: () => request<SettingsInfo>("/settings/info"),
+    updateOpenSpecWorkspace: (workspaceRoot?: string | null) =>
+      request<{ ok: boolean; openspec: OpenSpecWorkspaceInfo }>("/settings/openspec-workspace", {
+        method: "POST",
+        body: JSON.stringify({ workspaceRoot: workspaceRoot ?? "" }),
+      }),
     clearData: () =>
       request<{ ok: boolean; cleared: Record<string, number> }>("/settings/clear-data", {
         method: "POST",

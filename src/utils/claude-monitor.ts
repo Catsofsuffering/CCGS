@@ -1,5 +1,6 @@
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { homedir } from 'node:os'
+import { promisify } from 'node:util'
 import { dirname, join } from 'pathe'
 import fs from 'fs-extra'
 import { version as workspaceVersion } from '../../package.json'
@@ -14,6 +15,7 @@ export const DEFAULT_MONITOR_PORT = 4820
 export const CLAUDE_MONITOR_NAME = 'claude-monitor'
 export const CODEX_MONITOR_NAME = 'codex-monitor'
 export const CLAUDE_CCSM_PERMISSION_ALLOW = 'Bash(*ccsm*)'
+const execFileAsync = promisify(execFile)
 
 async function isMonitorHealthy(port: number): Promise<boolean> {
   try {
@@ -37,6 +39,96 @@ async function waitForMonitorReady(port: number, timeoutMs: number): Promise<boo
     }
     await new Promise(resolve => setTimeout(resolve, 250))
   }
+  return false
+}
+
+async function updateMonitorWorkspaceRoot(port: number, workspaceRoot: string): Promise<void> {
+  const response = await fetch(`http://127.0.0.1:${port}/api/settings/openspec-workspace`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ workspaceRoot }),
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as {
+      error?: { message?: string }
+    }
+    const message = typeof body.error?.message === 'string'
+      ? body.error.message
+      : `Failed to update monitor workspace root (HTTP ${response.status})`
+    const error = new Error(message) as Error & { status?: number }
+    error.status = response.status
+    throw error
+  }
+}
+
+async function resolveOpenSpecWorkspaceRoot(startDir: string): Promise<string | null> {
+  let currentDir = startDir
+
+  while (true) {
+    if (await fs.pathExists(join(currentDir, 'openspec'))) {
+      return currentDir
+    }
+
+    const parentDir = dirname(currentDir)
+    if (parentDir === currentDir) {
+      return null
+    }
+    currentDir = parentDir
+  }
+}
+
+async function findListeningPid(port: number): Promise<number | null> {
+  try {
+    if (process.platform === 'win32') {
+      const { stdout } = await execFileAsync('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        `$conn = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess; if ($conn) { Write-Output $conn }`,
+      ], { windowsHide: true })
+      const pid = Number.parseInt(stdout.trim(), 10)
+      return Number.isFinite(pid) && pid > 0 ? pid : null
+    }
+
+    const { stdout } = await execFileAsync('sh', [
+      '-lc',
+      `lsof -ti tcp:${port} -sTCP:LISTEN 2>/dev/null | head -n 1`,
+    ])
+    const pid = Number.parseInt(stdout.trim(), 10)
+    return Number.isFinite(pid) && pid > 0 ? pid : null
+  }
+  catch {
+    return null
+  }
+}
+
+async function stopProcessByPid(pid: number): Promise<void> {
+  if (process.platform === 'win32') {
+    await execFileAsync('taskkill', ['/PID', String(pid), '/F'], { windowsHide: true })
+    return
+  }
+
+  process.kill(pid, 'SIGTERM')
+}
+
+async function stopMonitorOnPort(port: number): Promise<boolean> {
+  const pid = await findListeningPid(port)
+  if (!pid || pid === process.pid) {
+    return false
+  }
+
+  await stopProcessByPid(pid)
+
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    if (!await isMonitorHealthy(port)) {
+      return true
+    }
+    await new Promise(resolve => setTimeout(resolve, 250))
+  }
+
   return false
 }
 
@@ -212,6 +304,8 @@ export async function installBundledMonitor(
         && !normalized.endsWith('/node_modules')
         && !normalized.includes('/.git/')
         && !normalized.endsWith('/.git')
+        && !normalized.includes('/data/')
+        && !normalized.endsWith('/data')
         && !normalized.includes('/client/dist/')
         && !normalized.endsWith('/client/dist')
         && !normalized.endsWith('.tsbuildinfo')
@@ -357,16 +451,34 @@ export async function startClaudeMonitor(options?: {
   const canonicalHomeDir = options?.canonicalHomeDir || options?.installDir || getCanonicalHomeDir()
   const monitorDir = await resolveInstalledMonitorDir(canonicalHomeDir, CLAUDE_MONITOR_NAME)
   const port = options?.port || DEFAULT_MONITOR_PORT
+  const launchDir = process.cwd()
+  const workspaceRoot = await resolveOpenSpecWorkspaceRoot(launchDir)
 
   if (!await fs.pathExists(join(monitorDir, 'server', 'index.js'))) {
     throw new Error(`Claude monitor is not installed at ${monitorDir}`)
   }
 
   if (await isMonitorHealthy(port)) {
-    return {
-      url: `http://127.0.0.1:${port}`,
-      monitorDir,
-      reused: true,
+    if (workspaceRoot) {
+      try {
+        await updateMonitorWorkspaceRoot(port, workspaceRoot)
+      }
+      catch (error) {
+        const status = typeof error === 'object' && error && 'status' in error
+          ? Number((error as { status?: number }).status)
+          : null
+        if (status !== 404 || !await stopMonitorOnPort(port)) {
+          throw error
+        }
+      }
+    }
+
+    if (await isMonitorHealthy(port)) {
+      return {
+        url: `http://127.0.0.1:${port}`,
+        monitorDir,
+        reused: true,
+      }
     }
   }
 
@@ -376,8 +488,8 @@ export async function startClaudeMonitor(options?: {
       ...process.env,
       DASHBOARD_PORT: String(port),
       CLAUDE_DASHBOARD_PORT: String(port),
-      CCG_WORKSPACE_ROOT: process.cwd(),
-      OPENSPEC_WORKSPACE_ROOT: process.cwd(),
+      CCG_WORKSPACE_ROOT: workspaceRoot || launchDir,
+      OPENSPEC_WORKSPACE_ROOT: workspaceRoot || launchDir,
     },
     stdio: options?.detached ? 'ignore' : 'inherit',
     detached: options?.detached ?? false,
@@ -389,6 +501,10 @@ export async function startClaudeMonitor(options?: {
       child.kill()
     }
     throw new Error(`Claude monitor failed to start on port ${port}`)
+  }
+
+  if (workspaceRoot) {
+    await updateMonitorWorkspaceRoot(port, workspaceRoot)
   }
 
   if (options?.detached) {

@@ -133,6 +133,24 @@ export interface CostResult {
   breakdown: CostBreakdown[];
 }
 
+export interface OpenSpecWorkspaceInfo {
+  workspaceRoot: string | null;
+  source: string | null;
+  activeWorkspaceRoot: string | null;
+  detectedWorkspaceRoots: string[];
+}
+
+export interface SettingsInfo {
+  db: { path: string; size: number; counts: Record<string, number> };
+  hooks: { installed: boolean; path: string; hooks: Record<string, boolean> };
+  server: { uptime: number; node_version: string; platform: string; ws_connections: number };
+  openspec: OpenSpecWorkspaceInfo;
+  transcript_cache?: {
+    entries: number;
+    paths: string[];
+  };
+}
+
 export interface WSMessage {
   type: "session_created" | "session_updated" | "agent_created" | "agent_updated" | "new_event";
   data: Session | Agent | DashboardEvent;
