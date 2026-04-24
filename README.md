@@ -89,6 +89,12 @@ If you want the managed shortcut for Codex dispatch plus Claude execution plus C
 /ccsm:spec-impl
 ```
 
+Current limitation: Codex skills are prompt-level workflow contracts, not a hard runtime gate. When invoking `spec-impl`, explicitly tell Codex to dispatch through Claude Agent Teams and not to implement locally before `ccsm claude exec` succeeds, for example:
+
+```text
+Use spec-impl strictly: prepare the execution packet, dispatch with Claude Agent Teams via ccsm claude exec, and do not edit product code locally unless Claude execution is blocked and I explicitly approve a fallback.
+```
+
 ## CLI Surface
 
 The currently maintained command surface is:
@@ -161,6 +167,14 @@ After installation, CCSM also installs:
 - `spec-review`
 
 These let the primary workflow start directly from Codex while keeping Claude available as the execution layer.
+
+### Current Skill Limitations
+
+- Codex-native skills are guidance loaded into the current Codex session; they do not yet enforce a runtime-level block on local file edits.
+- `spec-impl` is designed to dispatch implementation to Claude Agent Teams first, then keep verification and acceptance in Codex.
+- If the active session or user prompt says “continue implementation” without restating the dispatch requirement, Codex may still try to implement locally.
+- For reliable `spec-impl` behavior, explicitly mention Claude Agent Teams and `ccsm claude exec` when starting the skill.
+- If Claude Agent Teams, `ccsm claude exec`, or Claude permissions are unavailable, treat the run as blocked or use the explicit `/ccsm:team-*` commands instead of silently falling back to local Codex implementation.
 
 ## Repository Landmarks
 

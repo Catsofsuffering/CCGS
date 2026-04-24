@@ -89,6 +89,12 @@ openspec archive <change-id>
 /ccsm:spec-impl
 ```
 
+当前限制：Codex skills 仍然是提示层工作流约束，不是运行时强制门禁。使用 `spec-impl` 时，建议明确告诉 Codex 必须先通过 Claude Agent Teams 派发执行，并且在 `ccsm claude exec` 成功前不要本地改产品代码，例如：
+
+```text
+严格使用 spec-impl：先整理 execution packet，通过 ccsm claude exec 派发给 Claude Agent Teams 执行；在 Claude 执行未成功启动前，不要由 Codex 本地修改产品代码，除非我明确批准 fallback。
+```
+
 ## CLI 命令面
 
 当前维护中的命令主要是：
@@ -161,6 +167,14 @@ ccsm fix-mcp
 - `spec-review`
 
 这样主工作流就可以直接从 Codex 发起，同时保留 Claude 作为执行层。
+
+### 当前技能限制
+
+- Codex 原生 skills 是加载到当前 Codex 会话里的提示约束，暂时不能在运行时硬性阻止本地文件编辑。
+- `spec-impl` 的设计目标是先把实现派发给 Claude Agent Teams，再由 Codex 做验证、验收和归档判断。
+- 如果当前会话或用户提示只说“继续实现”，但没有再次强调 Claude Agent Teams 和派发要求，Codex 仍可能尝试本地直接实现。
+- 为了让 `spec-impl` 更稳定地按设计运行，启动时请明确提到 Claude Agent Teams 和 `ccsm claude exec`。
+- 如果 Claude Agent Teams、`ccsm claude exec` 或 Claude 权限不可用，应把本次执行视为 blocked，或改用显式的 `/ccsm:team-*` 命令，不要静默 fallback 成 Codex 本地实现。
 
 ## 仓库结构
 
